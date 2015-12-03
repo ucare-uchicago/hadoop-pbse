@@ -369,4 +369,12 @@ public class LineReader implements Closeable {
   public int readLine(Text str) throws IOException {
     return readLine(str, Integer.MAX_VALUE, Integer.MAX_VALUE);
   }
+
+  /**
+   * riza: take out DFSInputStream to track ignored node
+   * @return the number of bytes read including the newline
+   */
+  public InputStream getInputStream() {
+    return in;
+  }
 }

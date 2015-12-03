@@ -20,6 +20,8 @@ package org.apache.hadoop.mapreduce.lib.input;
 
 import java.io.IOException;
 
+import java.io.InputStream;
+
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -235,5 +237,12 @@ public class LineRecordReader extends RecordReader<LongWritable, Text> {
         decompressor = null;
       }
     }
+  }
+
+  /**
+   * riza: bypass DFSInputStream to LineRecordReader
+   */
+  public InputStream getInputStream() {
+    return in.getInputStream();
   }
 }

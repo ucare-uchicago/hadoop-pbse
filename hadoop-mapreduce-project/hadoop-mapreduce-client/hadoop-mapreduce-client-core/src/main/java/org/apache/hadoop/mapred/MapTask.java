@@ -32,6 +32,8 @@ import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import java.io.InputStream;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -74,6 +76,8 @@ import org.apache.hadoop.util.QuickSort;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringInterner;
 import org.apache.hadoop.util.StringUtils;
+
+import org.apache.hadoop.mapreduce.lib.input.LineRecordReader;
 
 /** A Map task. */
 @InterfaceAudience.LimitedPrivate({"MapReduce"})
@@ -570,6 +574,13 @@ public class MapTask extends Task {
         bytesRead = bytesRead + stat.getBytesRead();
       }
       return bytesRead;
+    }
+
+    /**
+     * riza: access InputStream to pass info to OutputCollector
+     */
+    public InputStream getRealInputStream() {
+	return (real instanceof LineRecordReader) ? ((LineRecordReader) real).getInputStream() : null;
     }
   }
 

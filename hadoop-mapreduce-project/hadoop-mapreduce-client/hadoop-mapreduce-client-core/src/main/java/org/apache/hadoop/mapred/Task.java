@@ -70,6 +70,8 @@ import org.apache.hadoop.util.ShutdownHookManager;
 import org.apache.hadoop.util.StringInterner;
 import org.apache.hadoop.util.StringUtils;
 
+//import org.apache.hadoop.hdfs.DFSInputStrean;
+
 /**
  * Base class for tasks.
  */
@@ -641,6 +643,8 @@ abstract public class Task implements Writable, Configurable {
     private Thread pingThread = null;
     private boolean done = true;
     private Object lock = new Object();
+
+      //private DFSInputStream in = null;
 
     /**
      * flag that indicates whether progress update needs to be sent to parent.
