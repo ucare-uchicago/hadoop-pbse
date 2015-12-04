@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-
 import java.io.InputStream;
 
 import org.apache.commons.logging.Log;
@@ -64,6 +63,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskCounter;
 import org.apache.hadoop.mapreduce.TaskType;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormatCounter;
+import org.apache.hadoop.mapreduce.lib.input.InputStreamOwner;
 import org.apache.hadoop.mapreduce.lib.map.WrappedMapper;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormatCounter;
 import org.apache.hadoop.mapreduce.split.JobSplit.TaskSplitIndex;
@@ -76,7 +76,6 @@ import org.apache.hadoop.util.QuickSort;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringInterner;
 import org.apache.hadoop.util.StringUtils;
-
 import org.apache.hadoop.mapreduce.lib.input.LineRecordReader;
 
 /** A Map task. */
@@ -147,7 +146,7 @@ public class MapTask extends Task {
    * @param <V>
    */
   class TrackedRecordReader<K, V> 
-      implements RecordReader<K,V> {
+      implements RecordReader<K,V>, InputStreamOwner {
     private RecordReader<K,V> rawIn;
     private Counters.Counter fileInputByteCounter;
     private Counters.Counter inputRecordCounter;
@@ -230,6 +229,14 @@ public class MapTask extends Task {
         bytesRead = bytesRead + stat.getBytesRead();
       }
       return bytesRead;
+    }
+
+    /**
+     * riza: access InputStream to pass info to OutputCollector
+     */
+    public InputStream getInputStream() {
+      return (rawIn instanceof LineRecordReader) ? ((LineRecordReader) rawIn)
+          .getInputStream() : null;
     }
   }
 
@@ -490,7 +497,8 @@ public class MapTask extends Task {
   }
 
   static class NewTrackingRecordReader<K,V> 
-    extends org.apache.hadoop.mapreduce.RecordReader<K,V> {
+    extends org.apache.hadoop.mapreduce.RecordReader<K,V>
+    implements InputStreamOwner{
     private final org.apache.hadoop.mapreduce.RecordReader<K,V> real;
     private final org.apache.hadoop.mapreduce.Counter inputRecordCounter;
     private final org.apache.hadoop.mapreduce.Counter fileInputByteCounter;
@@ -579,8 +587,9 @@ public class MapTask extends Task {
     /**
      * riza: access InputStream to pass info to OutputCollector
      */
-    public InputStream getRealInputStream() {
-	return (real instanceof LineRecordReader) ? ((LineRecordReader) real).getInputStream() : null;
+    public InputStream getInputStream() {
+      return (real instanceof LineRecordReader) ? ((LineRecordReader) real)
+          .getInputStream() : null;
     }
   }
 
@@ -795,6 +804,12 @@ public class MapTask extends Task {
 
     try {
       input.initialize(split, mapperContext);
+
+      // riza: pass DFSInputStream to TaskReporter
+      if (input instanceof InputStreamOwner) {
+        reporter.setInputStream(((InputStreamOwner) input).getInputStream());
+      }
+
       mapper.run(mapperContext);
       mapPhase.complete();
       setPhase(TaskStatus.Phase.SORT);

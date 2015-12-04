@@ -57,6 +57,7 @@ import org.apache.hadoop.fs.ReadOption;
 import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.fs.UnresolvedLinkException;
 import org.apache.hadoop.hdfs.protocol.ClientDatanodeProtocol;
+import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.fs.FileEncryptionInfo;
@@ -129,6 +130,8 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
    * whether we this is a memory-mapped buffer or not.
    */
   private IdentityHashStore<ByteBuffer, Object> extendedReadBuffers;
+
+  private DatanodeID lastDatanodeID = null;
 
   private synchronized IdentityHashStore<ByteBuffer, Object>
         getExtendedReadBuffers() {
@@ -606,6 +609,9 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       InetSocketAddress targetAddr = retval.addr;
       StorageType storageType = retval.storageType;
 
+      // riza: get last requested datanode uuid
+      this.lastDatanodeID = retval.info;
+
       try {
         ExtendedBlock blk = targetBlock.getBlock();
         Token<BlockTokenIdentifier> accessToken = targetBlock.getBlockToken();
@@ -1052,6 +1058,10 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
     block = getBlockAt(block.getStartOffset());
     while (true) {
       DNAddrPair addressPair = chooseDataNode(block, null);
+
+      // riza: get last requested datanode uuid
+      this.lastDatanodeID = addressPair.info;
+
       try {
         actualGetFromOneDataNode(addressPair, block, start, end, buf, offset,
             corruptedBlockMap);
@@ -1827,5 +1837,10 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
   @Override
   public synchronized void unbuffer() {
     closeCurrentBlockReader();
+  }
+
+  // riza: get last accessed datanode
+  public DatanodeID getLastDatanodeID() {
+    return this.lastDatanodeID;
   }
 }

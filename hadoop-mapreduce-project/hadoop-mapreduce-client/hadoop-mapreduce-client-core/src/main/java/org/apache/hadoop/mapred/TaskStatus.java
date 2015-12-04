@@ -26,6 +26,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
@@ -73,6 +74,9 @@ public abstract class TaskStatus implements Writable, Cloneable {
   // max task-status string size
   static final int MAX_STRING_SIZE = 1024;
 
+  // riza: add attribute to pass last accessed datanode
+  private DatanodeID lastDatanodeID;
+
   /**
    * Testcases can override {@link #getMaxStringSize()} to control the max-size 
    * of strings in {@link TaskStatus}. Note that the {@link TaskStatus} is never
@@ -102,6 +106,7 @@ public abstract class TaskStatus implements Writable, Cloneable {
     this.phase = phase;
     this.counters = counters;
     this.includeAllCounters = true;
+    this.lastDatanodeID = new DatanodeID("0.0.0.0","","",0,0,0,0);
   }
   
   public TaskAttemptID getTaskID() { return taskid; }
@@ -454,6 +459,15 @@ public abstract class TaskStatus implements Writable, Cloneable {
     }
   }
   
+  // riza: get/set last accessed DatanodeID
+  public void setLastDatanodeID(DatanodeID dnID) {
+    this.lastDatanodeID = dnID;
+  }
+
+  public DatanodeID getLastDatanodeID() {
+    return this.lastDatanodeID;
+  }
+
   //////////////////////////////////////////////
   // Writable
   //////////////////////////////////////////////

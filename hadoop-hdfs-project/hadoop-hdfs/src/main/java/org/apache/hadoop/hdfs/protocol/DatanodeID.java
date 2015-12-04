@@ -18,8 +18,14 @@
 
 package org.apache.hadoop.hdfs.protocol;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -36,7 +42,7 @@ import com.google.common.annotations.VisibleForTesting;
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class DatanodeID implements Comparable<DatanodeID> {
+public class DatanodeID implements Comparable<DatanodeID>, Writable {
   public static final DatanodeID[] EMPTY_ARRAY = {};
 
   private String ipAddr;     // IP address
@@ -53,7 +59,9 @@ public class DatanodeID implements Comparable<DatanodeID> {
    * same as the StorageID that was previously used by this Datanode. 
    * For newly formatted Datanodes it is a UUID.
    */
-  private final String datanodeUuid;
+  // riza: unfinal to allow DatanodeID read
+  //private final String datanodeUuid;
+  private String datanodeUuid;
 
   public DatanodeID(DatanodeID from) {
     this(from.getDatanodeUuid(), from);
@@ -275,5 +283,29 @@ public class DatanodeID implements Comparable<DatanodeID> {
   @Override
   public int compareTo(DatanodeID that) {
     return getXferAddr().compareTo(that.getXferAddr());
+  }
+
+  // ////////////////////////////////////////////
+  // riza: Writable
+  // ////////////////////////////////////////////
+  @Override
+  public void write(DataOutput out) throws IOException {
+    Text.writeString(out, ipAddr);
+    out.writeInt(xferPort);
+    Text.writeString(out, hostName);
+    Text.writeString(out, datanodeUuid);
+    out.writeInt(infoPort);
+    out.writeInt(infoSecurePort);
+    out.writeInt(ipcPort);
+  }
+
+  @Override
+  public void readFields(DataInput in) throws IOException {
+    setIpAndXferPort(Text.readString(in), in.readInt());
+    this.hostName = Text.readString(in);
+    this.datanodeUuid = checkDatanodeUuid(Text.readString(in));
+    this.infoPort = in.readInt();
+    this.infoSecurePort = in.readInt();
+    this.ipcPort = in.readInt();
   }
 }

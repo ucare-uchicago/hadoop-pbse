@@ -48,7 +48,8 @@ import org.apache.commons.logging.Log;
  */
 @InterfaceAudience.LimitedPrivate({"MapReduce", "Pig"})
 @InterfaceStability.Evolving
-public class LineRecordReader extends RecordReader<LongWritable, Text> {
+public class LineRecordReader extends RecordReader<LongWritable, Text>
+  implements InputStreamOwner{
   private static final Log LOG = LogFactory.getLog(LineRecordReader.class);
   public static final String MAX_LINE_LENGTH = 
     "mapreduce.input.linerecordreader.line.maxlength";

@@ -21,6 +21,7 @@ package org.apache.hadoop.mapred;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.text.NumberFormat;
@@ -69,8 +70,7 @@ import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.ShutdownHookManager;
 import org.apache.hadoop.util.StringInterner;
 import org.apache.hadoop.util.StringUtils;
-
-//import org.apache.hadoop.hdfs.DFSInputStrean;
+import org.apache.hadoop.hdfs.DFSInputStream;
 
 /**
  * Base class for tasks.
@@ -644,7 +644,7 @@ abstract public class Task implements Writable, Configurable {
     private boolean done = true;
     private Object lock = new Object();
 
-      //private DFSInputStream in = null;
+    private DFSInputStream in = null;
 
     /**
      * flag that indicates whether progress update needs to be sent to parent.
@@ -763,6 +763,10 @@ abstract public class Task implements Writable, Configurable {
             taskStatus.statusUpdate(taskProgress.get(),
                                     taskProgress.toString(), 
                                     counters);
+
+            // riza: attach lastDatanodeID as additional information
+            taskStatus.setLastDatanodeID(in.getLastDatanodeID());
+
             taskFound = umbilical.statusUpdate(taskId, taskStatus);
             taskStatus.clearStatus();
           }
@@ -826,6 +830,12 @@ abstract public class Task implements Writable, Configurable {
         pingThread.interrupt();
         pingThread.join();
       }
+    }
+
+    // riza: note underlying InputStream
+    public void setInputStream(InputStream in) {
+      if (in instanceof DFSInputStream)
+        this.in = (DFSInputStream) in;
     }
   }
   
