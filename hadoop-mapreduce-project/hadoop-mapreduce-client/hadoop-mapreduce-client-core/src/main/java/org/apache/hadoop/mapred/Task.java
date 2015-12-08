@@ -765,7 +765,8 @@ abstract public class Task implements Writable, Configurable {
                                     counters);
 
             // riza: attach lastDatanodeID as additional information
-            taskStatus.setLastDatanodeID(in.getLastDatanodeID());
+            if (in != null)
+              taskStatus.setLastDatanodeID(in.getLastDatanodeID());
 
             taskFound = umbilical.statusUpdate(taskId, taskStatus);
             taskStatus.clearStatus();

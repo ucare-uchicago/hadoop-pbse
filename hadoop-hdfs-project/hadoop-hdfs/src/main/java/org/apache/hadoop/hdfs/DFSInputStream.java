@@ -131,7 +131,9 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
    */
   private IdentityHashStore<ByteBuffer, Object> extendedReadBuffers;
 
-  private DatanodeID lastDatanodeID = null;
+  // riza: allow memoryfull datanode selection
+  private DatanodeID lastDatanodeID = new DatanodeID("0.0.0.0","","",0,0,0,0);
+  private ArrayList<DatanodeInfo> ignoredDatanodes = new ArrayList<DatanodeInfo>();
 
   private synchronized IdentityHashStore<ByteBuffer, Object>
         getExtendedReadBuffers() {
@@ -604,7 +606,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       assert (target==pos) : "Wrong postion " + pos + " expect " + target;
       long offsetIntoBlock = target - targetBlock.getStartOffset();
 
-      DNAddrPair retval = chooseDataNode(targetBlock, null);
+      DNAddrPair retval = chooseDataNode(targetBlock, ignoredDatanodes);
       chosenNode = retval.info;
       InetSocketAddress targetAddr = retval.addr;
       StorageType storageType = retval.storageType;
@@ -1057,7 +1059,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       throws IOException {
     block = getBlockAt(block.getStartOffset());
     while (true) {
-      DNAddrPair addressPair = chooseDataNode(block, null);
+      DNAddrPair addressPair = chooseDataNode(block, ignoredDatanodes);
 
       // riza: get last requested datanode uuid
       this.lastDatanodeID = addressPair.info;
@@ -1842,5 +1844,9 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
   // riza: get last accessed datanode
   public DatanodeID getLastDatanodeID() {
     return this.lastDatanodeID;
+  }
+
+  public void ignodeDatanode(DatanodeID nodeID) {
+    ignoredDatanodes.add(new DatanodeInfo(nodeID));
   }
 }

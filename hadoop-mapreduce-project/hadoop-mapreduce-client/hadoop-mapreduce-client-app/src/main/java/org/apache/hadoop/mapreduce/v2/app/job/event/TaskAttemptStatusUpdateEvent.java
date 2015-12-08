@@ -20,6 +20,7 @@ package org.apache.hadoop.mapreduce.v2.app.job.event;
 
 import java.util.List;
 
+import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.mapreduce.Counters;
 import org.apache.hadoop.mapreduce.v2.api.records.Phase;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
@@ -54,5 +55,6 @@ public class TaskAttemptStatusUpdateEvent extends TaskAttemptEvent {
     public long shuffleFinishTime;
     public long sortFinishTime;
     public TaskAttemptState taskState;
+    public DatanodeID lastDatanodeID;
   }
 }

@@ -18,6 +18,8 @@
 
 package org.apache.hadoop.mapreduce.v2.app.job.impl;
 
+import java.util.Map;
+
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.MapTaskAttemptImpl;
@@ -25,9 +27,11 @@ import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.security.token.JobTokenIdentifier;
 import org.apache.hadoop.mapreduce.split.JobSplit.TaskSplitMetaInfo;
 import org.apache.hadoop.mapreduce.v2.api.records.JobId;
+import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskType;
 import org.apache.hadoop.mapreduce.v2.app.AppContext;
 import org.apache.hadoop.mapreduce.v2.app.TaskAttemptListener;
+import org.apache.hadoop.mapreduce.v2.app.job.TaskAttempt;
 import org.apache.hadoop.mapreduce.v2.app.metrics.MRAppMetrics;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.token.Token;
@@ -88,5 +92,18 @@ public class MapTaskImpl extends TaskImpl {
       sb.append(splits[i]);
     }
     return sb.toString();
+  }
+
+  // riza: implement TaskSplitMetaInfo update here
+  protected void updateTaskSplitMetaInfo() {
+    int least = Integer.MIN_VALUE;
+    for (Map.Entry<TaskAttemptId, TaskAttempt> entry : getAttempts().entrySet()) {
+      if (entry.getKey().getId() > least) {
+        least = entry.getKey().getId();
+        TaskAttemptImpl att = (TaskAttemptImpl) entry.getValue();
+        taskSplitMetaInfo.getSplitIndex().setLastDatanodeID(
+            att.getLastDatanodeID());
+      }
+    }
   }
 }

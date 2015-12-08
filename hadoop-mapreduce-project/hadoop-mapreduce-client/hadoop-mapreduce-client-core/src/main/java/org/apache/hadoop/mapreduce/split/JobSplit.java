@@ -22,6 +22,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
+import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
@@ -148,6 +149,7 @@ public class JobSplit {
     private TaskSplitIndex splitIndex;
     private long inputDataLength;
     private String[] locations;
+
     public TaskSplitMetaInfo(){
       this.splitIndex = new TaskSplitIndex();
       this.locations = new String[0];
@@ -200,6 +202,7 @@ public class JobSplit {
     public TaskSplitIndex(String splitLocation, long startOffset) {
       this.splitLocation = splitLocation;
       this.startOffset = startOffset;
+      this.lastDatanodeID = new DatanodeID("0.0.0.0","","",0,0,0,0);
     }
     public long getStartOffset() {
       return startOffset;
@@ -210,10 +213,23 @@ public class JobSplit {
     public void readFields(DataInput in) throws IOException {
       splitLocation = Text.readString(in);
       startOffset = WritableUtils.readVLong(in);
+      lastDatanodeID.readFields(in);
     }
     public void write(DataOutput out) throws IOException {
       Text.writeString(out, splitLocation);
       WritableUtils.writeVLong(out, startOffset);
+      lastDatanodeID.write(out);
+    }
+
+    // riza: get/set for lastDatanodeID
+    private DatanodeID lastDatanodeID;
+
+    public void setLastDatanodeID(DatanodeID lastDatanodeID) {
+      this.lastDatanodeID = lastDatanodeID;
+    }
+
+    public DatanodeID getLastDatanodeID() {
+      return this.lastDatanodeID;
     }
   }
 }

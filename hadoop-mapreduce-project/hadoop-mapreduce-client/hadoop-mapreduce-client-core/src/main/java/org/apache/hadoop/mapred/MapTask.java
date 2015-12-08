@@ -44,6 +44,7 @@ import org.apache.hadoop.fs.FileSystem.Statistics;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RawLocalFileSystem;
+import org.apache.hadoop.hdfs.DFSInputStream;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.SequenceFile;
@@ -807,7 +808,11 @@ public class MapTask extends Task {
 
       // riza: pass DFSInputStream to TaskReporter
       if (input instanceof InputStreamOwner) {
-        reporter.setInputStream(((InputStreamOwner) input).getInputStream());
+        InputStream in = ((InputStreamOwner) input).getInputStream();
+        reporter.setInputStream(in);
+        if (in instanceof DFSInputStream){
+          ((DFSInputStream) in).ignodeDatanode(splitIndex.getLastDatanodeID());
+        }
       }
 
       mapper.run(mapperContext);

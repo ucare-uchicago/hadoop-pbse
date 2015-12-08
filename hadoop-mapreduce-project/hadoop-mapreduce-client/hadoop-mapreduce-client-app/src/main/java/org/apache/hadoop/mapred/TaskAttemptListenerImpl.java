@@ -347,6 +347,9 @@ public class TaskAttemptListenerImpl extends CompositeService
     taskAttemptStatus.counters = new org.apache.hadoop.mapreduce.Counters(
       taskStatus.getCounters());
 
+    // riza: pass lastDatanodeID to taskAttemptStatus
+    taskAttemptStatus.lastDatanodeID = taskStatus.getLastDatanodeID();
+
     // Map Finish time set by the task (map only)
     if (taskStatus.getIsMap() && taskStatus.getMapFinishTime() != 0) {
       taskAttemptStatus.mapFinishTime = taskStatus.getMapFinishTime();

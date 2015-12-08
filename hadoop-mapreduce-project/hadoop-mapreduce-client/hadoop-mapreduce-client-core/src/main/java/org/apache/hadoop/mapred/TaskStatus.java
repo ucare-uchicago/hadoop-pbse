@@ -90,6 +90,7 @@ public abstract class TaskStatus implements Writable, Cloneable {
   public TaskStatus() {
     taskid = new TaskAttemptID();
     numSlots = 0;
+    this.lastDatanodeID = new DatanodeID("0.0.0.0","","",0,0,0,0);
   }
 
   public TaskStatus(TaskAttemptID taskid, float progress, int numSlots,
@@ -485,6 +486,7 @@ public abstract class TaskStatus implements Writable, Cloneable {
     out.writeLong(outputSize);
     counters.write(out);
     nextRecordRange.write(out);
+    lastDatanodeID.write(out);
   }
 
   public void readFields(DataInput in) throws IOException {
@@ -502,6 +504,7 @@ public abstract class TaskStatus implements Writable, Cloneable {
     this.outputSize = in.readLong();
     counters.readFields(in);
     nextRecordRange.readFields(in);
+    lastDatanodeID.readFields(in);
   }
   
   //////////////////////////////////////////////////////////////////////////////

@@ -44,6 +44,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.JobContext;
@@ -1046,6 +1047,16 @@ public abstract class TaskAttemptImpl implements
     readLock.lock();
     try {
       return reportedStatus.phase;
+    } finally {
+      readLock.unlock();
+    }
+  }
+
+  // riza: expose lastDatanodeID
+  public DatanodeID getLastDatanodeID() {
+    readLock.lock();
+    try {
+      return reportedStatus.lastDatanodeID;
     } finally {
       readLock.unlock();
     }
