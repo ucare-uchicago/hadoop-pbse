@@ -596,7 +596,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
   // This is always called in the Write Lock
   private void addAndScheduleAttempt(Avataar avataar) {
     // riza: if map, check lastDatanodeID
-    if (getType() == TaskType.MAP) {
+    if (this instanceof MapTaskImpl) {
       ((MapTaskImpl) this).updateTaskSplitMetaInfo();
     }
 
