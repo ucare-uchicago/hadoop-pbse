@@ -26,6 +26,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.crypto.CryptoInputStream;
 import org.apache.hadoop.hdfs.DFSInputStream;
+import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
@@ -109,5 +110,9 @@ public class HdfsDataInputStream extends FSDataInputStream {
 
   public void clearReadStatistics() {
     getDFSInputStream().clearReadStatistics();
+  }
+
+  public void ignodeDatanode(DatanodeID lastDatanodeID) {
+    getDFSInputStream().ignodeDatanode(lastDatanodeID);
   }
 }

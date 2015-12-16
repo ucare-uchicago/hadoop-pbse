@@ -20,6 +20,8 @@ package org.apache.hadoop.mapreduce.v2.app.job.impl;
 
 import java.util.Map;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.MapTaskAttemptImpl;
@@ -40,6 +42,7 @@ import org.apache.hadoop.yarn.util.Clock;
 
 @SuppressWarnings({ "rawtypes" })
 public class MapTaskImpl extends TaskImpl {
+  private static final Log LOG = LogFactory.getLog(MapTaskImpl.class);
 
   private final TaskSplitMetaInfo taskSplitMetaInfo;
 
@@ -103,6 +106,7 @@ public class MapTaskImpl extends TaskImpl {
         TaskAttemptImpl att = (TaskAttemptImpl) entry.getValue();
         taskSplitMetaInfo.getSplitIndex().setLastDatanodeID(
             att.getLastDatanodeID());
+        LOG.info("lastDataNodeID updated to "+taskSplitMetaInfo.getSplitIndex().getLastDatanodeID());
       }
     }
   }

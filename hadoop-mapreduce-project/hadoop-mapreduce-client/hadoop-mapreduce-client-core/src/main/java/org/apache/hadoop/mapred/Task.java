@@ -70,7 +70,7 @@ import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.ShutdownHookManager;
 import org.apache.hadoop.util.StringInterner;
 import org.apache.hadoop.util.StringUtils;
-import org.apache.hadoop.hdfs.DFSInputStream;
+import org.apache.hadoop.hdfs.client.HdfsDataInputStream;
 
 /**
  * Base class for tasks.
@@ -644,7 +644,7 @@ abstract public class Task implements Writable, Configurable {
     private boolean done = true;
     private Object lock = new Object();
 
-    private DFSInputStream in = null;
+    private HdfsDataInputStream in = null;
 
     /**
      * flag that indicates whether progress update needs to be sent to parent.
@@ -765,8 +765,10 @@ abstract public class Task implements Writable, Configurable {
                                     counters);
 
             // riza: attach lastDatanodeID as additional information
-            if (in != null)
-              taskStatus.setLastDatanodeID(in.getLastDatanodeID());
+            if (in != null) {
+              taskStatus.setLastDatanodeID(in.getCurrentDatanode());
+              LOG.debug("reporting lastDatanodeID: "+in.getCurrentDatanode());
+            }
 
             taskFound = umbilical.statusUpdate(taskId, taskStatus);
             taskStatus.clearStatus();
@@ -835,8 +837,8 @@ abstract public class Task implements Writable, Configurable {
 
     // riza: note underlying InputStream
     public void setInputStream(InputStream in) {
-      if (in instanceof DFSInputStream)
-        this.in = (DFSInputStream) in;
+      if (in instanceof HdfsDataInputStream)
+        this.in = (HdfsDataInputStream) in;
     }
   }
   

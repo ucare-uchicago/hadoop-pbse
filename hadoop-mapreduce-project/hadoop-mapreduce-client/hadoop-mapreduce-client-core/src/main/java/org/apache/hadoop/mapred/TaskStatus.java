@@ -75,7 +75,7 @@ public abstract class TaskStatus implements Writable, Cloneable {
   static final int MAX_STRING_SIZE = 1024;
 
   // riza: add attribute to pass last accessed datanode
-  private DatanodeID lastDatanodeID;
+  private DatanodeID lastDatanodeID = DatanodeID.createNullDatanodeID();
 
   /**
    * Testcases can override {@link #getMaxStringSize()} to control the max-size 
@@ -90,7 +90,6 @@ public abstract class TaskStatus implements Writable, Cloneable {
   public TaskStatus() {
     taskid = new TaskAttemptID();
     numSlots = 0;
-    this.lastDatanodeID = new DatanodeID("0.0.0.0","","",0,0,0,0);
   }
 
   public TaskStatus(TaskAttemptID taskid, float progress, int numSlots,
@@ -107,7 +106,6 @@ public abstract class TaskStatus implements Writable, Cloneable {
     this.phase = phase;
     this.counters = counters;
     this.includeAllCounters = true;
-    this.lastDatanodeID = new DatanodeID("0.0.0.0","","",0,0,0,0);
   }
   
   public TaskAttemptID getTaskID() { return taskid; }

@@ -132,7 +132,6 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
   private IdentityHashStore<ByteBuffer, Object> extendedReadBuffers;
 
   // riza: allow memoryfull datanode selection
-  private DatanodeID lastDatanodeID = new DatanodeID("0.0.0.0","","",0,0,0,0);
   private ArrayList<DatanodeInfo> ignoredDatanodes = new ArrayList<DatanodeInfo>();
 
   private synchronized IdentityHashStore<ByteBuffer, Object>
@@ -611,9 +610,6 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       InetSocketAddress targetAddr = retval.addr;
       StorageType storageType = retval.storageType;
 
-      // riza: get last requested datanode uuid
-      this.lastDatanodeID = retval.info;
-
       try {
         ExtendedBlock blk = targetBlock.getBlock();
         Token<BlockTokenIdentifier> accessToken = targetBlock.getBlockToken();
@@ -645,6 +641,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
           DFSClient.LOG.info("Successfully connected to " + targetAddr +
                              " for " + blk);
         }
+        DFSClient.LOG.info("reading from datanode " + chosenNode);
         return chosenNode;
       } catch (IOException ex) {
         if (ex instanceof InvalidEncryptionKeyException && refetchEncryptionKey > 0) {
@@ -997,6 +994,10 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
   private DNAddrPair getBestNodeDNAddrPair(LocatedBlock block,
       Collection<DatanodeInfo> ignoredNodes) throws IOException {
     DatanodeInfo[] nodes = block.getLocations();
+    /**** riza: SORT BEGIN *****/
+    Arrays.sort(nodes);
+    block.updateCachedStorageInfo();
+    /**** riza: SORT END   *****/
     StorageType[] storageTypes = block.getStorageTypes();
     DatanodeInfo chosenNode = null;
     StorageType storageType = null;
@@ -1022,6 +1023,16 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
     final String dnAddr =
         chosenNode.getXferAddr(dfsClient.getConf().connectToDnViaHostname);
     if (DFSClient.LOG.isDebugEnabled()) {
+      String st = "";
+      for (DatanodeInfo id : ignoredNodes) {
+        st += id.getXferAddr() + ", ";
+      }
+      String avail = "";
+      for (DatanodeInfo id : nodes) {
+        avail += id.getXferAddr() + ", ";
+      }
+      DFSClient.LOG.debug("Available nodes:" + avail);
+      DFSClient.LOG.debug("Ignored nodes:" + st);
       DFSClient.LOG.debug("Connecting to datanode " + dnAddr);
     }
     InetSocketAddress targetAddr = NetUtils.createSocketAddr(dnAddr);
@@ -1060,9 +1071,6 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
     block = getBlockAt(block.getStartOffset());
     while (true) {
       DNAddrPair addressPair = chooseDataNode(block, ignoredDatanodes);
-
-      // riza: get last requested datanode uuid
-      this.lastDatanodeID = addressPair.info;
 
       try {
         actualGetFromOneDataNode(addressPair, block, start, end, buf, offset,
@@ -1843,10 +1851,11 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
 
   // riza: get last accessed datanode
   public DatanodeID getLastDatanodeID() {
-    return this.lastDatanodeID;
+    return currentNode == null? DatanodeID.createNullDatanodeID() : currentNode;
   }
 
   public void ignodeDatanode(DatanodeID nodeID) {
+    DFSClient.LOG.info("Ignoring datanode "+nodeID.toString());
     ignoredDatanodes.add(new DatanodeInfo(nodeID));
   }
 }

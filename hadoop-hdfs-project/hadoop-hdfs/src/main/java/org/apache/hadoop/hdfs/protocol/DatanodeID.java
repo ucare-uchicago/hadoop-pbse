@@ -308,4 +308,8 @@ public class DatanodeID implements Comparable<DatanodeID>, Writable {
     this.infoSecurePort = in.readInt();
     this.ipcPort = in.readInt();
   }
+
+  public static DatanodeID createNullDatanodeID() {
+    return new DatanodeID("0.0.0.0","localhost","null-uuid",0,0,0,0);
+  }
 }

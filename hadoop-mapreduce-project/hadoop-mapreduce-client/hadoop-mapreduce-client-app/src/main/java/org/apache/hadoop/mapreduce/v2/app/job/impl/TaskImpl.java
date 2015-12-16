@@ -597,6 +597,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
   private void addAndScheduleAttempt(Avataar avataar) {
     // riza: if map, check lastDatanodeID
     if (this instanceof MapTaskImpl) {
+      LOG.debug("Updating MapTaskImpl.taskSplitMetaInfo");
       ((MapTaskImpl) this).updateTaskSplitMetaInfo();
     }
 

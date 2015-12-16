@@ -44,7 +44,7 @@ import org.apache.hadoop.fs.FileSystem.Statistics;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RawLocalFileSystem;
-import org.apache.hadoop.hdfs.DFSInputStream;
+import org.apache.hadoop.hdfs.client.HdfsDataInputStream;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.SequenceFile;
@@ -366,6 +366,16 @@ public class MapTask extends Task {
   throws IOException {
    FileSystem fs = file.getFileSystem(conf);
    FSDataInputStream inFile = fs.open(file);
+
+   // riza: insert ignored datanode to HdfsDataInputStream at beginning
+   if (inFile instanceof HdfsDataInputStream) {
+     ((HdfsDataInputStream) inFile).ignodeDatanode(splitMetaInfo
+         .getLastDatanodeID());
+   } else {
+     LOG.warn("input stream is not instance of HdfsDataInputStream: "
+         + inFile.toString());
+   }
+
    inFile.seek(offset);
    String className = StringInterner.weakIntern(Text.readString(inFile));
    Class<T> cls;
@@ -462,6 +472,24 @@ public class MapTask extends Task {
       ReflectionUtils.newInstance(job.getMapRunnerClass(), job);
 
     try {
+
+      // riza: pass HdfsDataInputStream to TaskReporter
+      if (in instanceof InputStreamOwner) {
+        LOG.info("runOldMapper: ignoring datanode "
+            + splitIndex.getLastDatanodeID());
+        InputStream inputS = ((InputStreamOwner) in).getInputStream();
+        reporter.setInputStream(inputS);
+
+        // riza: insert ignored datanode to HdfsDataInputStream at beginning
+        if (inputS instanceof HdfsDataInputStream) {
+          ((HdfsDataInputStream) inputS).ignodeDatanode(splitMetaInfo
+              .getLastDatanodeID());
+        } else {
+          LOG.warn("input stream is not instance of HdfsDataInputStream: "
+              + inputS.toString());
+        }
+      }
+
       runner.run(in, new OldOutputCollector(collector, conf), reporter);
       mapPhase.complete();
       // start the sort phase only if there are reducers
@@ -806,12 +834,20 @@ public class MapTask extends Task {
     try {
       input.initialize(split, mapperContext);
 
-      // riza: pass DFSInputStream to TaskReporter
+      // riza: pass HdfsDataInputStream to TaskReporter
       if (input instanceof InputStreamOwner) {
-        InputStream in = ((InputStreamOwner) input).getInputStream();
-        reporter.setInputStream(in);
-        if (in instanceof DFSInputStream){
-          ((DFSInputStream) in).ignodeDatanode(splitIndex.getLastDatanodeID());
+        LOG.info("runNewMapper: ignoring datanode "
+            + splitIndex.getLastDatanodeID());
+        InputStream inputS = ((InputStreamOwner) input).getInputStream();
+        reporter.setInputStream(inputS);
+
+        // riza: insert ignored datanode to HdfsDataInputStream at beginning
+        if (inputS instanceof HdfsDataInputStream) {
+          ((HdfsDataInputStream) inputS).ignodeDatanode(splitMetaInfo
+              .getLastDatanodeID());
+        } else {
+          LOG.warn("input stream is not instance of HdfsDataInputStream: "
+              + inputS.toString());
         }
       }
 

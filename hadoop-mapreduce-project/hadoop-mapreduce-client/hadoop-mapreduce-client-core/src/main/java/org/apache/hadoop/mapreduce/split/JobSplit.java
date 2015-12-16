@@ -202,7 +202,6 @@ public class JobSplit {
     public TaskSplitIndex(String splitLocation, long startOffset) {
       this.splitLocation = splitLocation;
       this.startOffset = startOffset;
-      this.lastDatanodeID = new DatanodeID("0.0.0.0","","",0,0,0,0);
     }
     public long getStartOffset() {
       return startOffset;
@@ -222,7 +221,7 @@ public class JobSplit {
     }
 
     // riza: get/set for lastDatanodeID
-    private DatanodeID lastDatanodeID;
+    private DatanodeID lastDatanodeID = DatanodeID.createNullDatanodeID();
 
     public void setLastDatanodeID(DatanodeID lastDatanodeID) {
       this.lastDatanodeID = lastDatanodeID;
