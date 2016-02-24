@@ -368,12 +368,22 @@ public class MapTask extends Task {
    FSDataInputStream inFile = fs.open(file);
 
    // riza: insert ignored datanode to HdfsDataInputStream at beginning
-   if (inFile instanceof HdfsDataInputStream) {
-     ((HdfsDataInputStream) inFile).ignodeDatanode(splitMetaInfo
-         .getLastDatanodeID());
-   } else {
-     LOG.warn("input stream is not instance of HdfsDataInputStream: "
-         + inFile.toString());
+   try{
+     if (conf.getBoolean("mapreduce.policy.faread", false)){
+       LOG.info("running policy: mapreduce.policy.faread");
+       if (inFile instanceof HdfsDataInputStream) {
+         ((HdfsDataInputStream) inFile).ignodeDatanode(splitMetaInfo
+             .getLastDatanodeID());
+       } else {
+         LOG.warn("input stream is not instance of HdfsDataInputStream: "
+             + inFile.toString());
+       }
+     } else {
+       LOG.info("no custom policy being run");
+     }
+   }catch (Exception e){
+     LOG.error(e.getMessage());
+     LOG.error(e.getStackTrace());
    }
 
    inFile.seek(offset);
@@ -474,20 +484,30 @@ public class MapTask extends Task {
     try {
 
       // riza: pass HdfsDataInputStream to TaskReporter
-      if (in instanceof InputStreamOwner) {
-        LOG.info("runOldMapper: ignoring datanode "
-            + splitIndex.getLastDatanodeID());
-        InputStream inputS = ((InputStreamOwner) in).getInputStream();
-        reporter.setInputStream(inputS);
+      try{
+        if (in instanceof InputStreamOwner) {
+          InputStream inputS = ((InputStreamOwner) in).getInputStream();
 
-        // riza: insert ignored datanode to HdfsDataInputStream at beginning
-        if (inputS instanceof HdfsDataInputStream) {
-          ((HdfsDataInputStream) inputS).ignodeDatanode(splitMetaInfo
-              .getLastDatanodeID());
-        } else {
-          LOG.warn("input stream is not instance of HdfsDataInputStream: "
-              + inputS.toString());
+          if (inputS != null) {
+            // riza: insert ignored datanode to HdfsDataInputStream at beginning
+            LOG.info("runOldMapper: ignoring datanode "
+                + splitIndex.getLastDatanodeID());
+
+            reporter.setInputStream(inputS);
+            if ((inputS instanceof HdfsDataInputStream)
+                && conf.getBoolean("mapreduce.policy.faread", false)){
+              ((HdfsDataInputStream) inputS).ignodeDatanode(splitMetaInfo
+                  .getLastDatanodeID());
+            } else {
+              LOG.warn("input stream is not instance of HdfsDataInputStream ");
+            }
+          } else {
+            LOG.warn("input stream is null");
+          }
         }
+      }catch (Exception e){
+        LOG.error(e.getMessage());
+        LOG.error(e.getStackTrace());
       }
 
       runner.run(in, new OldOutputCollector(collector, conf), reporter);

@@ -995,8 +995,9 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       Collection<DatanodeInfo> ignoredNodes) throws IOException {
     DatanodeInfo[] nodes = block.getLocations();
     /**** riza: SORT BEGIN *****/
-    Arrays.sort(nodes);
-    block.updateCachedStorageInfo();
+    // TODO: read mapred config to enable this
+    //Arrays.sort(nodes);
+    //block.updateCachedStorageInfo();
     /**** riza: SORT END   *****/
     StorageType[] storageTypes = block.getStorageTypes();
     DatanodeInfo chosenNode = null;

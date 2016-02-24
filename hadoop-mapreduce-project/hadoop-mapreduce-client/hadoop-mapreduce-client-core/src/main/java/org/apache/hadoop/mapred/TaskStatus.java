@@ -460,7 +460,8 @@ public abstract class TaskStatus implements Writable, Cloneable {
   
   // riza: get/set last accessed DatanodeID
   public void setLastDatanodeID(DatanodeID dnID) {
-    this.lastDatanodeID = dnID;
+    if (dnID!=null)
+      this.lastDatanodeID = dnID;
   }
 
   public DatanodeID getLastDatanodeID() {

@@ -196,6 +196,10 @@ public class JobSplit {
   public static class TaskSplitIndex {
     private String splitLocation;
     private long startOffset;
+
+    // riza: get/set for lastDatanodeID
+    private DatanodeID lastDatanodeID = DatanodeID.createNullDatanodeID();
+
     public TaskSplitIndex(){
       this("", 0);
     }
@@ -220,11 +224,10 @@ public class JobSplit {
       lastDatanodeID.write(out);
     }
 
-    // riza: get/set for lastDatanodeID
-    private DatanodeID lastDatanodeID = DatanodeID.createNullDatanodeID();
-
+    // riza: datanode piggyback
     public void setLastDatanodeID(DatanodeID lastDatanodeID) {
-      this.lastDatanodeID = lastDatanodeID;
+      if (lastDatanodeID != null)
+        this.lastDatanodeID = lastDatanodeID;
     }
 
     public DatanodeID getLastDatanodeID() {
