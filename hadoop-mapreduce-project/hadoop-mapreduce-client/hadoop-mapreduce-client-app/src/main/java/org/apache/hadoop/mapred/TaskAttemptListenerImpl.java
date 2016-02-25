@@ -349,6 +349,7 @@ public class TaskAttemptListenerImpl extends CompositeService
 
     // riza: pass lastDatanodeID to taskAttemptStatus
     taskAttemptStatus.lastDatanodeID = taskStatus.getLastDatanodeID();
+    taskAttemptStatus.tag = taskStatus.getTag();
 
     // Map Finish time set by the task (map only)
     if (taskStatus.getIsMap() && taskStatus.getMapFinishTime() != 0) {

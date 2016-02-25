@@ -185,6 +185,10 @@ public abstract class TaskAttemptImpl implements
   private Locality locality;
   private Avataar avataar;
 
+  // riza: additional field
+  protected String myContainerTag = "n";
+  protected String myDatasourceTag = "n";
+
   private static final CleanupContainerTransition CLEANUP_CONTAINER_TRANSITION =
     new CleanupContainerTransition();
 
@@ -1062,6 +1066,16 @@ public abstract class TaskAttemptImpl implements
     }
   }
 
+  // riza: get child reported
+  public String getTag() {
+    readLock.lock();
+    try {
+      return reportedStatus.tag;
+    } finally {
+      readLock.unlock();
+    }
+  }
+
   @Override
   public TaskAttemptState getState() {
     readLock.lock();
@@ -1656,6 +1670,10 @@ public abstract class TaskAttemptImpl implements
       taskAttempt.eventHandler.handle(new TaskTAttemptEvent(
           taskAttempt.attemptId, 
          TaskEventType.T_ATTEMPT_LAUNCHED));
+
+      // riza: pad container host status to tag
+      taskAttempt.myContainerTag = taskAttempt.isNodeSlow(
+          taskAttempt.container.getNodeId().getHost()) ? "S" : "F";
     }
   }
    
@@ -1938,6 +1956,10 @@ public abstract class TaskAttemptImpl implements
       taskAttempt.reportedStatus = newReportedStatus;
       taskAttempt.reportedStatus.taskState = taskAttempt.getState();
 
+      // riza: update datasource tag
+      String dnHostName = newReportedStatus.lastDatanodeID.getHostName();
+      taskAttempt.myDatasourceTag = taskAttempt.isNodeSlow(dnHostName) ? "s" : "f";
+
       // send event to speculator about the reported status
       taskAttempt.eventHandler.handle
           (new SpeculatorEvent
@@ -1977,4 +1999,15 @@ public abstract class TaskAttemptImpl implements
     result.counters = counters;
   }
 
+  // riza: check if node is in slow list
+  private boolean isNodeSlow(String hostname){
+    String[] slownodes = this.conf.getStrings("mapreduce.experiment.slownode","");
+    String ctHost = container.getNodeId().getHost();
+    for (String s: slownodes){
+      if (ctHost.contains(s)){
+        return true;
+      }
+    }
+    return false;
+  }
 }

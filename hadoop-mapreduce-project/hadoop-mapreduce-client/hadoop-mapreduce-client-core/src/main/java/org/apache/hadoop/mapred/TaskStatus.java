@@ -76,6 +76,7 @@ public abstract class TaskStatus implements Writable, Cloneable {
 
   // riza: add attribute to pass last accessed datanode
   private DatanodeID lastDatanodeID = DatanodeID.createNullDatanodeID();
+  private String tag = "";
 
   /**
    * Testcases can override {@link #getMaxStringSize()} to control the max-size 
@@ -468,6 +469,14 @@ public abstract class TaskStatus implements Writable, Cloneable {
     return this.lastDatanodeID;
   }
 
+  public void setTag(String tag){
+    this.tag = tag;
+  }
+
+  public String getTag(){
+    return this.tag;
+  }
+
   //////////////////////////////////////////////
   // Writable
   //////////////////////////////////////////////
@@ -486,6 +495,7 @@ public abstract class TaskStatus implements Writable, Cloneable {
     counters.write(out);
     nextRecordRange.write(out);
     lastDatanodeID.write(out);
+    Text.writeString(out, tag);
   }
 
   public void readFields(DataInput in) throws IOException {
@@ -495,7 +505,7 @@ public abstract class TaskStatus implements Writable, Cloneable {
     this.runState = WritableUtils.readEnum(in, State.class);
     setDiagnosticInfo(StringInterner.weakIntern(Text.readString(in)));
     setStateString(StringInterner.weakIntern(Text.readString(in)));
-    this.phase = WritableUtils.readEnum(in, Phase.class); 
+    this.phase = WritableUtils.readEnum(in, Phase.class);
     this.startTime = in.readLong(); 
     this.finishTime = in.readLong(); 
     counters = new Counters();
@@ -503,7 +513,8 @@ public abstract class TaskStatus implements Writable, Cloneable {
     this.outputSize = in.readLong();
     counters.readFields(in);
     nextRecordRange.readFields(in);
-    lastDatanodeID.readFields(in);
+    this.lastDatanodeID.readFields(in);
+    this.tag = Text.readString(in);
   }
   
   //////////////////////////////////////////////////////////////////////////////

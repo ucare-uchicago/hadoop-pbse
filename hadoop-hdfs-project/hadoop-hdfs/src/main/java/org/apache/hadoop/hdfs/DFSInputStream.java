@@ -642,6 +642,9 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
                              " for " + blk);
         }
         DFSClient.LOG.info("reading from datanode " + chosenNode);
+        final String dnHostAddr =
+            chosenNode.getXferAddr(true);
+        DFSClient.LOG.info("datanode hostname " + dnHostAddr);
         return chosenNode;
       } catch (IOException ex) {
         if (ex instanceof InvalidEncryptionKeyException && refetchEncryptionKey > 0) {

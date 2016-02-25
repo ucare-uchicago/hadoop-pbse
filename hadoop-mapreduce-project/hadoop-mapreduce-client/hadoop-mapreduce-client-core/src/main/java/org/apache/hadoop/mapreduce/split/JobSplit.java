@@ -199,6 +199,7 @@ public class JobSplit {
 
     // riza: get/set for lastDatanodeID
     private DatanodeID lastDatanodeID = DatanodeID.createNullDatanodeID();
+    private String tag = "";
 
     public TaskSplitIndex(){
       this("", 0);
@@ -217,11 +218,13 @@ public class JobSplit {
       splitLocation = Text.readString(in);
       startOffset = WritableUtils.readVLong(in);
       lastDatanodeID.readFields(in);
+      tag = Text.readString(in);
     }
     public void write(DataOutput out) throws IOException {
       Text.writeString(out, splitLocation);
       WritableUtils.writeVLong(out, startOffset);
       lastDatanodeID.write(out);
+      Text.writeString(out, tag);
     }
 
     // riza: datanode piggyback
@@ -232,6 +235,14 @@ public class JobSplit {
 
     public DatanodeID getLastDatanodeID() {
       return this.lastDatanodeID;
+    }
+    public void setTag(String tag) {
+      if (tag != null)
+        this.tag = tag;
+    }
+
+    public String getTag() {
+      return this.tag;
     }
   }
 }

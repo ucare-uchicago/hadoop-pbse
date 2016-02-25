@@ -99,15 +99,14 @@ public class MapTaskImpl extends TaskImpl {
 
   // riza: implement TaskSplitMetaInfo update here
   protected void updateTaskSplitMetaInfo() {
-    int least = Integer.MIN_VALUE;
-    for (Map.Entry<TaskAttemptId, TaskAttempt> entry : getAttempts().entrySet()) {
-      if (entry.getKey().getId() > least) {
-        least = entry.getKey().getId();
-        TaskAttemptImpl att = (TaskAttemptImpl) entry.getValue();
-        taskSplitMetaInfo.getSplitIndex().setLastDatanodeID(
-            att.getLastDatanodeID());
-        LOG.info("lastDataNodeID updated to "+taskSplitMetaInfo.getSplitIndex().getLastDatanodeID());
-      }
+    TaskAttempt lastAttempt = getAttempt(this.lastAttempt);
+
+    if (lastAttempt != null) {
+      TaskAttemptImpl att = (TaskAttemptImpl) lastAttempt;
+      taskSplitMetaInfo.getSplitIndex().setLastDatanodeID(
+          att.getLastDatanodeID());
+      LOG.info("lastDataNodeID updated to "
+          + taskSplitMetaInfo.getSplitIndex().getLastDatanodeID());
     }
   }
 }

@@ -131,6 +131,10 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 
   private TaskAttemptId successfulAttempt;
 
+  // riza: first & last attempt
+  protected TaskAttemptId firstAttempt;
+  protected TaskAttemptId lastAttempt;
+
   private final Set<TaskAttemptId> failedAttempts;
   // Track the finished attempts - successful, failed and killed
   private final Set<TaskAttemptId> finishedAttempts;
@@ -639,6 +643,12 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     }
 
     ++nextAttemptNumber;
+
+    // riza: note the first attempt
+    if (this.firstAttempt == null)
+      this.firstAttempt = attempt.getID();
+    this.lastAttempt = attempt.getID();
+
     return attempt;
   }
 
@@ -832,6 +842,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
         handleTaskAttemptCompletion(attempt.getID(), taces);
         if (attemptState == TaskAttemptState.SUCCEEDED) {
           successfulAttempt = attempt.getID();
+          setCompletionCounter();
         }
       }
     }
@@ -947,6 +958,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
       task.finishedAttempts.add(taskAttemptId);
       task.inProgressAttempts.remove(taskAttemptId);
       task.successfulAttempt = taskAttemptId;
+      task.setCompletionCounter();
       task.sendTaskSucceededEvents();
       for (TaskAttempt attempt : task.attempts.values()) {
         if (attempt.getID() != task.successfulAttempt &&
@@ -1248,4 +1260,112 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
       
     }
   }
+
+  // riza: hack to count topology
+  private void setCompletionCounter(){
+    if (this instanceof MapTaskImpl){
+      try{
+        TaskAttemptImpl ori = (TaskAttemptImpl) attempts.get(firstAttempt);
+        TaskAttemptImpl last = (TaskAttemptImpl) attempts.get(lastAttempt);
+        TaskAttempt best = selectBestAttempt();
+        String code = "nn_nn";
+        if (!firstAttempt.equals(lastAttempt)) {
+          code = ori.myContainerTag + ori.myDatasourceTag + "_"
+              + last.myContainerTag + last.myDatasourceTag;
+        } else {
+          code = ori.myContainerTag + ori.myDatasourceTag + "_nn";
+        }
+        Topo myTopo = Topo.valueOf(code);
+        best.getCounters().findCounter(myTopo).increment(1);
+      } catch (Exception e){
+        LOG.error(e.getMessage());
+        LOG.error(e.getStackTrace());
+      }
+    }
+  }
+
+  public enum Topo{
+    nn_nn,
+    nn_nf,
+    nn_ns,
+    nn_Fn,
+    nn_Ff,
+    nn_Fs,
+    nn_Sn,
+    nn_Sf,
+    nn_Ss,
+    nf_nn,
+    nf_nf,
+    nf_ns,
+    nf_Fn,
+    nf_Ff,
+    nf_Fs,
+    nf_Sn,
+    nf_Sf,
+    nf_Ss,
+    ns_nn,
+    ns_nf,
+    ns_ns,
+    ns_Fn,
+    ns_Ff,
+    ns_Fs,
+    ns_Sn,
+    ns_Sf,
+    ns_Ss,
+    Fn_nn,
+    Fn_nf,
+    Fn_ns,
+    Fn_Fn,
+    Fn_Ff,
+    Fn_Fs,
+    Fn_Sn,
+    Fn_Sf,
+    Fn_Ss,
+    Ff_nn,
+    Ff_nf,
+    Ff_ns,
+    Ff_Fn,
+    Ff_Ff,
+    Ff_Fs,
+    Ff_Sn,
+    Ff_Sf,
+    Ff_Ss,
+    Fs_nn,
+    Fs_nf,
+    Fs_ns,
+    Fs_Fn,
+    Fs_Ff,
+    Fs_Fs,
+    Fs_Sn,
+    Fs_Sf,
+    Fs_Ss,
+    Sn_nn,
+    Sn_nf,
+    Sn_ns,
+    Sn_Fn,
+    Sn_Ff,
+    Sn_Fs,
+    Sn_Sn,
+    Sn_Sf,
+    Sn_Ss,
+    Sf_nn,
+    Sf_nf,
+    Sf_ns,
+    Sf_Fn,
+    Sf_Ff,
+    Sf_Fs,
+    Sf_Sn,
+    Sf_Sf,
+    Sf_Ss,
+    Ss_nn,
+    Ss_nf,
+    Ss_ns,
+    Ss_Fn,
+    Ss_Ff,
+    Ss_Fs,
+    Ss_Sn,
+    Ss_Sf,
+    Ss_Ss
+  }
+
 }

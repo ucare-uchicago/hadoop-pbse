@@ -56,5 +56,6 @@ public class TaskAttemptStatusUpdateEvent extends TaskAttemptEvent {
     public long sortFinishTime;
     public TaskAttemptState taskState;
     public DatanodeID lastDatanodeID;
+    public String tag;
   }
 }
