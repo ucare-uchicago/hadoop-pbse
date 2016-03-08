@@ -997,11 +997,13 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
   private DNAddrPair getBestNodeDNAddrPair(LocatedBlock block,
       Collection<DatanodeInfo> ignoredNodes) throws IOException {
     DatanodeInfo[] nodes = block.getLocations();
-    /**** riza: SORT BEGIN *****/
-    // TODO: read mapred config to enable this
-    //Arrays.sort(nodes);
-    //block.updateCachedStorageInfo();
-    /**** riza: SORT END   *****/
+
+    // riza: sort datanode
+    if (dfsClient.getConf().isSortDatanode()) {
+      Arrays.sort(nodes);
+      block.updateCachedStorageInfo();
+    }
+
     StorageType[] storageTypes = block.getStorageTypes();
     DatanodeInfo chosenNode = null;
     StorageType storageType = null;

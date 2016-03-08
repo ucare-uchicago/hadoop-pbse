@@ -342,6 +342,9 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     public BlockReaderFactory.FailureInjector brfFailureInjector =
       new BlockReaderFactory.FailureInjector();
 
+    // riza: custom conf
+    final boolean sortDatanode;
+
     public Conf(Configuration conf) {
       // The hdfsTimeout is currently the same as the ipc timeout 
       hdfsTimeout = Client.getTimeout(conf);
@@ -509,6 +512,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       keyProviderCacheExpiryMs = conf.getLong(
           DFSConfigKeys.DFS_CLIENT_KEY_PROVIDER_CACHE_EXPIRY_MS,
           DFSConfigKeys.DFS_CLIENT_KEY_PROVIDER_CACHE_EXPIRY_DEFAULT);
+
+      sortDatanode = conf.getBoolean("mapreduce.policy.faread.sort.datanode", false);
     }
 
     public boolean isUseLegacyBlockReaderLocal() {
@@ -567,6 +572,10 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
             + ", effective=null");
       }
       return dataChecksum;
+    }
+
+    public boolean isSortDatanode(){
+      return sortDatanode;
     }
   }
  

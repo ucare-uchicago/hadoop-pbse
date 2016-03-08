@@ -1672,8 +1672,10 @@ public abstract class TaskAttemptImpl implements
          TaskEventType.T_ATTEMPT_LAUNCHED));
 
       // riza: pad container host status to tag
+      String cthostname = taskAttempt.container.getNodeId().getHost();
       taskAttempt.myContainerTag = taskAttempt.isNodeSlow(
-          taskAttempt.container.getNodeId().getHost()) ? "S" : "F";
+          cthostname) ? "S" : "F";
+      LOG.info("Got container at host "+cthostname+" with tag "+taskAttempt.myContainerTag);
     }
   }
    
@@ -1959,6 +1961,8 @@ public abstract class TaskAttemptImpl implements
       // riza: update datasource tag
       String dnHostName = newReportedStatus.lastDatanodeID.getHostName();
       taskAttempt.myDatasourceTag = taskAttempt.isNodeSlow(dnHostName) ? "s" : "f";
+      LOG.info("Read from host " + newReportedStatus.lastDatanodeID.toString()
+          + " with tag " + taskAttempt.myDatasourceTag);
 
       // send event to speculator about the reported status
       taskAttempt.eventHandler.handle
@@ -2002,9 +2006,8 @@ public abstract class TaskAttemptImpl implements
   // riza: check if node is in slow list
   private boolean isNodeSlow(String hostname){
     String[] slownodes = this.conf.getStrings("mapreduce.experiment.slownode","");
-    String ctHost = container.getNodeId().getHost();
     for (String s: slownodes){
-      if (ctHost.contains(s)){
+      if (hostname.contains(s)){
         return true;
       }
     }

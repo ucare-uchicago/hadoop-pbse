@@ -236,7 +236,7 @@ public class MapTask extends Task {
      * riza: access InputStream to pass info to OutputCollector
      */
     public InputStream getInputStream() {
-      return (rawIn instanceof LineRecordReader) ? ((LineRecordReader) rawIn)
+      return (rawIn instanceof InputStreamOwner) ? ((InputStreamOwner) rawIn)
           .getInputStream() : null;
     }
   }
@@ -372,7 +372,7 @@ public class MapTask extends Task {
      if (conf.getBoolean("mapreduce.policy.faread", false)){
        LOG.info("running policy: mapreduce.policy.faread");
        if (inFile instanceof HdfsDataInputStream) {
-         ((HdfsDataInputStream) inFile).ignodeDatanode(splitMetaInfo
+         ((HdfsDataInputStream) inFile).ignoreDatanode(splitMetaInfo
              .getLastDatanodeID());
        } else {
          LOG.warn("input stream is not instance of HdfsDataInputStream: "
@@ -487,23 +487,26 @@ public class MapTask extends Task {
       try{
         if (in instanceof InputStreamOwner) {
           InputStream inputS = ((InputStreamOwner) in).getInputStream();
+          reporter.setInputStream(inputS);
 
           if (inputS != null) {
             // riza: insert ignored datanode to HdfsDataInputStream at beginning
-            LOG.info("runOldMapper: ignoring datanode "
+            LOG.info("riza: runOldMapper: ignoring datanode "
                 + splitIndex.getLastDatanodeID());
 
-            reporter.setInputStream(inputS);
             if ((inputS instanceof HdfsDataInputStream)
                 && conf.getBoolean("mapreduce.policy.faread", false)){
-              ((HdfsDataInputStream) inputS).ignodeDatanode(splitMetaInfo
+              ((HdfsDataInputStream) inputS).ignoreDatanode(splitMetaInfo
                   .getLastDatanodeID());
             } else {
-              LOG.warn("input stream is not instance of HdfsDataInputStream ");
+              LOG.warn("input stream is not instance of HdfsDataInputStream "
+                  + inputS.toString());
             }
           } else {
-            LOG.warn("input stream is null");
+            LOG.warn("input stream is null, unable to set ignored datanode");
           }
+        } else {
+          LOG.warn("riza: "+ in.toString() +" does not implement InputStreamOwner ");
         }
       }catch (Exception e){
         LOG.error(e.getMessage());
@@ -637,7 +640,7 @@ public class MapTask extends Task {
      * riza: access InputStream to pass info to OutputCollector
      */
     public InputStream getInputStream() {
-      return (real instanceof LineRecordReader) ? ((LineRecordReader) real)
+      return (real instanceof InputStreamOwner) ? ((InputStreamOwner) real)
           .getInputStream() : null;
     }
   }
@@ -856,19 +859,27 @@ public class MapTask extends Task {
 
       // riza: pass HdfsDataInputStream to TaskReporter
       if (input instanceof InputStreamOwner) {
-        LOG.info("runNewMapper: ignoring datanode "
-            + splitIndex.getLastDatanodeID());
         InputStream inputS = ((InputStreamOwner) input).getInputStream();
         reporter.setInputStream(inputS);
 
-        // riza: insert ignored datanode to HdfsDataInputStream at beginning
-        if (inputS instanceof HdfsDataInputStream) {
-          ((HdfsDataInputStream) inputS).ignodeDatanode(splitMetaInfo
-              .getLastDatanodeID());
+        if (inputS != null) {
+          // riza: insert ignored datanode to HdfsDataInputStream at beginning
+          LOG.info("riza: runNewMapper: ignoring datanode "
+              + splitIndex.getLastDatanodeID());
+
+          if ((inputS instanceof HdfsDataInputStream)
+              && conf.getBoolean("mapreduce.policy.faread", false)){
+            ((HdfsDataInputStream) inputS).ignoreDatanode(splitMetaInfo
+                .getLastDatanodeID());
+          } else {
+            LOG.warn("input stream is not instance of HdfsDataInputStream "
+                + inputS.toString());
+          }
         } else {
-          LOG.warn("input stream is not instance of HdfsDataInputStream: "
-              + inputS.toString());
+          LOG.warn("input stream is null, unable to set ignored datanode");
         }
+      } else {
+        LOG.warn("riza: "+ input.toString() +" does not implement InputStreamOwner ");
       }
 
       mapper.run(mapperContext);

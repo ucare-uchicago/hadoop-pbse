@@ -112,7 +112,7 @@ public class HdfsDataInputStream extends FSDataInputStream {
     getDFSInputStream().clearReadStatistics();
   }
 
-  public void ignodeDatanode(DatanodeID lastDatanodeID) {
+  public void ignoreDatanode(DatanodeID lastDatanodeID) {
     getDFSInputStream().ignodeDatanode(lastDatanodeID);
   }
 }

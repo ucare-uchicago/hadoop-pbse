@@ -2645,6 +2645,14 @@ public class SequenceFile {
       return filename;
     }
 
+    /**
+     * riza: take out DFSInputStream to track ignored node
+     * @return the number of bytes read including the newline
+     */
+    public InputStream getInputStream() {
+      return in;
+    }
+
   }
 
   /** Sorts key/value pairs in a sequence-format file.

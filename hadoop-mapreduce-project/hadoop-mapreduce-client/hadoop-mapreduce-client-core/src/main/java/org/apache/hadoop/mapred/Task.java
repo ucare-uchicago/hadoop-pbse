@@ -765,9 +765,11 @@ abstract public class Task implements Writable, Configurable {
                                     counters);
 
             // riza: attach lastDatanodeID as additional information
-            if (in != null) {
+            if (this.in != null) {
               taskStatus.setLastDatanodeID(in.getCurrentDatanode());
-              LOG.debug("reporting lastDatanodeID: "+in.getCurrentDatanode());
+              LOG.info("riza: reporting lastDatanodeID: "+in.getCurrentDatanode());
+            } else {
+              LOG.info("riza: input stream is null, lastDatanodeID not updated");
             }
 
             taskFound = umbilical.statusUpdate(taskId, taskStatus);
@@ -835,7 +837,7 @@ abstract public class Task implements Writable, Configurable {
       }
     }
 
-    // riza: note underlying InputStream
+    // riza: memo the owner, its IS might not been initialized
     public void setInputStream(InputStream in) {
       if (in instanceof HdfsDataInputStream)
         this.in = (HdfsDataInputStream) in;
