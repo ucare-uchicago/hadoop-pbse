@@ -134,6 +134,14 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
   // riza: allow memoryfull datanode selection
   private ArrayList<DatanodeInfo> ignoredDatanodes = new ArrayList<DatanodeInfo>();
 
+  private String datanodesToString(List<DatanodeInfo> list){
+    String st = "";
+    for (DatanodeInfo id : list) {
+      st += id.getXferAddr() + ", ";
+    }
+    return st;
+  }
+
   private synchronized IdentityHashStore<ByteBuffer, Object>
         getExtendedReadBuffers() {
     if (extendedReadBuffers == null) {
@@ -605,6 +613,8 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       assert (target==pos) : "Wrong postion " + pos + " expect " + target;
       long offsetIntoBlock = target - targetBlock.getStartOffset();
 
+      DFSClient.LOG.info("riza: blockSeekTo: ignoredDatanode="
+      + datanodesToString(ignoredDatanodes) + ", pos=" + target);
       DNAddrPair retval = chooseDataNode(targetBlock, ignoredDatanodes);
       chosenNode = retval.info;
       InetSocketAddress targetAddr = retval.addr;
@@ -1076,6 +1086,10 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       throws IOException {
     block = getBlockAt(block.getStartOffset());
     while (true) {
+
+      DFSClient.LOG.info("riza: fetchBlockByteRange: ignoredDatanode="
+      + datanodesToString(ignoredDatanodes) + ", start=" + start
+      + ", end=" + end + ", offset=" + offset);
       DNAddrPair addressPair = chooseDataNode(block, ignoredDatanodes);
 
       try {

@@ -71,6 +71,7 @@ import org.apache.hadoop.util.ShutdownHookManager;
 import org.apache.hadoop.util.StringInterner;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.hdfs.client.HdfsDataInputStream;
+import org.apache.hadoop.hdfs.protocol.DatanodeID;
 
 /**
  * Base class for tasks.
@@ -645,6 +646,7 @@ abstract public class Task implements Writable, Configurable {
     private Object lock = new Object();
 
     private HdfsDataInputStream in = null;
+    private DatanodeID lastDatanodeId = DatanodeID.createNullDatanodeID();
 
     /**
      * flag that indicates whether progress update needs to be sent to parent.
@@ -765,12 +767,7 @@ abstract public class Task implements Writable, Configurable {
                                     counters);
 
             // riza: attach lastDatanodeID as additional information
-            if (this.in != null) {
-              taskStatus.setLastDatanodeID(in.getCurrentDatanode());
-              LOG.info("riza: reporting lastDatanodeID: "+in.getCurrentDatanode());
-            } else {
-              LOG.info("riza: input stream is null, lastDatanodeID not updated");
-            }
+            taskStatus.setLastDatanodeID(lastDatanodeId);
 
             taskFound = umbilical.statusUpdate(taskId, taskStatus);
             taskStatus.clearStatus();
@@ -786,6 +783,16 @@ abstract public class Task implements Writable, Configurable {
             LOG.warn("Parent died.  Exiting "+taskId);
             resetDoneFlag();
             System.exit(66);
+          }
+
+          //riza: set progress flag if there is a datasource change
+          if (this.in != null) {
+            if (!lastDatanodeId.equals(this.in.getCurrentDatanode())) {
+              LOG.info("riza: switching datanode " + lastDatanodeId + " to "
+              + in.getCurrentDatanode());
+              lastDatanodeId = in.getCurrentDatanode();
+              setProgressFlag();
+            }
           }
 
           sendProgress = resetProgressFlag(); 
@@ -839,8 +846,14 @@ abstract public class Task implements Writable, Configurable {
 
     // riza: memo the owner, its IS might not been initialized
     public void setInputStream(InputStream in) {
-      if (in instanceof HdfsDataInputStream)
+      if (in instanceof HdfsDataInputStream){
         this.in = (HdfsDataInputStream) in;
+        if (!lastDatanodeId.equals(this.in.getCurrentDatanode())) {
+          LOG.info("riza: first datanode is " + this.in.getCurrentDatanode());
+          lastDatanodeId = this.in.getCurrentDatanode();
+          setProgressFlag();
+        }
+      }
     }
   }
   

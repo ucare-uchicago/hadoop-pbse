@@ -18,8 +18,6 @@
 
 package org.apache.hadoop.mapreduce.v2.app.job.impl;
 
-import java.util.Map;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
@@ -29,7 +27,6 @@ import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.security.token.JobTokenIdentifier;
 import org.apache.hadoop.mapreduce.split.JobSplit.TaskSplitMetaInfo;
 import org.apache.hadoop.mapreduce.v2.api.records.JobId;
-import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskType;
 import org.apache.hadoop.mapreduce.v2.app.AppContext;
 import org.apache.hadoop.mapreduce.v2.app.TaskAttemptListener;
@@ -99,7 +96,7 @@ public class MapTaskImpl extends TaskImpl {
 
   // riza: implement TaskSplitMetaInfo update here
   protected void updateTaskSplitMetaInfo() {
-    TaskAttempt lastAttempt = getAttempt(this.lastAttempt);
+    TaskAttempt lastAttempt = getAttempt(this.lastAttemptId);
 
     if (lastAttempt != null) {
       TaskAttemptImpl att = (TaskAttemptImpl) lastAttempt;

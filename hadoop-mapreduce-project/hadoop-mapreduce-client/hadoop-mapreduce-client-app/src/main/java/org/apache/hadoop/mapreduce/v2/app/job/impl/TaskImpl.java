@@ -36,7 +36,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.MapTaskAttemptImpl;
 import org.apache.hadoop.mapreduce.Counters;
 import org.apache.hadoop.mapreduce.MRConfig;
 import org.apache.hadoop.mapreduce.OutputCommitter;
@@ -132,8 +131,8 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
   private TaskAttemptId successfulAttempt;
 
   // riza: first & last attempt
-  protected TaskAttemptId firstAttempt;
-  protected TaskAttemptId lastAttempt;
+  protected TaskAttemptId firstAttemptId;
+  protected TaskAttemptId lastAttemptId;
 
   private final Set<TaskAttemptId> failedAttempts;
   // Track the finished attempts - successful, failed and killed
@@ -645,9 +644,9 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     ++nextAttemptNumber;
 
     // riza: note the first attempt
-    if (this.firstAttempt == null)
-      this.firstAttempt = attempt.getID();
-    this.lastAttempt = attempt.getID();
+    if (this.firstAttemptId == null)
+      this.firstAttemptId = attempt.getID();
+    this.lastAttemptId = attempt.getID();
 
     return attempt;
   }
@@ -1265,11 +1264,11 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
   private void setCompletionCounter(){
     if (this instanceof MapTaskImpl){
       try{
-        TaskAttemptImpl ori = (TaskAttemptImpl) attempts.get(firstAttempt);
-        TaskAttemptImpl last = (TaskAttemptImpl) attempts.get(lastAttempt);
+        TaskAttemptImpl ori = (TaskAttemptImpl) attempts.get(firstAttemptId);
+        TaskAttemptImpl last = (TaskAttemptImpl) attempts.get(lastAttemptId);
         TaskAttempt best = selectBestAttempt();
         String code = "nn_nn";
-        if (!firstAttempt.equals(lastAttempt)) {
+        if (!firstAttemptId.equals(lastAttemptId)) {
           code = ori.myContainerTag + ori.myDatasourceTag + "_"
               + last.myContainerTag + last.myDatasourceTag;
         } else {
@@ -1277,11 +1276,24 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
         }
         Topo myTopo = Topo.valueOf(code);
         best.getCounters().findCounter(myTopo).increment(1);
+
+        if (firstAttemptId.equals(best.getID())){
+          LOG.info("Original task win: " + best.getID().toString());
+          best.getCounters().findCounter(TaskVerdict.ORIGINAL_WIN).increment(1);
+        } else {
+          LOG.info("Backup task win: " + best.getID().toString());
+          best.getCounters().findCounter(TaskVerdict.BACKUP_WIN).increment(1);
+        }
       } catch (Exception e){
         LOG.error(e.getMessage());
         LOG.error(e.getStackTrace());
       }
     }
+  }
+
+  public enum TaskVerdict{
+    ORIGINAL_WIN,
+    BACKUP_WIN
   }
 
   public enum Topo{
