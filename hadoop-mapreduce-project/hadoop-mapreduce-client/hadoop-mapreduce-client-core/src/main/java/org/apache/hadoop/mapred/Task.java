@@ -85,6 +85,9 @@ abstract public class Task implements Writable, Configurable {
   public static String MERGED_OUTPUT_PREFIX = ".merged";
   public static final long DEFAULT_COMBINE_RECORDS_BEFORE_PROGRESS = 10000;
   
+  // riza: lastDatanode being read
+  private DatanodeID lastDatanodeId = DatanodeID.createNullDatanodeID();
+
   /**
    * @deprecated Provided for compatibility. Use {@link TaskCounter} instead.
    */
@@ -645,8 +648,8 @@ abstract public class Task implements Writable, Configurable {
     private boolean done = true;
     private Object lock = new Object();
 
+    private boolean isMapTask;
     private HdfsDataInputStream in = null;
-    private DatanodeID lastDatanodeId = DatanodeID.createNullDatanodeID();
 
     /**
      * flag that indicates whether progress update needs to be sent to parent.
@@ -656,9 +659,11 @@ abstract public class Task implements Writable, Configurable {
     private AtomicBoolean progressFlag = new AtomicBoolean(false);
     
     TaskReporter(Progress taskProgress,
-                 TaskUmbilicalProtocol umbilical) {
+                 TaskUmbilicalProtocol umbilical,
+                 boolean isMapTask) {
       this.umbilical = umbilical;
       this.taskProgress = taskProgress;
+      this.isMapTask = isMapTask;
     }
 
     // getters and setters for flag
@@ -740,6 +745,12 @@ abstract public class Task implements Writable, Configurable {
     public void run() {
       final int MAX_RETRIES = 3;
       int remainingRetries = MAX_RETRIES;
+      final int proginterval = conf.getInt("mapreduce.policy.faread.progress_interval",
+          PROGRESS_INTERVAL);
+
+      // riza: wait 3 times until lastDatanodeID set
+      int datanodeRetries = isMapTask ? 20 : 0;
+
       // get current flag value and reset it as well
       boolean sendProgress = resetProgressFlag();
       while (!taskDone.get()) {
@@ -753,10 +764,20 @@ abstract public class Task implements Writable, Configurable {
             if (taskDone.get()) {
               break;
             }
-            lock.wait(PROGRESS_INTERVAL);
+            lock.wait(proginterval);
           }
           if (taskDone.get()) {
             break;
+          }
+
+          if ((datanodeRetries > 0) && (this.in == null)){
+            datanodeRetries -= 1;
+            LOG.info("riza: datastream still null, wait for next " + datanodeRetries
+                + " retry");
+            sendProgress = sendProgress || resetProgressFlag();
+            continue;
+          } else {
+            datanodeRetries = 0;
           }
 
           if (sendProgress) {
@@ -767,6 +788,7 @@ abstract public class Task implements Writable, Configurable {
                                     counters);
 
             // riza: attach lastDatanodeID as additional information
+            LOG.debug("riza: reporting datanode " + lastDatanodeId);
             taskStatus.setLastDatanodeID(lastDatanodeId);
 
             taskFound = umbilical.statusUpdate(taskId, taskStatus);
@@ -791,6 +813,7 @@ abstract public class Task implements Writable, Configurable {
               LOG.info("riza: switching datanode " + lastDatanodeId + " to "
               + in.getCurrentDatanode());
               lastDatanodeId = in.getCurrentDatanode();
+              taskStatus.setLastDatanodeID(lastDatanodeId);
               setProgressFlag();
             }
           }
@@ -846,12 +869,15 @@ abstract public class Task implements Writable, Configurable {
 
     // riza: memo the owner, its IS might not been initialized
     public void setInputStream(InputStream in) {
-      if (in instanceof HdfsDataInputStream){
-        this.in = (HdfsDataInputStream) in;
-        if (!lastDatanodeId.equals(this.in.getCurrentDatanode())) {
-          LOG.info("riza: first datanode is " + this.in.getCurrentDatanode());
-          lastDatanodeId = this.in.getCurrentDatanode();
-          setProgressFlag();
+      synchronized (lastDatanodeId) {
+        if (in instanceof HdfsDataInputStream){
+          this.in = (HdfsDataInputStream) in;
+          if (!lastDatanodeId.equals(this.in.getCurrentDatanode())) {
+            LOG.info("riza: first datanode is " + this.in.getCurrentDatanode());
+            lastDatanodeId = this.in.getCurrentDatanode();
+            taskStatus.setLastDatanodeID(lastDatanodeId);
+            setProgressFlag();
+          }
         }
       }
     }
@@ -883,7 +909,7 @@ abstract public class Task implements Writable, Configurable {
    */
   TaskReporter startReporter(final TaskUmbilicalProtocol umbilical) {  
     // start thread that will handle communication with parent
-    TaskReporter reporter = new TaskReporter(getProgress(), umbilical);
+    TaskReporter reporter = new TaskReporter(getProgress(), umbilical, isMapTask());
     reporter.startCommunicationThread();
     return reporter;
   }
@@ -1098,7 +1124,7 @@ abstract public class Task implements Writable, Configurable {
     // Make sure we send at least one set of counter increments. It's
     // ok to call updateCounters() in this thread after comm thread stopped.
     updateCounters();
-    sendLastUpdate(umbilical);
+    sendLastUpdate(umbilical, reporter);
     //signal the tasktracker that we are done
     sendDone(umbilical);
   }
@@ -1129,6 +1155,10 @@ abstract public class Task implements Writable, Configurable {
     int retries = MAX_RETRIES;
     while (true) {
       try {
+        // riza: attach lastDatanodeID as additional information
+        LOG.debug("riza: extra reporting datanode " + lastDatanodeId);
+        taskStatus.setLastDatanodeID(lastDatanodeId);
+
         if (!umbilical.statusUpdate(getTaskID(), taskStatus)) {
           LOG.warn("Parent died.  Exiting "+taskId);
           System.exit(66);
@@ -1150,7 +1180,8 @@ abstract public class Task implements Writable, Configurable {
   /**
    * Sends last status update before sending umbilical.done(); 
    */
-  private void sendLastUpdate(TaskUmbilicalProtocol umbilical) 
+  private void sendLastUpdate(TaskUmbilicalProtocol umbilical,
+      TaskReporter reporter)
   throws IOException {
     taskStatus.setOutputSize(calculateOutputSize());
     // send a final status report

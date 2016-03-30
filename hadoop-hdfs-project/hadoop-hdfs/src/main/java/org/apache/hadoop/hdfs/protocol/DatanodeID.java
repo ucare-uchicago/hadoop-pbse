@@ -310,6 +310,6 @@ public class DatanodeID implements Comparable<DatanodeID>, Writable {
   }
 
   public static DatanodeID createNullDatanodeID() {
-    return new DatanodeID("0.0.0.0","localhost","null-uuid",0,0,0,0);
+    return new DatanodeID("0.0.0.0","fake-localhost","null-uuid",0,0,0,0);
   }
 }

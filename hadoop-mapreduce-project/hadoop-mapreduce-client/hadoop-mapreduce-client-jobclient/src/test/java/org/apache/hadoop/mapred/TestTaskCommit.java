@@ -168,6 +168,11 @@ public class TestTaskCommit extends HadoopTestCase {
         long clientVersion, int clientMethodsHash) throws IOException {
       return null;
     }
+
+    @Override
+    public byte shallSwitchDatanode(TaskAttemptID taskid) {
+      return 2;
+    }
   }
   
   /**

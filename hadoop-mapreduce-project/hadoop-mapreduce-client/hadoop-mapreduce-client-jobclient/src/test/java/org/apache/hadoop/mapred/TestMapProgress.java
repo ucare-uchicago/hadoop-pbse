@@ -147,6 +147,13 @@ public class TestMapProgress extends TestCase {
         SortedRanges.Range range) throws IOException {
       LOG.info("Task " + taskid + " reportedNextRecordRange " + range);
     }
+
+    @Override
+    public byte shallSwitchDatanode(TaskAttemptID taskid) {
+      // TODO Auto-generated method stub
+      LOG.info("Task " + taskid + " asking datanode switch");
+      return 2;
+    }
   }
   
   private FileSystem fs = null;
@@ -161,7 +168,7 @@ public class TestMapProgress extends TestCase {
   public class TestTaskReporter extends Task.TaskReporter {
     private int recordNum = 0; // number of records processed
     TestTaskReporter(Task task) {
-      task.super(task.getProgress(), fakeUmbilical);
+      task.super(task.getProgress(), fakeUmbilical, task.isMapTask());
     }
 
     @Override

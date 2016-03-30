@@ -1961,8 +1961,9 @@ public abstract class TaskAttemptImpl implements
       // riza: update datasource tag
       String dnHostName = newReportedStatus.lastDatanodeID.getHostName();
       taskAttempt.myDatasourceTag = taskAttempt.isNodeSlow(dnHostName) ? "s" : "f";
-      LOG.info("Read from host " + newReportedStatus.lastDatanodeID.toString()
-          + " with tag " + taskAttempt.myDatasourceTag);
+      LOG.info("Read from host " + newReportedStatus.lastDatanodeID + " (" +
+          newReportedStatus.lastDatanodeID.getHostName() + ") with tag " +
+          taskAttempt.myDatasourceTag);
 
       // send event to speculator about the reported status
       taskAttempt.eventHandler.handle

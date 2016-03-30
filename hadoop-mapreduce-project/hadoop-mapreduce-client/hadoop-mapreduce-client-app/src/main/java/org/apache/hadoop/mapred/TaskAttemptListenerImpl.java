@@ -37,6 +37,7 @@ import org.apache.hadoop.mapred.SortedRanges.Range;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.TypeConverter;
 import org.apache.hadoop.mapreduce.security.token.JobTokenSecretManager;
+import org.apache.hadoop.mapreduce.v2.api.records.TaskType;
 import org.apache.hadoop.mapreduce.v2.app.AppContext;
 import org.apache.hadoop.mapreduce.v2.app.TaskAttemptListener;
 import org.apache.hadoop.mapreduce.v2.app.TaskHeartbeatHandler;
@@ -501,5 +502,18 @@ public class TaskAttemptListenerImpl extends CompositeService
       long clientVersion, int clientMethodsHash) throws IOException {
     return ProtocolSignature.getProtocolSignature(this, 
         protocol, clientVersion, clientMethodsHash);
+  }
+
+  // riza: map ask here if need to switch datanode
+  @Override
+  public byte shallSwitchDatanode(TaskAttemptID taskAttemptID) {
+    org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId attemptID =
+        TypeConverter.toYarn(taskAttemptID);
+    if (attemptID.getTaskId().getTaskType() == TaskType.MAP){
+      Job job = context.getJob(attemptID.getTaskId().getJobId());
+      job.getTotalMaps();
+      return 2;
+    }
+    return 2;
   }
 }

@@ -372,8 +372,7 @@ public class MapTask extends Task {
      if (conf.getBoolean("mapreduce.policy.faread", false)){
        LOG.info("running policy: mapreduce.policy.faread");
        if (inFile instanceof HdfsDataInputStream) {
-         ((HdfsDataInputStream) inFile).ignoreDatanode(splitMetaInfo
-             .getLastDatanodeID());
+         switchDatanode((HdfsDataInputStream) inFile);
        } else {
          LOG.warn("input stream is not instance of HdfsDataInputStream: "
              + inFile.toString());
@@ -478,14 +477,7 @@ public class MapTask extends Task {
 
           if ((inputS instanceof HdfsDataInputStream)
               && conf.getBoolean("mapreduce.policy.faread", false)) {
-            HdfsDataInputStream hdis = (HdfsDataInputStream) inputS;
-            DatanodeID dnId = splitMetaInfo.getLastDatanodeID();
-            hdis.ignoreDatanode(dnId);
-            if (hdis.getCurrentDatanode().equals(dnId)){
-              LOG.info("was read from " + hdis.getCurrentDatanode().getXferAddr()
-                  + ", seeking new datanode for pos=" + hdis.getPos());
-              hdis.seekToNewSource(hdis.getPos());
-            }
+            switchDatanode((HdfsDataInputStream) inputS);
           } else {
             LOG.warn("no faread or input stream is not instance of HdfsDataInputStream "
                 + inputS.toString());
@@ -874,14 +866,7 @@ public class MapTask extends Task {
 
           if ((inputS instanceof HdfsDataInputStream)
               && conf.getBoolean("mapreduce.policy.faread", false)){
-            HdfsDataInputStream hdis = (HdfsDataInputStream) inputS;
-            DatanodeID dnId = splitMetaInfo.getLastDatanodeID();
-            hdis.ignoreDatanode(dnId);
-            if (hdis.getCurrentDatanode().equals(dnId)){
-              LOG.info("was read from " + hdis.getCurrentDatanode().getXferAddr()
-                  + ", seeking new datanode for pos=" + hdis.getPos());
-              hdis.seekToNewSource(hdis.getPos());
-            }
+            switchDatanode((HdfsDataInputStream) inputS);
           } else {
             LOG.warn("input stream is not instance of HdfsDataInputStream "
                 + inputS.toString());
@@ -2132,6 +2117,21 @@ public class MapTask extends Task {
         // Ignore
         LOG.info("Ignoring exception during close for " + c, ie);
       }
+    }
+  }
+
+  // riza: switch datanode with one obtained from splitMetaInfo
+  private void switchDatanode(HdfsDataInputStream hdis){
+    try{
+      DatanodeID dnId = splitMetaInfo.getLastDatanodeID();
+      hdis.ignoreDatanode(dnId);
+      if (dnId.equals(hdis.getCurrentDatanode())){
+        LOG.info("was read from " + hdis.getCurrentDatanode().getXferAddr()
+            + " seeking new datanode for pos=" + hdis.getPos());
+        hdis.seekToNewSource(hdis.getPos());
+      }
+    } catch (Exception e){
+      LOG.error(e);
     }
   }
 }

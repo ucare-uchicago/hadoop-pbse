@@ -161,4 +161,13 @@ public interface TaskUmbilicalProtocol extends VersionedProtocol {
                                                        TaskAttemptID id) 
   throws IOException;
 
+  /**
+   * riza: called by map task after first report in case it need to switch
+   * datanode to avoid all map reading from same source.
+   * @param taskid
+   * @return 0 to wait and ask again later, 1 if yes, 2 if no and no need to
+   * ask again.
+   */
+  byte shallSwitchDatanode(TaskAttemptID taskid);
+
 }
