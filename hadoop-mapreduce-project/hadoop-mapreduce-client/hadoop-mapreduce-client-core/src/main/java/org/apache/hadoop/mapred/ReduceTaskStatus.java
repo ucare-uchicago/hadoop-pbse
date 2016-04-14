@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.hadoop.io.Text;
+
 
 
 class ReduceTaskStatus extends TaskStatus {
@@ -31,6 +33,9 @@ class ReduceTaskStatus extends TaskStatus {
   private long shuffleFinishTime; 
   private long sortFinishTime; 
   private List<TaskAttemptID> failedFetchTasks = new ArrayList<TaskAttemptID>(1);
+
+  // riza: note current map host
+  private String currentMapHost = "";
   
   public ReduceTaskStatus() {}
 
@@ -135,11 +140,26 @@ class ReduceTaskStatus extends TaskStatus {
     failedFetchTasks.clear();
   }
 
+  // riza: PBSE piggyback
+  @Override
+  public void setCurrentMapHost(String dnID) {
+    currentMapHost = dnID;
+  }
+
+  @Override
+  public String getCurrentMapHost() {
+    return currentMapHost;
+  }
+
   @Override
   public void readFields(DataInput in) throws IOException {
     super.readFields(in);
     shuffleFinishTime = in.readLong(); 
     sortFinishTime = in.readLong();
+
+    // riza: PBSE piggyback
+    currentMapHost = Text.readString(in);
+
     int noFailedFetchTasks = in.readInt();
     failedFetchTasks = new ArrayList<TaskAttemptID>(noFailedFetchTasks);
     for (int i=0; i < noFailedFetchTasks; ++i) {
@@ -154,6 +174,10 @@ class ReduceTaskStatus extends TaskStatus {
     super.write(out);
     out.writeLong(shuffleFinishTime);
     out.writeLong(sortFinishTime);
+
+    // riza: PBSE piggyback
+    Text.writeString(out, currentMapHost);
+
     out.writeInt(failedFetchTasks.size());
     for (TaskAttemptID taskId : failedFetchTasks) {
       taskId.write(out);

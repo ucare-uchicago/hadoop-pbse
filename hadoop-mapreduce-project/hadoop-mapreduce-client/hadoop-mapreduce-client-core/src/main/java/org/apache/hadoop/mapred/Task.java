@@ -749,7 +749,10 @@ abstract public class Task implements Writable, Configurable {
           PROGRESS_INTERVAL);
 
       // riza: wait 3 times until lastDatanodeID set
-      int datanodeRetries = isMapTask ? 20 : 0;
+      int datanodeRetries = isMapTask ? 60000 / proginterval : 0;
+      // riza: shall we query for switch instruction?
+      boolean askForSwitch = conf.getBoolean("mapreduce.policy.faread.avoid_singlepath",
+          false);
 
       // get current flag value and reset it as well
       boolean sendProgress = resetProgressFlag();
@@ -793,6 +796,22 @@ abstract public class Task implements Writable, Configurable {
 
             taskFound = umbilical.statusUpdate(taskId, taskStatus);
             taskStatus.clearStatus();
+
+            // riza: datanode switch query
+            if (askForSwitch && (this.in != null)) {
+              byte shallswitch = umbilical.shallSwitchDatanode(taskId);
+              if (shallswitch == 1)
+                try {
+                  LOG.info("riza: Asked for datanode switch. Switching from: "
+                      + lastDatanodeId);
+                  this.in.switchDatanode(lastDatanodeId);
+                } catch (IOException ex) {
+                  LOG.warn("riza: Datanode switch failed: " + ex.toString());
+                }
+              askForSwitch = shallswitch == 0;
+              if (!askForSwitch)
+                LOG.info("riza: I am stop asking about datanode switch");
+            }
           }
           else {
             // send ping 

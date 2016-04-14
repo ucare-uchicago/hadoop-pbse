@@ -489,14 +489,14 @@ public class MRApp extends MRAppMaster {
       }
       @Override
       public void registerLaunchedTask(TaskAttemptId attemptID,
-          WrappedJvmID jvmID) {
+          WrappedJvmID jvmID, String containerHost) {
       }
       @Override
       public void unregister(TaskAttemptId attemptID, WrappedJvmID jvmID) {
       }
       @Override
       public void registerPendingTask(org.apache.hadoop.mapred.Task task,
-          WrappedJvmID jvmID) {
+          WrappedJvmID jvmID, String containerHost) {
       }
     };
   }

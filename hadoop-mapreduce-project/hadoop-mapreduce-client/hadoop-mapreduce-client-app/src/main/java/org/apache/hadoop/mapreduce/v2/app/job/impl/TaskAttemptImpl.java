@@ -1493,6 +1493,8 @@ public abstract class TaskAttemptImpl implements
                 new String[taskAttempt.dataLocalHosts.size()]),
             taskAttempt.dataLocalRacks.toArray(
                 new String[taskAttempt.dataLocalRacks.size()])));
+        LOG.info("riza: dataLocalHosts are: "+taskAttempt.dataLocalHosts.toString()+
+            " for attempt "+taskAttempt.attemptId.toString());
       }
     }
   }
@@ -1549,7 +1551,8 @@ public abstract class TaskAttemptImpl implements
               taskAttempt.remoteTask.isMapTask(),
               taskAttempt.container.getId().getContainerId());
       taskAttempt.taskAttemptListener.registerPendingTask(
-          taskAttempt.remoteTask, taskAttempt.jvmID);
+          taskAttempt.remoteTask, taskAttempt.jvmID,
+          taskAttempt.container.getNodeId().getHost());
 
       taskAttempt.computeRackAndLocality();
       
@@ -1652,7 +1655,8 @@ public abstract class TaskAttemptImpl implements
 
       // register it to TaskAttemptListener so that it can start monitoring it.
       taskAttempt.taskAttemptListener
-        .registerLaunchedTask(taskAttempt.attemptId, taskAttempt.jvmID);
+        .registerLaunchedTask(taskAttempt.attemptId, taskAttempt.jvmID,
+            taskAttempt.container.getNodeId().getHost());
       //TODO Resolve to host / IP in case of a local address.
       InetSocketAddress nodeHttpInetAddr = // TODO: Costly to create sock-addr?
           NetUtils.createSocketAddr(taskAttempt.container.getNodeHttpAddress());
@@ -1960,7 +1964,8 @@ public abstract class TaskAttemptImpl implements
 
       // riza: update datasource tag
       String dnHostName = newReportedStatus.lastDatanodeID.getHostName();
-      taskAttempt.myDatasourceTag = taskAttempt.isNodeSlow(dnHostName) ? "s" : "f";
+      if (!dnHostName.equals("fake-localhost"))
+        taskAttempt.myDatasourceTag = taskAttempt.isNodeSlow(dnHostName) ? "s" : "f";
       LOG.info("Read from host " + newReportedStatus.lastDatanodeID + " (" +
           newReportedStatus.lastDatanodeID.getHostName() + ") with tag " +
           taskAttempt.myDatasourceTag);

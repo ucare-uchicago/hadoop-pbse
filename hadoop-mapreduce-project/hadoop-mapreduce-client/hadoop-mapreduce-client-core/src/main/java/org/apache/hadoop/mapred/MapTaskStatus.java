@@ -22,10 +22,15 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import org.apache.hadoop.hdfs.protocol.DatanodeID;
+
 
 class MapTaskStatus extends TaskStatus {
 
   private long mapFinishTime = 0;
+
+  // riza: add attribute to pass last accessed datanode
+  private DatanodeID lastDatanodeID = DatanodeID.createNullDatanodeID();
   
   public MapTaskStatus() {}
 
@@ -73,7 +78,19 @@ class MapTaskStatus extends TaskStatus {
   void setMapFinishTime(long mapFinishTime) {
     this.mapFinishTime = mapFinishTime;
   }
-  
+
+  // riza: get/set last accessed DatanodeID
+  @Override
+  public void setLastDatanodeID(DatanodeID dnID) {
+    if (dnID!=null)
+      this.lastDatanodeID = dnID;
+  }
+
+  @Override
+  public DatanodeID getLastDatanodeID() {
+    return this.lastDatanodeID;
+  }
+
   @Override
   synchronized void statusUpdate(TaskStatus status) {
     super.statusUpdate(status);
@@ -87,12 +104,14 @@ class MapTaskStatus extends TaskStatus {
   public void readFields(DataInput in) throws IOException {
     super.readFields(in);
     mapFinishTime = in.readLong();
+    lastDatanodeID.readFields(in);
   }
   
   @Override
   public void write(DataOutput out) throws IOException {
     super.write(out);
     out.writeLong(mapFinishTime);
+    lastDatanodeID.write(out);
   }
 
   @Override

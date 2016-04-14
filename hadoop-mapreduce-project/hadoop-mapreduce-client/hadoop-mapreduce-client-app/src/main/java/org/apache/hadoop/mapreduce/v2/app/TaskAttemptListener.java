@@ -37,7 +37,7 @@ public interface TaskAttemptListener {
    * @param task the task itself for this JVM.
    * @param jvmID The ID of the JVM .
    */
-  void registerPendingTask(Task task, WrappedJvmID jvmID);
+  void registerPendingTask(Task task, WrappedJvmID jvmID, String containerHost);
   
   /**
    * Register task attempt. This should be called when the JVM has been
@@ -47,7 +47,7 @@ public interface TaskAttemptListener {
    *          the id of the attempt for this JVM.
    * @param jvmID the ID of the JVM.
    */
-  void registerLaunchedTask(TaskAttemptId attemptID, WrappedJvmID jvmID);
+  void registerLaunchedTask(TaskAttemptId attemptID, WrappedJvmID jvmID, String containerHost);
 
   /**
    * Unregister the JVM and the attempt associated with it.  This should be 

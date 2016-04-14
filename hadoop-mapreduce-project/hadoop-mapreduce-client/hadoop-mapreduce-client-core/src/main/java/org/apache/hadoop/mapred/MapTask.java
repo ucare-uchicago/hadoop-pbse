@@ -2124,12 +2124,9 @@ public class MapTask extends Task {
   private void switchDatanode(HdfsDataInputStream hdis){
     try{
       DatanodeID dnId = splitMetaInfo.getLastDatanodeID();
-      hdis.ignoreDatanode(dnId);
-      if (dnId.equals(hdis.getCurrentDatanode())){
-        LOG.info("was read from " + hdis.getCurrentDatanode().getXferAddr()
-            + " seeking new datanode for pos=" + hdis.getPos());
-        hdis.seekToNewSource(hdis.getPos());
-      }
+      LOG.info("was read from " + hdis.getCurrentDatanode().getXferAddr()
+          + " probing new datanode for pos=" + hdis.getPos());
+      hdis.switchDatanode(dnId);
     } catch (Exception e){
       LOG.error(e);
     }

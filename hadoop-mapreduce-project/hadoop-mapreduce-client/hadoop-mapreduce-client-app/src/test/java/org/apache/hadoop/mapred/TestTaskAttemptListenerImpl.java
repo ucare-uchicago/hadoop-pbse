@@ -115,7 +115,7 @@ public class TestTaskAttemptListenerImpl {
     TaskAttemptId attemptID = mock(TaskAttemptId.class);
     Task task = mock(Task.class);
     //Now put a task with the ID
-    listener.registerPendingTask(task, wid);
+    listener.registerPendingTask(task, wid, "");
     result = listener.getTask(context);
     assertNull(result);
     // Unregister for more testing.
@@ -123,8 +123,8 @@ public class TestTaskAttemptListenerImpl {
 
     // Verify ask after registration and launch
     //Now put a task with the ID
-    listener.registerPendingTask(task, wid);
-    listener.registerLaunchedTask(attemptID, wid);
+    listener.registerPendingTask(task, wid, "");
+    listener.registerLaunchedTask(attemptID, wid, "");
     verify(hbHandler).register(attemptID);
     result = listener.getTask(context);
     assertNotNull(result);

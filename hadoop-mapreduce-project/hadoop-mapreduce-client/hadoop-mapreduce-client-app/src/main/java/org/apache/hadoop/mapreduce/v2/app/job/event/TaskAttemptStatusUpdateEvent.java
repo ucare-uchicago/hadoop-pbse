@@ -55,7 +55,9 @@ public class TaskAttemptStatusUpdateEvent extends TaskAttemptEvent {
     public long shuffleFinishTime;
     public long sortFinishTime;
     public TaskAttemptState taskState;
+    // riza: PBSE piggyback
     public DatanodeID lastDatanodeID;
+    public String currentMapHost;
     public String tag;
   }
 }

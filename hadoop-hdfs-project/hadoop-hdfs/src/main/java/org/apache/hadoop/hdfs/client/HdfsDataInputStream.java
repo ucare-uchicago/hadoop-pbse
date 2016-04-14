@@ -115,4 +115,14 @@ public class HdfsDataInputStream extends FSDataInputStream {
   public void ignoreDatanode(DatanodeID lastDatanodeID) {
     getDFSInputStream().ignodeDatanode(lastDatanodeID);
   }
+
+  // riza: implement datanode switch
+  public void switchDatanode(DatanodeID ignoredDatanode) throws IOException{
+    this.ignoreDatanode(ignoredDatanode);
+    if (ignoredDatanode.equals(this.getCurrentDatanode())) {
+      synchronized(in){
+        this.seekToNewSource(this.getPos());
+      }
+    }
+  }
 }

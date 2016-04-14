@@ -25,11 +25,13 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
+import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.ipc.ProtocolSignature;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.Server;
@@ -105,6 +107,10 @@ public class TaskAttemptListenerImpl extends CompositeService
    commitWindowMs = conf.getLong(MRJobConfig.MR_AM_COMMIT_WINDOW_MS,
        MRJobConfig.DEFAULT_MR_AM_COMMIT_WINDOW_MS);
    super.serviceInit(conf);
+
+   // riza: datanode switch initialization
+   shallSwitch.set(conf.getBoolean(
+       "mapreduce.policy.faread.avoid_singlepath", false) ? 0 : 2);
   }
 
   @Override
@@ -348,13 +354,27 @@ public class TaskAttemptListenerImpl extends CompositeService
     taskAttemptStatus.counters = new org.apache.hadoop.mapreduce.Counters(
       taskStatus.getCounters());
 
-    // riza: pass lastDatanodeID to taskAttemptStatus
-    taskAttemptStatus.lastDatanodeID = taskStatus.getLastDatanodeID();
+    // riza: string tag for additional info
     taskAttemptStatus.tag = taskStatus.getTag();
+
+    // riza: Map lastDatanodeID set by the task (map only)
+    if (taskStatus.getIsMap() && taskStatus.getLastDatanodeID() != null) {
+      taskAttemptStatus.lastDatanodeID = taskStatus.getLastDatanodeID();
+    } else {
+      // not from map task
+      taskAttemptStatus.lastDatanodeID = DatanodeID.createNullDatanodeID();
+    }
 
     // Map Finish time set by the task (map only)
     if (taskStatus.getIsMap() && taskStatus.getMapFinishTime() != 0) {
       taskAttemptStatus.mapFinishTime = taskStatus.getMapFinishTime();
+    }
+
+    // riza: Shuffle currentMapHost set by the task (reduce only)
+    if (!taskStatus.getIsMap() && !taskStatus.getCurrentMapHost().isEmpty()) {
+      taskAttemptStatus.currentMapHost = taskStatus.getCurrentMapHost();
+      LOG.info("riza: Reducer " + taskAttemptID + " shuffler reading map host "
+      + taskAttemptStatus.currentMapHost);
     }
 
     // Shuffle Finish time set by the task (reduce only).
@@ -394,6 +414,8 @@ public class TaskAttemptListenerImpl extends CompositeService
     context.getEventHandler().handle(
         new TaskAttemptStatusUpdateEvent(taskAttemptStatus.id,
             taskAttemptStatus));
+    // riza: dirty handling of DN update
+    updateDnPath(taskAttemptStatus);
     return true;
   }
 
@@ -457,23 +479,31 @@ public class TaskAttemptListenerImpl extends CompositeService
 
   @Override
   public void registerPendingTask(
-      org.apache.hadoop.mapred.Task task, WrappedJvmID jvmID) {
+      org.apache.hadoop.mapred.Task task, WrappedJvmID jvmID, String containerHost) {
     // Create the mapping so that it is easy to look up
     // when the jvm comes back to ask for Task.
 
     // A JVM not present in this map is an illegal task/JVM.
     jvmIDToActiveAttemptMap.put(jvmID, task);
+
+    //riza: dirty handling of Host path
+    org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId attemptID =
+        TypeConverter.toYarn(task.getTaskID());
+    updateHostPath(attemptID, containerHost);
   }
 
   @Override
   public void registerLaunchedTask(
       org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId attemptID,
-      WrappedJvmID jvmId) {
+      WrappedJvmID jvmId, String containerHost) {
     // The AM considers the task to be launched (Has asked the NM to launch it)
     // The JVM will only be given a task after this registartion.
     launchedJVMs.add(jvmId);
 
     taskHeartbeatHandler.register(attemptID);
+
+    //riza: dirty handling of Host path
+    updateHostPath(attemptID, containerHost);
   }
 
   @Override
@@ -504,16 +534,70 @@ public class TaskAttemptListenerImpl extends CompositeService
         protocol, clientVersion, clientMethodsHash);
   }
 
+  AtomicInteger shallSwitch = new AtomicInteger(0);
+
   // riza: map ask here if need to switch datanode
   @Override
   public byte shallSwitchDatanode(TaskAttemptID taskAttemptID) {
     org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId attemptID =
         TypeConverter.toYarn(taskAttemptID);
     if (attemptID.getTaskId().getTaskType() == TaskType.MAP){
-      Job job = context.getJob(attemptID.getTaskId().getJobId());
-      job.getTotalMaps();
-      return 2;
+      updateSwitchInstruction(attemptID.getTaskId().getJobId());
+      if (shallSwitch.compareAndSet(1, 2)){
+        LOG.info("riza: Instruct datanode switch to "+attemptID);
+        return 1;
+      } else {
+        int myswitch = (byte) shallSwitch.get();
+        return (byte)((myswitch<2) ? 0 : 2);
+      }
     }
     return 2;
+  }
+
+  ConcurrentHashMap<DatanodeID, org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId> dnToTaskAttempt =
+      new ConcurrentHashMap<DatanodeID, org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId>();
+  Set<org.apache.hadoop.mapreduce.v2.api.records.TaskId> regDNTask =
+      Collections.newSetFromMap(new ConcurrentHashMap<org.apache.hadoop.mapreduce.v2.api.records.TaskId, Boolean>());
+  private void updateDnPath(TaskAttemptStatus taskAttemptStatus){
+    org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId taid =
+        taskAttemptStatus.id;
+    DatanodeID dnId = taskAttemptStatus.lastDatanodeID;
+    dnToTaskAttempt.put(dnId, taid);
+    regDNTask.add(taid.getTaskId());
+  }
+
+
+  ConcurrentHashMap<String, org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId> hostToTaskAttempt =
+      new ConcurrentHashMap<String, org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId>();
+  Set<org.apache.hadoop.mapreduce.v2.api.records.TaskId> regHostTask =
+      Collections.newSetFromMap(new ConcurrentHashMap<org.apache.hadoop.mapreduce.v2.api.records.TaskId, Boolean>());
+  private void updateHostPath(org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId taid,
+      String containerHost){
+    hostToTaskAttempt.put(containerHost, taid);
+    regHostTask.add(taid.getTaskId());
+  }
+
+  private synchronized void updateSwitchInstruction(
+      org.apache.hadoop.mapreduce.v2.api.records.JobId jobId) {
+    if (shallSwitch.get() == 0) {
+      int nummap = context.getJob(jobId).getTotalMaps();
+      int diffDn = dnToTaskAttempt.size();
+      int diffHost = hostToTaskAttempt.size();
+      if ((diffDn > 1) && (diffHost > 1)) {
+        shallSwitch.set(2);
+        LOG.info("riza: Attempts work and read from multiple path. Unique datanode="+diffDn
+            +", unique worker="+diffHost);
+      } else {
+        int dnCount = regDNTask.size();
+        int hostCount = regHostTask.size();
+        if (((diffDn == 1) && (dnCount == nummap))
+            || ((diffHost == 1) && (hostCount == nummap))) {
+          boolean switchtriggered = shallSwitch.compareAndSet(0, 1);
+          if (switchtriggered)
+            LOG.warn("riza: Single path detected among attempts! datanode="
+                + diffDn + ", worker=" + diffHost);
+        }
+      }
+    }
   }
 }

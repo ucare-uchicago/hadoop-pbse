@@ -429,6 +429,9 @@ public class ShuffleSchedulerImpl<K,V> implements ShuffleScheduler<K,V> {
   }
 
   public synchronized List<TaskAttemptID> getMapsForHost(MapHost host) {
+    // riza: PBSE piggyback
+    this.status.setCurrentMapHost(host.getHostName());
+
     List<TaskAttemptID> list = host.getAndClearKnownMaps();
     Iterator<TaskAttemptID> itr = list.iterator();
     List<TaskAttemptID> result = new ArrayList<TaskAttemptID>();

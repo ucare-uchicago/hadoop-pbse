@@ -74,8 +74,6 @@ public abstract class TaskStatus implements Writable, Cloneable {
   // max task-status string size
   static final int MAX_STRING_SIZE = 1024;
 
-  // riza: add attribute to pass last accessed datanode
-  private DatanodeID lastDatanodeID = DatanodeID.createNullDatanodeID();
   private String tag = "";
 
   /**
@@ -461,12 +459,10 @@ public abstract class TaskStatus implements Writable, Cloneable {
   
   // riza: get/set last accessed DatanodeID
   public void setLastDatanodeID(DatanodeID dnID) {
-    if (dnID!=null)
-      this.lastDatanodeID = dnID;
   }
 
   public DatanodeID getLastDatanodeID() {
-    return this.lastDatanodeID;
+    return DatanodeID.createNullDatanodeID();
   }
 
   public void setTag(String tag){
@@ -475,6 +471,13 @@ public abstract class TaskStatus implements Writable, Cloneable {
 
   public String getTag(){
     return this.tag;
+  }
+
+  public void setCurrentMapHost(String dnID) {
+  }
+
+  public String getCurrentMapHost() {
+    return "";
   }
 
   //////////////////////////////////////////////
@@ -494,7 +497,6 @@ public abstract class TaskStatus implements Writable, Cloneable {
     out.writeLong(outputSize);
     counters.write(out);
     nextRecordRange.write(out);
-    lastDatanodeID.write(out);
     Text.writeString(out, tag);
   }
 
@@ -513,7 +515,6 @@ public abstract class TaskStatus implements Writable, Cloneable {
     this.outputSize = in.readLong();
     counters.readFields(in);
     nextRecordRange.readFields(in);
-    this.lastDatanodeID.readFields(in);
     this.tag = Text.readString(in);
   }
   
