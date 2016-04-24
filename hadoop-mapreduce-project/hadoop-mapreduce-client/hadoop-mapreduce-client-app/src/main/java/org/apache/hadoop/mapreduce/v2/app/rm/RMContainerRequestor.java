@@ -537,6 +537,20 @@ public abstract class RMContainerRequestor extends RMCommunicator {
     return newReq;
   }
   
+  protected ContainerRequest getFilteredContainerRequest(ContainerRequest orig,
+      String unprefferedHost) {
+    ArrayList<String> newHosts = new ArrayList<String>();
+    for (String host : orig.hosts) {
+      if (!unprefferedHost.equals(host)) {
+        newHosts.add(host);
+      }
+    }
+    String[] hosts = newHosts.toArray(new String[newHosts.size()]);
+    ContainerRequest newReq = new ContainerRequest(orig.attemptID, orig.capability,
+        hosts, orig.racks, orig.priority);
+    return newReq;
+  }
+
   protected void setRequestLimit(Priority priority, Resource capability,
       int limit) {
     if (limit < 0) {

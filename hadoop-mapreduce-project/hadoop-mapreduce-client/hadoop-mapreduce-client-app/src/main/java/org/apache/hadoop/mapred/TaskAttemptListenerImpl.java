@@ -110,7 +110,7 @@ public class TaskAttemptListenerImpl extends CompositeService
 
    // riza: datanode switch initialization
    shallSwitch.set(conf.getBoolean(
-       "mapreduce.policy.faread.avoid_singlepath", false) ? 0 : 2);
+       "mapreduce.policy.faread.avoid_single_readpath", false) ? 0 : 2);
   }
 
   @Override

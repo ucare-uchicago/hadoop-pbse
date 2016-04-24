@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -169,6 +170,8 @@ public class RMContainerAllocator extends RMContainerRequestor
   private long retryInterval;
   private long retrystartTime;
   private Clock clock;
+  // riza: PBSE config
+  private boolean  askDistictHost = false;
 
   @VisibleForTesting
   protected BlockingQueue<ContainerAllocatorEvent> eventQueue
@@ -204,6 +207,9 @@ public class RMContainerAllocator extends RMContainerRequestor
     RackResolver.init(conf);
     retryInterval = getConfig().getLong(MRJobConfig.MR_AM_TO_RM_WAIT_INTERVAL_MS,
                                 MRJobConfig.DEFAULT_MR_AM_TO_RM_WAIT_INTERVAL_MS);
+    // riza: PBSE config
+    askDistictHost = getConfig().getBoolean("mapreduce.policy.faread.avoid_single_assignpath",
+        false);
     // Init startTime to current time. If all goes well, it will be reset after
     // first attempt to contact RM.
     retrystartTime = System.currentTimeMillis();
@@ -798,6 +804,59 @@ public class RMContainerAllocator extends RMContainerRequestor
         || assignedRequests.maps.size() < maxRunningMaps);
   }
 
+  private Map<String, Set<TaskAttemptId>> hostToAssignedTask =
+      new HashMap<String, Set<TaskAttemptId>>();
+  private int maxretry = 10;
+  private boolean mayAssignMap(Container allocated, TaskAttemptId tId) {
+    if (askDistictHost && (hostToAssignedTask.keySet().size() <=1)){
+      if (tId.getId() <= 0){ // riza: check only original task
+        String hostname = allocated.getNodeId().getHost();
+        Set<TaskAttemptId> hostedTasks =
+            hostToAssignedTask.get(hostname);
+        if (hostedTasks == null){
+          hostedTasks = Collections
+              .newSetFromMap(new ConcurrentHashMap<TaskAttemptId, Boolean>());
+          hostedTasks.add(tId);
+          hostToAssignedTask.put(hostname, hostedTasks);
+        } else {
+          if ((getJob().getTotalMaps() > hostedTasks.size()+1) || (maxretry <= 0))
+            // riza: node do not host all original task
+            hostedTasks.add(tId);
+          else {
+            // riza: all original task hosted on the same node, reject!
+            maxretry--;
+            LOG.info("riza: Allocated container " + allocated + " for task "
+            + tId + " is on the same node. "+ String.valueOf(maxretry)
+            + " rejection chance left.");
+
+            // riza: replace existing container request
+            ContainerRequest toBeReplacedReq =
+                scheduledRequests.getContainerReqToReplace(allocated);
+            if (toBeReplacedReq != null) {
+              LOG.info("riza: Placing a new container request for task attempt "
+                  + toBeReplacedReq.attemptID);
+              ContainerRequest newReq =
+                  getFilteredContainerRequest(toBeReplacedReq, hostname);
+              decContainerReq(toBeReplacedReq);
+              if (toBeReplacedReq.attemptID.getTaskId().getTaskType() ==
+                  TaskType.MAP) {
+                scheduledRequests.maps.put(newReq.attemptID, newReq);
+              }
+              addContainerReq(newReq);
+            }
+            else {
+              LOG.info("riza: Could not map allocated container to a valid request."
+                  + " Releasing allocated container " + allocated);
+            }
+
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
   private boolean canAssignReduces() {
     return (maxRunningReduces <= 0
         || assignedRequests.reduces.size() < maxRunningReduces);
@@ -893,10 +952,10 @@ public class RMContainerAllocator extends RMContainerRequestor
     private final Map<String, LinkedList<TaskAttemptId>> mapsRackMapping = 
       new HashMap<String, LinkedList<TaskAttemptId>>();
     @VisibleForTesting
-    final Map<TaskAttemptId, ContainerRequest> maps =
+    protected final Map<TaskAttemptId, ContainerRequest> maps =
       new LinkedHashMap<TaskAttemptId, ContainerRequest>();
     
-    private final LinkedHashMap<TaskAttemptId, ContainerRequest> reduces = 
+    protected final LinkedHashMap<TaskAttemptId, ContainerRequest> reduces =
       new LinkedHashMap<TaskAttemptId, ContainerRequest>();
     
     boolean remove(TaskAttemptId tId) {
@@ -1218,7 +1277,7 @@ public class RMContainerAllocator extends RMContainerRequestor
             LOG.debug("Host matched to the request list " + host);
           }
           TaskAttemptId tId = list.removeFirst();
-          if (maps.containsKey(tId)) {
+          if (maps.containsKey(tId) && mayAssignMap(allocated,tId)) {
             ContainerRequest assigned = maps.remove(tId);
             containerAssigned(allocated, assigned);
             it.remove();
@@ -1248,7 +1307,7 @@ public class RMContainerAllocator extends RMContainerRequestor
         LinkedList<TaskAttemptId> list = mapsRackMapping.get(rack);
         while (list != null && list.size() > 0) {
           TaskAttemptId tId = list.removeFirst();
-          if (maps.containsKey(tId)) {
+          if (maps.containsKey(tId) && mayAssignMap(allocated,tId)) {
             ContainerRequest assigned = maps.remove(tId);
             containerAssigned(allocated, assigned);
             it.remove();
@@ -1272,6 +1331,10 @@ public class RMContainerAllocator extends RMContainerRequestor
         Priority priority = allocated.getPriority();
         assert PRIORITY_MAP.equals(priority);
         TaskAttemptId tId = maps.keySet().iterator().next();
+
+        if (!mayAssignMap(allocated,tId))
+          continue;
+
         ContainerRequest assigned = maps.remove(tId);
         containerAssigned(allocated, assigned);
         it.remove();

@@ -751,7 +751,7 @@ abstract public class Task implements Writable, Configurable {
       // riza: wait 3 times until lastDatanodeID set
       int datanodeRetries = isMapTask ? 60000 / proginterval : 0;
       // riza: shall we query for switch instruction?
-      boolean askForSwitch = conf.getBoolean("mapreduce.policy.faread.avoid_singlepath",
+      boolean askForSwitch = conf.getBoolean("mapreduce.policy.faread.avoid_single_readpath",
           false);
 
       // get current flag value and reset it as well
@@ -791,7 +791,7 @@ abstract public class Task implements Writable, Configurable {
                                     counters);
 
             // riza: attach lastDatanodeID as additional information
-            LOG.debug("riza: reporting datanode " + lastDatanodeId);
+            LOG.info("riza: reporting datanode " + lastDatanodeId.getHostName());
             taskStatus.setLastDatanodeID(lastDatanodeId);
 
             taskFound = umbilical.statusUpdate(taskId, taskStatus);
@@ -1175,7 +1175,7 @@ abstract public class Task implements Writable, Configurable {
     while (true) {
       try {
         // riza: attach lastDatanodeID as additional information
-        LOG.debug("riza: extra reporting datanode " + lastDatanodeId);
+        LOG.info("riza: extra reporting datanode " + lastDatanodeId.getHostName());
         taskStatus.setLastDatanodeID(lastDatanodeId);
 
         if (!umbilical.statusUpdate(getTaskID(), taskStatus)) {
