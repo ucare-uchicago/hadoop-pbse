@@ -23,6 +23,9 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.hadoop.io.Text;
 
@@ -34,8 +37,9 @@ class ReduceTaskStatus extends TaskStatus {
   private long sortFinishTime; 
   private List<TaskAttemptID> failedFetchTasks = new ArrayList<TaskAttemptID>(1);
 
-  // riza: note current map host
-  private String currentMapHost = "";
+  // riza: note current map attempt id
+  private Map<TaskAttemptID, Long> fetchRates =
+      new ConcurrentHashMap<TaskAttemptID, Long>();
   
   public ReduceTaskStatus() {}
 
@@ -138,17 +142,18 @@ class ReduceTaskStatus extends TaskStatus {
   synchronized void clearStatus() {
     super.clearStatus();
     failedFetchTasks.clear();
+    fetchRates.clear();
   }
 
   // riza: PBSE piggyback
   @Override
-  public void setCurrentMapHost(String dnID) {
-    currentMapHost = dnID;
+  public void setFetchRate(TaskAttemptID taId, long rate){
+    this.fetchRates.put(taId, rate);
   }
 
   @Override
-  public String getCurrentMapHost() {
-    return currentMapHost;
+  public Map<TaskAttemptID, Long> getFetchRates(){
+    return this.fetchRates;
   }
 
   @Override
@@ -158,7 +163,13 @@ class ReduceTaskStatus extends TaskStatus {
     sortFinishTime = in.readLong();
 
     // riza: PBSE piggyback
-    currentMapHost = Text.readString(in);
+    int noFetchReport = in.readInt();
+    for (int i=0; i < noFetchReport; ++i) {
+      TaskAttemptID taId = new TaskAttemptID();
+      taId.readFields(in);
+      long rate = in.readLong();
+      fetchRates.put(taId, rate);
+    }
 
     int noFailedFetchTasks = in.readInt();
     failedFetchTasks = new ArrayList<TaskAttemptID>(noFailedFetchTasks);
@@ -176,7 +187,13 @@ class ReduceTaskStatus extends TaskStatus {
     out.writeLong(sortFinishTime);
 
     // riza: PBSE piggyback
-    Text.writeString(out, currentMapHost);
+    List<Map.Entry<TaskAttemptID, Long>> tmpEntries =
+        new ArrayList<Map.Entry<TaskAttemptID, Long>>(fetchRates.entrySet());
+    out.writeInt(tmpEntries.size());
+    for (Entry<TaskAttemptID, Long> entry : tmpEntries) {
+      entry.getKey().write(out);
+      out.writeLong(entry.getValue());
+    }
 
     out.writeInt(failedFetchTasks.size());
     for (TaskAttemptID taskId : failedFetchTasks) {

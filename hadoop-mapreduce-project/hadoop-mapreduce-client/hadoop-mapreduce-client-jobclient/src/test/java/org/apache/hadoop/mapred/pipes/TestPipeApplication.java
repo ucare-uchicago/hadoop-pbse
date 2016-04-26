@@ -644,6 +644,10 @@ public class TestPipeApplication {
       return recordNum;
     }
 
+    @Override
+    public void setShuffleRate(TaskAttemptID taId, long rate) {
+    }
+
   }
 
   private class Reader implements RecordReader<FloatWritable, NullWritable> {

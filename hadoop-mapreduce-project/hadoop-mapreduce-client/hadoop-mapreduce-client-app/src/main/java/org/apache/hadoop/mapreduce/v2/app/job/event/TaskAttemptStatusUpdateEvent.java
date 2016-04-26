@@ -19,6 +19,7 @@
 package org.apache.hadoop.mapreduce.v2.app.job.event;
 
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.mapreduce.Counters;
@@ -57,7 +58,7 @@ public class TaskAttemptStatusUpdateEvent extends TaskAttemptEvent {
     public TaskAttemptState taskState;
     // riza: PBSE piggyback
     public DatanodeID lastDatanodeID;
-    public String currentMapHost;
+    public Map<TaskAttemptId, Long> fetchRates;
     public String tag;
   }
 }

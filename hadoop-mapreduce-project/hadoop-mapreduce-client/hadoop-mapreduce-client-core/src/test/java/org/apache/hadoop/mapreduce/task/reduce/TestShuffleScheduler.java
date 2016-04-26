@@ -18,6 +18,7 @@
 package org.apache.hadoop.mapreduce.task.reduce;
 
 import static org.mockito.Mockito.mock;
+
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalDirAllocator;
 import org.apache.hadoop.io.compress.CompressionCodec;

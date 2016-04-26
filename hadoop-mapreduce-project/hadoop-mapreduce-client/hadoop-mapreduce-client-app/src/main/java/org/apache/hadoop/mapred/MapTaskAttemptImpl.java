@@ -52,6 +52,7 @@ public class MapTaskAttemptImpl extends TaskAttemptImpl {
 
   @Override
   public Task createRemoteTask() {
+    // TODO: riza: pass lastDatanodeID via createRemoteTask
     //job file name is set in TaskAttempt, setting it null here
     MapTask mapTask =
       new MapTask("", TypeConverter.fromYarn(getID()), partition,

@@ -168,7 +168,7 @@ public class TestMapProgress extends TestCase {
   public class TestTaskReporter extends Task.TaskReporter {
     private int recordNum = 0; // number of records processed
     TestTaskReporter(Task task) {
-      task.super(task.getProgress(), fakeUmbilical, task.isMapTask());
+      task.super(task.getProgress(), fakeUmbilical);
     }
 
     @Override

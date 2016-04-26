@@ -94,9 +94,31 @@ class InMemoryMapOutput<K, V> extends MapOutput<K, V> {
     }
   
     try {
-      IOUtils.readFully(input, memory, 0, memory.length);
-      metrics.inputBytes(memory.length);
-      reporter.progress();
+      // riza: collapse IOUtils.readFully to measure copy rate
+      // IOUtils.readFully(input, memory, 0, memory.length);
+      long elapsedTime = 0;
+      org.apache.hadoop.mapred.TaskAttemptID oldId =
+          org.apache.hadoop.mapred.TaskAttemptID.downgrade(getMapId());
+      int off = 0;
+      int toRead = memory.length;
+      while (toRead > 0) {
+        long rStart = System.currentTimeMillis();
+        int ret = input.read(memory, off, toRead);
+        long rStop = System.currentTimeMillis();
+        elapsedTime += rStop - rStart;
+        if (ret < 0) {
+          throw new IOException( "Premature EOF from inputStream");
+        }
+        toRead -= ret;
+        off += ret;
+        metrics.inputBytes(ret);
+        if (memory.length > 0 && elapsedTime > 0 && host.getHostName()!="Local")
+          reporter.setShuffleRate(oldId,
+              Math.round((memory.length-toRead)*8/(elapsedTime/1000.0)));
+        reporter.progress();
+      }
+      //metrics.inputBytes(memory.length);
+      //reporter.progress();
       LOG.info("Read " + memory.length + " bytes from map-output for " +
                 getMapId());
 

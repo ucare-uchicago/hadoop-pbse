@@ -23,21 +23,16 @@ import java.io.OutputStream;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-
 import org.apache.hadoop.io.IOUtils;
-
 import org.apache.hadoop.mapred.IFileInputStream;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapred.MapOutputFile;
-
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.CryptoUtils;
 import org.apache.hadoop.mapreduce.task.reduce.MergeManagerImpl.CompressAwarePath;
@@ -96,11 +91,18 @@ class OnDiskMapOutput<K, V> extends MapOutput<K, V> {
     input = new IFileInputStream(input, compressedLength, conf);
     // Copy data to local-disk
     long bytesLeft = compressedLength;
+    // riza: calc current map transfer rate
+    long elapsedTime = 0;
+    org.apache.hadoop.mapred.TaskAttemptID oldId =
+        org.apache.hadoop.mapred.TaskAttemptID.downgrade(getMapId());
     try {
       final int BYTES_TO_READ = 64 * 1024;
       byte[] buf = new byte[BYTES_TO_READ];
       while (bytesLeft > 0) {
+        long rStart = System.currentTimeMillis();
         int n = ((IFileInputStream)input).readWithChecksum(buf, 0, (int) Math.min(bytesLeft, BYTES_TO_READ));
+        long rStop = System.currentTimeMillis();
+        elapsedTime += rStop-rStart;
         if (n < 0) {
           throw new IOException("read past end of stream reading " + 
                                 getMapId());
@@ -108,6 +110,9 @@ class OnDiskMapOutput<K, V> extends MapOutput<K, V> {
         disk.write(buf, 0, n);
         bytesLeft -= n;
         metrics.inputBytes(n);
+        if (compressedLength > 0 && elapsedTime > 0 && host.getHostName()!="Local")
+          reporter.setShuffleRate(oldId,
+              Math.round((compressedLength-bytesLeft)*8/(elapsedTime/1000.0)));
         reporter.progress();
       }
 

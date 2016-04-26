@@ -648,7 +648,7 @@ abstract public class Task implements Writable, Configurable {
     private boolean done = true;
     private Object lock = new Object();
 
-    private boolean isMapTask;
+    // riza: PBSE fields
     private HdfsDataInputStream in = null;
 
     /**
@@ -659,11 +659,9 @@ abstract public class Task implements Writable, Configurable {
     private AtomicBoolean progressFlag = new AtomicBoolean(false);
     
     TaskReporter(Progress taskProgress,
-                 TaskUmbilicalProtocol umbilical,
-                 boolean isMapTask) {
+                 TaskUmbilicalProtocol umbilical) {
       this.umbilical = umbilical;
       this.taskProgress = taskProgress;
-      this.isMapTask = isMapTask;
     }
 
     // getters and setters for flag
@@ -749,9 +747,9 @@ abstract public class Task implements Writable, Configurable {
           PROGRESS_INTERVAL);
 
       // riza: wait 3 times until lastDatanodeID set
-      int datanodeRetries = isMapTask ? 60000 / proginterval : 0;
+      int datanodeRetries = isMapTask() ? 60000 / proginterval : 0;
       // riza: shall we query for switch instruction?
-      boolean askForSwitch = conf.getBoolean("mapreduce.policy.faread.avoid_single_readpath",
+      boolean askForSwitch = isMapTask() && conf.getBoolean("mapreduce.policy.faread.avoid_single_readpath",
           false);
 
       // get current flag value and reset it as well
@@ -790,9 +788,13 @@ abstract public class Task implements Writable, Configurable {
                                     taskProgress.toString(), 
                                     counters);
 
-            // riza: attach lastDatanodeID as additional information
-            LOG.info("riza: reporting datanode " + lastDatanodeId.getHostName());
-            taskStatus.setLastDatanodeID(lastDatanodeId);
+            if (isMapTask()){
+              // riza: attach lastDatanodeID as additional information
+              LOG.info("riza: reporting datanode " + lastDatanodeId.getHostName());
+              taskStatus.setLastDatanodeID(lastDatanodeId);
+            } else {
+              // riza: piggyback PBSE reduce information
+            }
 
             taskFound = umbilical.statusUpdate(taskId, taskStatus);
             taskStatus.clearStatus();
@@ -889,7 +891,7 @@ abstract public class Task implements Writable, Configurable {
     // riza: memo the owner, its IS might not been initialized
     public void setInputStream(InputStream in) {
       synchronized (lastDatanodeId) {
-        if (in instanceof HdfsDataInputStream){
+        if (isMapTask() && in instanceof HdfsDataInputStream){
           this.in = (HdfsDataInputStream) in;
           if (!lastDatanodeId.equals(this.in.getCurrentDatanode())) {
             LOG.info("riza: first datanode is " + this.in.getCurrentDatanode());
@@ -899,6 +901,12 @@ abstract public class Task implements Writable, Configurable {
           }
         }
       }
+    }
+
+    // riza: set shuffle progress rate
+    @Override
+    public void setShuffleRate(TaskAttemptID taId, long rate){
+      taskStatus.setFetchRate(taId, rate);
     }
   }
   
@@ -928,7 +936,7 @@ abstract public class Task implements Writable, Configurable {
    */
   TaskReporter startReporter(final TaskUmbilicalProtocol umbilical) {  
     // start thread that will handle communication with parent
-    TaskReporter reporter = new TaskReporter(getProgress(), umbilical, isMapTask());
+    TaskReporter reporter = new TaskReporter(getProgress(), umbilical);
     reporter.startCommunicationThread();
     return reporter;
   }
@@ -1175,8 +1183,10 @@ abstract public class Task implements Writable, Configurable {
     while (true) {
       try {
         // riza: attach lastDatanodeID as additional information
-        LOG.info("riza: extra reporting datanode " + lastDatanodeId.getHostName());
-        taskStatus.setLastDatanodeID(lastDatanodeId);
+        if (this.isMapTask()){
+          LOG.info("riza: extra reporting datanode " + lastDatanodeId.getHostName());
+          taskStatus.setLastDatanodeID(lastDatanodeId);
+        }
 
         if (!umbilical.statusUpdate(getTaskID(), taskStatus)) {
           LOG.warn("Parent died.  Exiting "+taskId);

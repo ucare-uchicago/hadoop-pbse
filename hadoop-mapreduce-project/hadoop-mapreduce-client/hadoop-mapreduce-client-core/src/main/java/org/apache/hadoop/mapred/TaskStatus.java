@@ -21,6 +21,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -456,13 +457,16 @@ public abstract class TaskStatus implements Writable, Cloneable {
       throw new InternalError(cnse.toString());
     }
   }
-  
+
   // riza: get/set last accessed DatanodeID
   public void setLastDatanodeID(DatanodeID dnID) {
+    throw new UnsupportedOperationException(
+        "setLastDatanodeID() only supported by MapTask");
   }
 
   public DatanodeID getLastDatanodeID() {
-    return DatanodeID.createNullDatanodeID();
+    throw new UnsupportedOperationException(
+        "getLastDatanodeID() only supported by MapTask");
   }
 
   public void setTag(String tag){
@@ -473,11 +477,11 @@ public abstract class TaskStatus implements Writable, Cloneable {
     return this.tag;
   }
 
-  public void setCurrentMapHost(String dnID) {
+  public void setFetchRate(TaskAttemptID taId, long rate){
   }
 
-  public String getCurrentMapHost() {
-    return "";
+  public Map<TaskAttemptID, Long> getFetchRates() {
+    return null;
   }
 
   //////////////////////////////////////////////

@@ -68,6 +68,9 @@ public interface Reporter extends Progressable {
       public float getProgress() {
         return 0;
       }
+      @Override
+      public void setShuffleRate(TaskAttemptID taId, long rate) {
+      }
     };
 
   /**
@@ -130,4 +133,6 @@ public interface Reporter extends Progressable {
    * 0 and 1 (inclusive).
    */
   public float getProgress();
+
+  public void setShuffleRate(TaskAttemptID taId, long rate);
 }

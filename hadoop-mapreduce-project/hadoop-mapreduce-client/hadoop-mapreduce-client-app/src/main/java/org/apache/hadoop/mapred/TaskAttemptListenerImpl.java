@@ -22,7 +22,9 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -370,13 +372,6 @@ public class TaskAttemptListenerImpl extends CompositeService
       taskAttemptStatus.mapFinishTime = taskStatus.getMapFinishTime();
     }
 
-    // riza: Shuffle currentMapHost set by the task (reduce only)
-    if (!taskStatus.getIsMap() && !taskStatus.getCurrentMapHost().isEmpty()) {
-      taskAttemptStatus.currentMapHost = taskStatus.getCurrentMapHost();
-      LOG.info("riza: Reducer " + taskAttemptID + " shuffler reading map host "
-      + taskAttemptStatus.currentMapHost);
-    }
-
     // Shuffle Finish time set by the task (reduce only).
     if (!taskStatus.getIsMap() && taskStatus.getShuffleFinishTime() != 0) {
       taskAttemptStatus.shuffleFinishTime = taskStatus.getShuffleFinishTime();
@@ -385,6 +380,21 @@ public class TaskAttemptListenerImpl extends CompositeService
     // Sort finish time set by the task (reduce only).
     if (!taskStatus.getIsMap() && taskStatus.getSortFinishTime() != 0) {
       taskAttemptStatus.sortFinishTime = taskStatus.getSortFinishTime();
+    }
+
+    // riza: Shuffle shufflingMapId & currentShufflingMapRate set by the task (reduce only)
+    if (taskStatus.getFetchRates() != null
+        //&& taskStatus.getFetchRates().size() > 0
+        ) {
+      taskAttemptStatus.fetchRates =
+          new HashMap<org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId, Long>();
+      for (Entry<TaskAttemptID, Long> entry :
+        taskStatus.getFetchRates().entrySet()) {
+        taskAttemptStatus.fetchRates.put(
+            TypeConverter.toYarn(entry.getKey()), entry.getValue());
+      }
+      LOG.info("riza: Reducer " + taskAttemptID + " fetch rates: "
+      + taskAttemptStatus.fetchRates);
     }
 
     // Not Setting the task state. Used by speculation - will be set in TaskAttemptImpl
