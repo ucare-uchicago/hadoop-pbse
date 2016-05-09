@@ -1,0 +1,9 @@
+#!/bin/bash
+
+mvn package -Pdist -DskipTests
+
+scp target/hadoop-common-2.7.1.jar riza@users.emulab.net:/proj/ucare/riza/
+
+
+ssh riza@users.emulab.net \
+   'mv /proj/ucare/riza/hadoop-common-2.7.1.jar $HADOOP_PREFIX/share/hadoop/common/;'

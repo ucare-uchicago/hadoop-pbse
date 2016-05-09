@@ -1,0 +1,10 @@
+#!/bin/bash
+
+mvn package -Pdist -DskipTests
+
+
+scp hadoop-mapreduce-client-app/target/hadoop-mapreduce-client-app-2.7.1.jar riza@users.emulab.net:/proj/ucare/riza/
+scp hadoop-mapreduce-client-core/target/hadoop-mapreduce-client-core-2.7.1.jar riza@users.emulab.net:/proj/ucare/riza/
+
+ssh riza@users.emulab.net \
+   'mv /proj/ucare/riza/hadoop-mapreduce-client-*-2.7.1.jar $HADOOP_PREFIX/share/hadoop/mapreduce/;'
