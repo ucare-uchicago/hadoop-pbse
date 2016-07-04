@@ -1,0 +1,165 @@
+#!/usr/bin/python
+
+import os, re, sys
+import pprint
+import datetime
+from collections import defaultdict
+
+# slownode: node-1
+SLOWHOST="pc222"
+SLOWIP="10.1.1.3"
+
+pp = pprint.PrettyPrinter(indent=2)
+
+pt = re.compile('.+([FSn][fsn]_[FSn][fsn])=([0-9]+)')
+verd = re.compile('.+(ORIGINAL_WIN|BACKUP_WIN)=([0-9]+)')
+re_date = re.compile("..+[-/]..[-/].. ..:..:..(,...)*")
+re_jc_startrun = re.compile(".+Job .+ running in uber mode.+")
+re_jc_stoprun = re.compile(".+Job .+ completed successfully")
+re_jc_duration = re.compile("The job took (.+) seconds.")
+
+def getLogTime(line):
+  datestr = re_date.search(line).group(0)
+  thedate = datetime.datetime.now()
+  if "-" in datestr:
+    thedate = datetime.datetime.strptime(datestr, "%Y-%m-%d %H:%M:%S,%f")
+  else:
+    thedate = datetime.datetime.strptime(datestr, "%y/%m/%d %H:%M:%S")
+
+  return thedate.strftime("%Y-%m-%d %H:%M:%S.%f")
+
+def strToDate(datestr):
+  return datetime.datetime.strptime(datestr, "%Y-%m-%d %H:%M:%S.%f")
+
+
+class JobCount:
+  def __init__(self, filename):
+    outfile = open(filename)
+    self.filename = filename
+    self.jobct = defaultdict(int)
+    self.verdct = defaultdict(int)
+
+    self.jobcountfound = False
+
+    linect = 0
+    for line in outfile:
+      m = pt.match(line)
+      if m:
+        self.jobct[m.group(1)] += int(m.group(2))
+        self.jobcountfound = True
+
+      m = verd.match(line)
+      if m:
+        self.verdct[m.group(1)] += int(m.group(2))
+
+      if linect == 0:
+        self.time_submit = strToDate(getLogTime(line))
+
+      if re_jc_startrun.match(line):
+        self.time_start = strToDate(getLogTime(line))
+
+      if re_jc_stoprun.match(line):
+        self.time_stop = strToDate(getLogTime(line))
+
+      match = re_jc_duration.match(line)
+      if match:
+        self.job_duration = int(match.group(1))
+
+      linect += 1
+
+    if not self.jobcountfound:
+      print "WARNING: no counter for " + filename
+
+
+def getJobs():
+  global JOB_FIRST, JOB_LAST
+  jobs = []
+  fct = 0
+  for root, dirnames, filenames in os.walk(os.getcwd()):
+    for inf in sorted(filenames):
+      if inf.startswith("job-"):
+        fct += 1
+        jc = JobCount(inf)
+        if (jc.jobcountfound):
+          jobs.append(jc)
+  print "%d/%d job output read" % (len(jobs),fct)
+  return jobs
+
+def getJobCount(jobs):
+  ct = defaultdict(int)
+  for job in jobs:
+    for k,v in job.jobct.items():
+      ct[k] += v
+  return ct
+
+def getVerdCount(jobs):
+  ct = defaultdict(int)
+  for job in jobs:
+    for k,v in job.verdct.items():
+      ct[k] += v
+  return ct
+
+def getLongestJob(jobs):
+  maxrun = 0
+  for job in jobs:
+    maxrun = maxrun if maxrun > job.job_duration \
+             else job.job_duration
+  return datetime.timedelta(seconds=maxrun)
+
+def getLongestWait(jobs):
+  maxwait = 0
+  for job in jobs:
+    wait = job.time_start - job.time_submit
+    if (not maxwait) or (maxwait < wait):
+      maxwait = wait
+  return maxwait
+
+def getExperimentTime(jobs):
+  start = 0
+  stop = 0
+  for job in jobs:
+    if (not start) or (start > job.time_start):
+      start = job.time_start
+    #print job.filename
+    if (not stop) or (stop < job.time_stop):
+      stop = job.time_stop
+  return (stop-start)
+
+def main():
+  jobs = getJobs()
+
+  ct = getJobCount(jobs)
+  total = 0
+  it = sorted(ct.items(),key=lambda x:x[0])
+
+  print "Count:"
+  total = 0
+  for k,v in it:
+    print "%s = %d" % (k,v)
+    total += v
+  print "Total : ", total
+  print ""
+
+  print "Percent :"
+  for k,v in it:
+    print "%s = %.0f" % (k,float(v)/total*100)
+  print ""
+
+  print "Exp_Time : ", getExperimentTime(jobs)
+  print ""
+
+  print "Verd Count :"
+  total = 0
+  for k,v in getVerdCount(jobs).items():
+    print "%s = %d" % (k,v)
+    total += v
+  print "Total : ", total
+  print ""
+
+  print "Longest_job : ", getLongestJob(jobs)
+  print "Longest_wait : ", getLongestWait(jobs)
+  print ""
+
+
+if __name__ == '__main__':
+  main()

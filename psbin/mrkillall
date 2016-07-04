@@ -1,0 +1,10 @@
+#!/bin/bash
+
+#mapred job -list | grep job_ | awk '{print $1}'
+#exit
+
+for jobid in `mapred job -list | grep job_ | awk '{print $1}'`
+do
+  echo "Killing ${jobid}"
+  mapred job -kill ${jobid}
+done

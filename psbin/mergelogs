@@ -1,0 +1,25 @@
+#!/bin/bash
+
+#rm -rf /proj/ucare/riza/datadir > /tmp/clreset.log
+
+echo "Merging logs"
+
+cd /tmp
+rm -rf logs
+
+for i in `seq 1 17`;
+do
+  echo "node-$i"
+  ssh node-$i 'cd /tmp/hadoop-riza ; tarit logs ;'
+  scp node-$i:/tmp/hadoop-riza/logs.tgz /tmp/
+  untarit logs.tgz
+done
+
+cd /tmp/logs/
+cp -r $TESTDIR/workGenLogs ./
+mv workGenLogs/genstats.py ./
+
+#cd yarn/userlogs/
+#cp $PR/expLogs/genstats.py ./
+#sed -i "s/^SLOWNODE=.*/SLOWNODE=8/" genstats.py
+#sed -i "s/^SLOWHOST=.*/SLOWHOST=\"pc812\"/" genstats.py

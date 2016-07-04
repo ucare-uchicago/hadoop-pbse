@@ -1,0 +1,49 @@
+
+BUILDING HADOOP PBSE
+
+To avoid errors when building modified version of Hadoop PBSE, we need
+the binaries from vanilla versions compilation. Follow this steps to
+compile properly:
+
+- Build base code from vanilla version (binary from vanilla version is
+  required to avoid compilation error from modified version)
+
+  git fetch origin
+  git checkout release-2.7.1
+  mvn clean
+  mvn compile
+
+- Return and build the modified code
+
+  release-2.7.1-memoryfull
+  mvn compile
+
+- Install modified jars to M2 chache and make dist package
+
+  mvn install
+  mvn package -Pdist -DskipTests
+
+This full build is required only once. Once we have full build of
+Hadoop PBSE, we can start making changes and do compilation per
+module/project (ie., hadoop-mapreduce-project, hadoop-hdfs-project)
+
+
+
+BUILDING PER MODULE
+
+For fast hacking, we don't want to do full build everytime we done
+implementing some modification. Therefore, I made custom script called
+'packsend' under modules that I modified heavily. You can find couple
+of this scripts by executing this command from the code root
+directory:
+
+find . -name packsend
+
+The packsend script essentially will do compilation and packaging per
+module, instead of full build, and send the modified jars to hadoop
+directory in emulab, overwriting the last version (be careful to make
+backup if necessary!). Go to the spesific module directory and run
+this script to build and send the modified jar.
+
+In order to do per module build, make sure you have install the jars
+from initial full build by calling 'mvn install' in previous steps.

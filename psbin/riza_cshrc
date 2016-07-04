@@ -1,0 +1,33 @@
+
+
+setenv PR "/proj/ucare/riza"
+setenv TESTDIR "/proj/ucare/riza/SWIM/workloadSuite/st-oneeight"
+
+setenv JAVA_HOME "/usr/lib/jvm/java-7-openjdk-amd64" # OpenJDK 1.7 Ubuntu
+setenv HADOOP_CLASSPATH "${JAVA_HOME}lib/tools.jar"
+
+setenv HADOOP_PREFIX "/proj/ucare/riza/hadoop-2.7.1.faread"
+setenv HADOOP_HOME "${HADOOP_PREFIX}"
+setenv HADOOP_CONF_DIR "/proj/ucare/riza/hadoop-etc/hadoop-2.7.1"
+
+setenv HADOOP_LOG_DIR "/tmp/hadoop-riza/logs/hadoop"
+setenv YARN_LOG_DIR "/tmp/hadoop-riza/logs/yarn"
+
+setenv PSBIN "${HADOOP_PREFIX}/psbin"
+setenv SWIMDIR "/proj/ucare/riza/SWIM"
+setenv PATH "${PATH}:${HADOOP_PREFIX}/bin:${HADOOP_PREFIX}/sbin:${PSBIN}"
+
+## RIZA'S SHORTCUTS
+
+alias pr	cd $PR
+alias e		emacs
+alias hp	cd $HADOOP_PREFIX
+alias hconf	cd $HADOOP_CONF_DIR
+alias hlogs	cd /tmp/logs/yarn/userlogs/
+alias m		make
+alias mall	make all
+alias n0	ssh node-0.riza-sandbox.ucare.emulab.net
+alias ben	cd $TESTDIR/workGenLogs/
+alias mjl	mapred job -list
+alias mjs	mapred job -status
+alias psbin     cd $HADOOP_PREFIX/psbin

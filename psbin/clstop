@@ -1,0 +1,6 @@
+#!/bin/bash
+
+stop-dfs.sh
+stop-yarn.sh
+#mr-jobhistory-daemon.sh stop historyserver
+ssh -t node-17 'mr-jobhistory-daemon.sh stop historyserver;'

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+echo "restore node-$1"
+
+tevc -e ucare/pbse now lan0-node-$1 modify bandwidth=1000000

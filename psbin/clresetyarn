@@ -1,0 +1,12 @@
+#!/bin/bash
+
+echo "Resetting cluster" > /tmp/clresetyarn.log
+
+for i in `seq 0 20`;
+do
+  echo "node-$i" >> /tmp/clresetyarn.log
+  ssh node-$i \
+   'rm -rf /mnt/extra/dfs-riza/nm-local-dir ;'  >> /tmp/clresetyarn.log
+done
+
+cat /tmp/clresetyarn.log
