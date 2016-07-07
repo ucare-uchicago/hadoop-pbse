@@ -15,7 +15,7 @@ compile properly:
 
 - Return and build the modified code
 
-  release-2.7.1-memoryfull
+  git checkout release-2.7.1-memoryfull
   mvn compile
 
 - Install modified jars to M2 chache and make dist package
