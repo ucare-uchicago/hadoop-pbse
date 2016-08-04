@@ -86,18 +86,18 @@ def printTasks(apps):
       printTask(container)
 
 
-def makeCDFPoints(vals, xlim = -1):
+def makeCDFPoints(vals):
   X = np.asarray(sorted(vals))
   Y = np.ones(len(vals))
   Y /= Y.sum()
   Y = np.cumsum(Y)
   X = np.insert(X,0,0)
   Y = np.insert(Y,0,0)
-  if CDF_Y_LIMIT < 1.0 or xlim > 0:
+  if CDF_Y_LIMIT < 1.0:
     TX = []
     TY = []
     for i in xrange(0,len(X)):
-      if (Y[i] <= CDF_Y_LIMIT) and ((xlim<0) or (X[i] <= xlim)):
+      if (Y[i] <= CDF_Y_LIMIT):
         TX.append(X[i])
         TY.append(Y[i])
     X = np.array(TX)
@@ -128,7 +128,7 @@ def combineGraphs(runs,selector,iscdf, xlim = -1):
   for runid,data in sorted(runs.items(), key=lambda x:x[0]):
     dat = selector(data["apps"])
     X,Y = ([],[])
-    X,Y = makeCDFPoints(dat, xlim)
+    X,Y = makeCDFPoints(dat)
     if (NORMALIZE):
       X = X.astype(float) / X.max()
     plt.plot(X, Y, data["conf"]["style_line"], label=runid)
