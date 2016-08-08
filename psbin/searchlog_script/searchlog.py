@@ -4,40 +4,20 @@ import os, re, sys
 import pprint
 import datetime
 import json
+import argparse
 from collections import defaultdict
 
 import numpy as np
 
+import table
+import query
+
 pp = pprint.PrettyPrinter(indent=2)
 
+parser = argparse.ArgumentParser(description='Query the log data. Edit query.json to refine your query.')
+parser.add_argument("file", help="JSON log data", nargs='?')
 
-################### DATA TABLE BEGIN ################
-
-# TODO: move this to separate script table.py
-
-TASKS = lambda apps: [task for aname,a in apps.items() \
-           for tname,task in a["containers"].items()]
-MAPS = lambda apps: [a for a in TASKS(apps) if (a["ismap"])]
-JOBS_BY_AM = lambda apps: [a["master"] for aname,a in apps.items()]
-JOBS_BY_JC = lambda apps: [a["jobclient"] for aname,a in apps.items() if ("jobclient" in a)]
-
-################### DATA TABLE END   ################
-
-
-################### QUERY BEGIN ###################
-
-# TODO: move this to separate script query.py
-# Haryadi only need to edit query.py to able to see the data
-
-FROM = MAPS
-WHERE = lambda map: not map['attempt'].endswith('_0') and map['datanode'] != []
-SELECT = lambda map: (map['attempt'], map['mapnode'], map['datanode'][-1])
-
-# Explanation: Select attempt_id, mapnode, and last datanode acessed
-# from all map tasks where it's not the original map task and has
-# start reading from some datanode
-
-################### QUERY END   ###################
+args = parser.parse_args()
 
 
 def getTaskId(ct):
@@ -65,15 +45,21 @@ def loadExpStats(filename):
     return data
 
 def main():
+  try:
+    arg1 = sys.argv[1]
+  except IndexError:
+    print "Usage: searchlog.py <json file>"
+    sys.exit(1)
+
   data = loadExpStats(sys.argv[1])
 
   # querying
-  results = [SELECT(row) for row in FROM(data['apps']) if WHERE(row)]
+  results = [query.SELECT(row) for row in query.FROM(data['apps']) if query.WHERE(row)]
   
   # printing
   for res in results:
     print res
 
 
-if __name__ == '__main__':
-  main()
+if __name__ == '__main__':  
+    main()
