@@ -77,3 +77,25 @@ RUNNING EXPERIMENT
 
    cd $PSBIN
    ./savelogs.sh log_desc
+
+
+MAKING GRAPH FROM ONE/MULTIPLE EXPERIMENT RUN
+
+1. Copy your saved-compressed logs to /tmp/ or any safe directory, and
+   untar it.
+
+2. cd to the folder. Inside you will have script genstats.py from
+   runbenchmark script. Run it from this derectory to create
+   experiment graph and summarized json data.
+
+   ./genstats.py
+
+3. Rename data.json to new name reflecting the experiment where it
+   came from. Save it.
+
+4. To merge data from multiple experiment into single graph, copy the
+   json from each experiment and script $PSBIN/combinestats.py into
+   single directory.
+   Run combinestats.py from that directory.
+
+   ./combinestats.py
