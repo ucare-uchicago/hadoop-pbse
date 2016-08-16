@@ -18,7 +18,7 @@ pp = pprint.PrettyPrinter(indent=2)
 
 cassign = re.compile('.+ Assigned container (.+) to (.+)')
 tasknode = re.compile('.+ TaskAttempt: \[(.+)\].+ on NM: \[(.+):.+\]')
-dataread = re.compile('.+ reporting datanode (.+)')
+dataread = re.compile('.+ Connecting to datanode (.+)')
 re_date = re.compile("..+[-/]..[-/].. ..:..:..(,...)*")
 re_hb = re.compile(".*statusUpdate.*")
 re_am_finalct = re.compile(".+Final Stats: PendingReds:(.+) ScheduledMaps:(.+) ScheduledReds:(.+) AssignedMaps:(.+) AssignedReds:(.+) CompletedMaps:(.+) CompletedReds:(.+) ContAlloc:(.+) ContRel:(.+) HostLocal:(.+) RackLocal:(.+)")
@@ -111,7 +111,9 @@ def getMasterStats(app):
           "containerid": ct,
           "attempt": att, \
           "mapnode": "", \
-          "datanode": [],
+          "isSlowMapnode": "", \
+          "datanode": [], \
+          "isSlowDatanode": "", \
           "ismap" : ("_m_" in att)
         }
         app["containers"][ct] = container
@@ -124,6 +126,7 @@ def getMasterStats(app):
       for cname,ctr in app["containers"].items():
         if ctr["attempt"] == att:
           ctr["mapnode"] = mapnode
+          ctr["isSlowMapnode"] = mapnode.startswith(SLOWHOST)
 
     match = re_am_finalct.match(line)
     if match:
@@ -171,6 +174,8 @@ def getContainerStats(app):
       if match:
         datanode = match.group(1)
         ct["datanode"].append(datanode)
+        if datanode.startswith(SLOWIP):
+            ct["isSlowDatanode"] = True
 
       if re_hb.match(line):
         ct["status_update"].append(getLogTime(line))
@@ -228,7 +233,9 @@ def getTopology():
               "containerid": subdirname,
               "attempt": "", \
               "mapnode": "", \
+              "isSlowMapnode": False, \
               "datanode": [],
+              "isSlowDatanode": False, \
               "ismap": False
               }
             apps[theroot]["containers"][subdirname] = container
