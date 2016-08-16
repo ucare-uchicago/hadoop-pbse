@@ -1,12 +1,12 @@
 #!/bin/bash
 
-echo "Initial cluster setup" > /tmp/clsetup.log
+echo "Initial cluster setup" > /tmp/$USER-clsetup.log
 
 for i in `seq 0 20`;
 do
-  echo "node-$i" >> /tmp/clsetup.log
+  echo "node-$i" >> /tmp/$USER-clsetup.log
   ssh -t node-$i \
-   'sudo chown riza /mnt/extra; chmod 777 /mnt/extra;'  >> /tmp/clsetup.log
+   'sudo chown :ucare /mnt/extra; sudo chmod 777 /mnt/extra;'  >> /tmp/$USER-clsetup.log
 done
 
-cat /tmp/clsetup.log
+cat /tmp/$USER-clsetup.log

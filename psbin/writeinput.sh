@@ -8,4 +8,4 @@ ssh -t node-16 "dfsformat;"
 cp pbse_conf/writeconf/* $HADOOP_CONF_DIR/
 
 ssh -t node-17 "clstart;sleep 10;"
-ssh -t node-0 "cd $PSBIN; ./prep_run.sh > /tmp/writeinput.log &;"
+ssh -t node-0 "prep_run.sh > /tmp/writeinput.log &;"

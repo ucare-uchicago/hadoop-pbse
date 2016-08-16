@@ -1,14 +1,13 @@
 #!/bin/bash
 
-#rm -rf /proj/ucare/riza/datadir > /tmp/clreset.log
 
-echo "Cleaning up logs" > /tmp/clcleanup.log
+echo "Cleaning up logs" > /tmp/$USER-clcleanup.log
 
 for i in `seq 0 20`;
 do
-  echo "node-$i" >> /tmp/clcleanup.log
+  echo "node-$i" >> /tmp/$USER-clcleanup.log
   ssh node-$i \
-   'rm -rf /tmp/hadoop-riza/logs* ;'  >> /tmp/clcleanup.log
+   'rm -rf /tmp/hadoop-ucare/logs* ;'  >> /tmp/$USER-clcleanup.log
 done
 
-cat /tmp/clcleanup.log
+cat /tmp/$USER-clcleanup.log
