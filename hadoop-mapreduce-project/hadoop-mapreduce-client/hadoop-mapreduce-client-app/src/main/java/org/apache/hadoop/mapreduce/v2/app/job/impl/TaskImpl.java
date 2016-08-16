@@ -1155,8 +1155,8 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 
   private static class RetroactiveKilledTransition implements
     MultipleArcTransition<TaskImpl, TaskEvent, TaskStateInternal> {
-
-    @Override
+	  
+	@Override
     public TaskStateInternal transition(TaskImpl task, TaskEvent event) {
       TaskAttemptId attemptId = null;
       if (event instanceof TaskTAttemptEvent) {
@@ -1171,7 +1171,12 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
           return TaskStateInternal.SUCCEEDED;
         }
       }
-
+      else{
+    	  // @Cesar: The attempt id is the one stored in the fetch
+    	  // rate report. Notice that the if in this case does not applies
+    	  attemptId = event.getSlowMapperAttemptId();
+      }
+      
       // a successful REDUCE task should not be overridden
       // TODO: consider moving it to MapTaskImpl
       if (!TaskType.MAP.equals(task.getType())) {
@@ -1182,9 +1187,21 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
       // successful attempt is now killed. reschedule
       // tell the job about the rescheduling
       unSucceed(task);
-      task.handleTaskAttemptCompletion(attemptId,
-          TaskAttemptCompletionEventStatus.KILLED);
+      // @Cesar: Also, add diagnostic info to the job
+	  // @Cesar: TODO -> this should be a constant
+      task.eventHandler.handle(new JobDiagnosticsUpdateEvent(
+    	        		  		task.getID().getJobId(), 
+    	        		  		"An attempt was killed due to slow shuffle. It ran at host " + event.getSlowMapper()
+    	        		  		+ " and now is going to be speculated in another node."));
+      
+      task.eventHandler.handle(new TaskAttemptKillEvent(attemptId,
+              				   "Task attempt " + attemptId + " killed due to slow shuffle at host " + event.getSlowMapper(),
+              				   true));
+	  task.handleTaskAttemptCompletion(attemptId,
+				   TaskAttemptCompletionEventStatus.KILLED);
+	  // @Cesar: Increment the counters for this task
       task.eventHandler.handle(new JobMapTaskRescheduledEvent(task.taskId));
+      
       // typically we are here because this map task was run on a bad node and
       // we want to reschedule it on a different node.
       // Depending on whether there are previous failed attempts or not this
@@ -1194,6 +1211,10 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
       // to the RM. But the RM would ignore that just like it would ignore
       // currently pending container requests affinitized to bad nodes.
       task.addAndScheduleAttempt(Avataar.VIRGIN);
+      // @Cesar: We also blacklist the bad mappers
+      if(event.getSlowMapper() != null){
+    	  task.appContext.getBlacklistedNodes().add(event.getSlowMapper());
+      }
       return TaskStateInternal.SCHEDULED;
     }
   }

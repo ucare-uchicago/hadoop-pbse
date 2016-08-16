@@ -36,7 +36,9 @@ public interface Speculator
     ATTEMPT_STATUS_UPDATE,
     ATTEMPT_START,
     TASK_CONTAINER_NEED_UPDATE,
-    JOB_CREATE
+    JOB_CREATE,
+    // @Cesar: Added this type to launch fetch rate update events
+    ATTEMPT_FETCH_RATE_UPDATE
   }
 
   // This will be implemented if we go to a model where the events are

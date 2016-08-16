@@ -20,6 +20,8 @@ package org.apache.hadoop.mapreduce.task.reduce;
 import java.io.IOException;
 import java.util.Map;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.mapred.JobConf;
@@ -38,6 +40,7 @@ import org.apache.hadoop.util.Progress;
 @InterfaceStability.Unstable
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionReporter {
+  private static final Log LOG = LogFactory.getLog(Shuffle.class);	
   private static final int PROGRESS_FREQUENCY = 2000;
   private static final int MAX_EVENTS_TO_FETCH = 10000;
   private static final int MIN_EVENTS_TO_FETCH = 100;
@@ -125,6 +128,9 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
       }
     }
     
+    // @Cesar: Start measuring suffle time
+    long shuffleTimeStart = System.nanoTime();
+    
     // Wait for shuffle to complete successfully
     while (!scheduler.waitUntilDone(PROGRESS_FREQUENCY)) {
       reporter.progress();
@@ -148,6 +154,10 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
     // stop the scheduler
     scheduler.close();
 
+    // @Cesar: Log shuffle finish time
+    long shuffleTimeStop = System.nanoTime();
+    LOG.info("@Cesar: Shuffle time for this reducer is " + (shuffleTimeStop - shuffleTimeStart) + " nanoseconds");
+    
     copyPhase.complete(); // copy is already complete
     taskStatus.setPhase(TaskStatus.Phase.SORT);
     reduceTask.statusUpdate(umbilical);

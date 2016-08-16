@@ -39,6 +39,7 @@ import org.apache.hadoop.mapred.IFileInputStream;
 import org.apache.hadoop.mapred.Reporter;
 
 import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.task.reduce.ShuffleData.DataSource;
 
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
@@ -94,33 +95,52 @@ class InMemoryMapOutput<K, V> extends MapOutput<K, V> {
     }
   
     try {
-      // riza: collapse IOUtils.readFully to measure copy rate
-      // IOUtils.readFully(input, memory, 0, memory.length);
-      long elapsedTime = 0;
+	  // @Cesar: We know the mapper host here
+	  String mapperHost = host.getHostName();
       org.apache.hadoop.mapred.TaskAttemptID oldId =
           org.apache.hadoop.mapred.TaskAttemptID.downgrade(getMapId());
       int off = 0;
       int toRead = memory.length;
+      int reportNumber = 1;
+      long elapsedNanos = 0L;
       while (toRead > 0) {
-        long rStart = System.currentTimeMillis();
+    	long startNanos = System.nanoTime();
         int ret = input.read(memory, off, toRead);
-        long rStop = System.currentTimeMillis();
-        elapsedTime += rStop - rStart;
+        long endNanos = System.nanoTime();
+        // @Cesar: calculate here
+        elapsedNanos += endNanos - startNanos;
         if (ret < 0) {
           throw new IOException( "Premature EOF from inputStream");
         }
         toRead -= ret;
         off += ret;
         metrics.inputBytes(ret);
-        if (memory.length > 0 && elapsedTime > 0 && host.getHostName()!="Local")
-          reporter.setShuffleRate(oldId,
-              Math.round((memory.length-toRead)*8/(elapsedTime/1000.0)));
+        if (memory.length > 0 && elapsedNanos > 0){
+        	// @Cesar: add info here
+			ShuffleData shuffleData = new ShuffleData();
+			shuffleData.setBytes(memory.length - toRead);
+			shuffleData.setNanos(elapsedNanos);
+			shuffleData.setTransferRate();
+			shuffleData.setDataSource(DataSource.IN_MEMORY);
+			shuffleData.setTotalBytes(memory.length);
+			shuffleData.setMapTaskId(getMapId());
+			// @Cesar: Log at debug level
+			if(LOG.isDebugEnabled()){
+				LOG.debug("@Cesar: [mapHost=" + mapperHost + "]Report " + reportNumber + " read " + shuffleData.getBytes() + 
+						" of a total of " + shuffleData.getTotalBytes() + " bytes. Compressed lenght is " + compressedLength +
+						". The elapsed nanos are " + elapsedNanos + " and the reported transfer rate will be " + shuffleData.getTransferRate());
+			}
+			++reportNumber;
+			reporter.addFetchRateReport(mapperHost, shuffleData);
+			// @Cesar: Done, keep working
+        }
+        // @Cesar: Progress
         reporter.progress();
       }
-      //metrics.inputBytes(memory.length);
-      //reporter.progress();
-      LOG.info("Read " + memory.length + " bytes from map-output for " +
-                getMapId());
+
+      // @Cesar: Log when finished
+      LOG.info("@Cesar: Read " + memory.length + " bytes from map-output for " +
+              	getMapId() + " in " + reportNumber + " iterations. This process took " + elapsedNanos + " nanoseconds");
 
       /**
        * We've gotten the amount of data we were expecting. Verify the

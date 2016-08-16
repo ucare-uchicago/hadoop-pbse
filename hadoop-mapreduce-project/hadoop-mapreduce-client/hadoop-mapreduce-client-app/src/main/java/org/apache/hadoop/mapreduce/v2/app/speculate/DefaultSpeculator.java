@@ -18,11 +18,17 @@
 
 package org.apache.hadoop.mapreduce.v2.app.speculate;
 
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -34,6 +40,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.MRJobConfig;
+import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.TypeConverter;
+import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
+import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 import org.apache.hadoop.mapreduce.v2.api.records.JobId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptState;
@@ -50,7 +60,6 @@ import org.apache.hadoop.service.AbstractService;
 import org.apache.hadoop.yarn.event.EventHandler;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
 import org.apache.hadoop.yarn.util.Clock;
-
 import com.google.common.annotations.VisibleForTesting;
 
 public class DefaultSpeculator extends AbstractService implements
@@ -68,7 +77,7 @@ public class DefaultSpeculator extends AbstractService implements
   private double proportionRunningTasksSpeculatable;
   private double proportionTotalTasksSpeculatable;
   private int  minimumAllowedSpeculativeTasks;
-
+  
   private static final Log LOG = LogFactory.getLog(DefaultSpeculator.class);
 
   private final ConcurrentMap<TaskId, Boolean> runningTasks
@@ -79,6 +88,13 @@ public class DefaultSpeculator extends AbstractService implements
   private final ConcurrentMap<TaskAttemptId, TaskAttemptHistoryStatistics>
       runningTaskAttemptStatistics = new ConcurrentHashMap<TaskAttemptId,
           TaskAttemptHistoryStatistics>();
+  
+  // @Cesar: To hold the info about the reported fetch rates
+  private ShuffleTable shuffleTable = new ShuffleTable();
+  private boolean fetchRateSpeculationEnabled = false;
+  private double fetchRateSpeculationSlowNodeThresshold = 0.0;
+  private double fetchRateSpeculationSlowProgressThresshold = 0.0;
+  
   // Regular heartbeat from tasks is every 3 secs. So if we don't get a
   // heartbeat in 9 secs (3 heartbeats), we simulate a heartbeat with no change
   // in progress.
@@ -93,17 +109,21 @@ public class DefaultSpeculator extends AbstractService implements
       = new ConcurrentHashMap<JobId, AtomicInteger>();
 
   private final Set<TaskId> mayHaveSpeculated = new HashSet<TaskId>();
-
+  
   private final Configuration conf;
   private AppContext context;
   private Thread speculationBackgroundThread = null;
+  // @Cesar: This is my speculation background thread
+  private Thread speculationFetchRateThread = null;
   private volatile boolean stopped = false;
   private BlockingQueue<SpeculatorEvent> eventQueue
       = new LinkedBlockingQueue<SpeculatorEvent>();
   private TaskRuntimeEstimator estimator;
 
   private BlockingQueue<Object> scanControl = new LinkedBlockingQueue<Object>();
-
+  private BlockingQueue<Object> fetchRateScanControl = new LinkedBlockingQueue<Object>();
+  
+  
   private final Clock clock;
 
   private final EventHandler<TaskEvent> eventHandler;
@@ -178,8 +198,13 @@ public class DefaultSpeculator extends AbstractService implements
     this.minimumAllowedSpeculativeTasks =
         conf.getInt(MRJobConfig.SPECULATIVE_MINIMUM_ALLOWED_TASKS,
                 MRJobConfig.DEFAULT_SPECULATIVE_MINIMUM_ALLOWED_TASKS);
+    // @Cesar: read the properties
+    this.fetchRateSpeculationEnabled = conf.getBoolean("mapreduce.experiment.enable_fetch_rate_speculation", false);
+    this.fetchRateSpeculationSlowNodeThresshold = conf.getDouble("mapreduce.experiment.fetch_rate_speculation_slow_thresshold", Double.MAX_VALUE);
+    this.fetchRateSpeculationSlowProgressThresshold = conf.getDouble("mapreduce.experiment.fetch_rate_speculation_progress_thresshold", Double.MAX_VALUE);
+    
   }
-
+  
 /*   *************************************************************    */
 
   // This is the task-mongering that creates the two new threads -- one for
@@ -222,7 +247,48 @@ public class DefaultSpeculator extends AbstractService implements
     speculationBackgroundThread = new Thread
         (speculationBackgroundCore, "DefaultSpeculator background processing");
     speculationBackgroundThread.start();
-
+    if(fetchRateSpeculationEnabled){
+    	// @Cesar: Create a new thread to speculate using the fetch rate
+        Runnable speculationFetchRate = new Runnable(){
+    		@Override
+    		public void run() {
+    			// @Cesar: In here, we check the table and speculate
+    			// if necessary
+    			while (!stopped && !Thread.currentThread().isInterrupted()){
+    				try{
+    					long backgroundRunStartTime = clock.getTime();
+    					// @Cesar: Log some info
+    					LOG.debug("@Cesar: Starting fetch rate speculation check");
+    					int numSpeculations = checkFetchRateTable();
+    	    			// @Cesar: Same methodolody as default thread
+    	    			long mininumRecomp
+    	                		= numSpeculations > 0 ? soonestRetryAfterSpeculate
+    	                                   			    : soonestRetryAfterNoSpeculate;
+    	                long wait = Math.max(mininumRecomp,
+    	                        clock.getTime() - backgroundRunStartTime);
+    	                if (numSpeculations > 0) {
+    	                    LOG.debug("@Cesar: We launched " + numSpeculations
+    	                        + " speculations.  Sleeping " + wait + " milliseconds.");
+    	                }
+    	                LOG.debug("@Cesar: Finished checking for speculations");
+    	                // @Cesar: Sleep a while
+    	                Object dummy = fetchRateScanControl.poll(wait, TimeUnit.MILLISECONDS);
+    				}
+    				catch(InterruptedException ie){
+    					if(!stopped){
+    						LOG.error("@Cesar: Background thread returning, interrupted", ie);
+    					}
+    					// @Cesar: Get out
+    					return;
+    				}
+	    			
+    			}
+    		}
+        };
+    	speculationFetchRateThread = new Thread(speculationFetchRate, "@Cesar: Fetch rate "
+    			+ " speculation background processing");
+    	speculationFetchRateThread.start();
+    }
     super.serviceStart();
   }
 
@@ -233,9 +299,82 @@ public class DefaultSpeculator extends AbstractService implements
     if (speculationBackgroundThread != null) {
       speculationBackgroundThread.interrupt();
     }
+    // @Cesar: Also interrupt this one
+    if(speculationFetchRateThread != null){
+    	speculationFetchRateThread.interrupt();
+    }
     super.serviceStop();
   }
-
+  
+  // @Cesar: Check the table, return num speculations
+  private int checkFetchRateTable(){
+	  // @Cesar: This will be the return value
+	  int numSpeculatedMapTasks = 0;
+	  // @Cesar: This is the class that selects wich nodes
+	  // are slow
+	  HarmonicAverageSlowShuffleEstimator estimator = new HarmonicAverageSlowShuffleEstimator();
+	  // @Cesar: In here, we have to check the shuffle rate for
+	  // one mapper, and choose if we are going to speculate 
+	  // or not
+	  // @Cesar: So, iterate the fetch rate table
+	  LOG.info("@Cesar: Starting fetch rate speculation check");
+	  Map<ShuffleHost, Set<ShuffleRateInfo>> allReports = shuffleTable.getReports();
+	  // @Cesar: Log some info also
+	  LOG.info("@Cesar: Fetch rate table is " + shuffleTable);
+	  // @Cesar: Done released object, now go
+	  // Lets iterate
+	  if(allReports != null){
+		  // @Cesar: Mark this hosts to be checked to delete if no entries
+		  LOG.info("@Cesar: We have " + allReports.size() + " map hosts to check");
+		  Iterator<Entry<ShuffleHost, Set<ShuffleRateInfo>>> fetchRateTableIterator = allReports.entrySet().iterator();
+		  while(fetchRateTableIterator.hasNext()){
+			  Entry<ShuffleHost, Set<ShuffleRateInfo>> nextEntry = fetchRateTableIterator.next();
+			  // @Cesar: Do we have enough reports to speculate something??
+			  if(!shuffleTable.canSpeculate(nextEntry.getKey().getMapHost())){
+				  // @Cesar: Continue loop
+				  LOG.info("@Cesar: No speculation possible for host " + nextEntry.getKey().getMapHost() + 
+						  	" since it does not have enough reports");
+				  continue;
+			  }
+			  // @Cesar: So, in this row we have one map host.
+			  // This map host can have multiple map task associated, so if we detect
+			  // that this node is slow, then we will relaunch all tasks in here
+			  if(estimator.isSlow(nextEntry.getKey().getMapHost(), 
+					  			  nextEntry.getValue(), 
+					  			  fetchRateSpeculationSlowNodeThresshold, 
+					  			  fetchRateSpeculationSlowProgressThresshold)){
+				  // @Cesar: So, this node is slow. Get all its map tasks
+				  Set<TaskAttemptId> allMapTasksInHost = shuffleTable.getAllSuccessfullMapTaskAttemptsFromHost(nextEntry.getKey().getMapHost());
+				  LOG.info("@Cesar: " + allMapTasksInHost.size() + " map tasks will be speculated at " + nextEntry.getKey());
+				  Iterator<TaskAttemptId> mapIterator = allMapTasksInHost.iterator();
+				  while(mapIterator.hasNext()){
+					  TaskAttemptId next = mapIterator.next(); 
+					  if(!shuffleTable.wasSpeculated(next.getTaskId())){
+						  // @Cesar: Only speculate if i havent done it already
+						  LOG.info("@Cesar: Relaunching attempt " + next + " of task " + next.getTaskId() + 
+								  	" at host " + nextEntry.getKey().getMapHost());
+						  relaunchTask(next.getTaskId(), nextEntry.getKey().getMapHost(), next);
+						  // @Cesar: also, add to the list of tasks that may have been speculated already
+						  shuffleTable.bannMapTask(next.getTaskId());
+						  // @Cesar: This is the real number of speculated map tasks
+						  ++numSpeculatedMapTasks;
+						  // @Cesar: Bann reports
+						  shuffleTable.bannReportersAndCleanHost(nextEntry.getValue(), nextEntry.getKey().getMapHost());
+					  }
+					  else{
+						  LOG.info("@Cesar: Not going to relaunch " + next + " since task " + next.getTaskId() + " was speculated already");
+					  }
+				  }
+			  }
+			  else{
+				  LOG.info("Estimator established that " + nextEntry.getKey().getMapHost() + " is not slow, so no speculations for this host");
+			  }
+		  }
+	  }
+	  LOG.info("@Cesar: Finished fetch rate speculation check");
+	  return numSpeculatedMapTasks;
+  }
+  
   @Override
   public void handleAttempt(TaskAttemptStatus status) {
     long timestamp = clock.getTime();
@@ -285,8 +424,14 @@ public class DefaultSpeculator extends AbstractService implements
     switch (event.getType()) {
       case ATTEMPT_STATUS_UPDATE:
         statusUpdate(event.getReportedStatus(), event.getTimestamp());
+        // @Cesar: Is this a success event? is this a map task? is fetch rate spec enabled?
+        if(event.isSuccedded() && event.getReportedStatus().id.getTaskId().getTaskType() == TaskType.MAP && 
+           fetchRateSpeculationEnabled){
+        	// @Cesar: Report attempt as finished
+        	shuffleTable.reportSuccessfullAttempt(event.getMapperHost(), event.getReportedStatus().id);
+        	LOG.info("@Cesar: Reported successfull map at " + event.getMapperHost()  + " : " + event.getReportedStatus().id);
+        }
         break;
-
       case TASK_CONTAINER_NEED_UPDATE:
       {
         AtomicInteger need = containerNeed(event.getTaskID());
@@ -299,6 +444,12 @@ public class DefaultSpeculator extends AbstractService implements
         LOG.info("ATTEMPT_START " + event.getTaskID());
         estimator.enrollAttempt
             (event.getReportedStatus(), event.getTimestamp());
+        // @Cesar: Enroll also in here
+        if(event.getTaskID().getTaskType() == TaskType.MAP && fetchRateSpeculationEnabled){
+        	// @Cesar: An attempt started for a given map task
+        	shuffleTable.reportStartedTask(event.getMapperHost(), event.getTaskID());
+        	LOG.info("@Cesar: Map task reported at node " + event.getMapperHost() + " : " + event.getTaskID());
+        }
         break;
       }
       
@@ -307,6 +458,41 @@ public class DefaultSpeculator extends AbstractService implements
         LOG.info("JOB_CREATE " + event.getJobID());
         estimator.contextualize(getConfig(), context);
         break;
+      }
+      // @Cesar: Handle fetch rate update
+      case ATTEMPT_FETCH_RATE_UPDATE:
+      {
+    	FetchRateReport report = event.getReport();
+    	String reduceHost = ShuffleTable.parseHost(event.getReducerNode());
+    	if(reduceHost != null && fetchRateSpeculationEnabled){
+    		// @Cesar: If we are here, report is not null
+    		for(Entry<String, ShuffleData> reportEntry : report.getFetchRateReport().entrySet()){
+    			// @Cesar: This is the report for one mapper
+    			String mapHost = ShuffleTable.parseHost(reportEntry.getKey());
+    			ShuffleRateInfo info = new ShuffleRateInfo();
+    			info.setFetchRate(reportEntry.getValue().getTransferRate());
+    			info.setMapHost(mapHost);
+    			info.setMapTaskAttempId(TypeConverter.toYarn(reportEntry.getValue().getMapTaskId()));
+    			info.setReduceHost(reduceHost);
+    			info.setReduceTaskAttempId(event.getReduceTaskId());
+    			info.setTransferProgress(reportEntry.getValue().getBytes() / (reportEntry.getValue().getTotalBytes() != 0?
+    																		  reportEntry.getValue().getTotalBytes() : 1.0));
+    			info.setTotalBytes(reportEntry.getValue().getTotalBytes());
+    			info.setShuffledBytes(reportEntry.getValue().getBytes());
+    			info.setUnit(reportEntry.getValue().getTransferRateUnit().toString());
+    			shuffleTable.reportRate(new ShuffleHost(mapHost), info);
+    			// @Cesar: Done
+    			LOG.info("@Cesar: Added report with " + info);
+    		}
+    	}
+    	else{
+    		// @Cesar: Small error, just log it. It should never happen
+    		LOG.error("@Cesar: Trying to update fetch rate report with null reducer. Data is " + 
+    				  report);
+    	}
+        // @Cesar: Log that this event happened
+    	LOG.info("ATTEMPT_FETCH_RATE_UPDATE " + event.getReduceTaskId());
+    	break;
       }
     }
   }
@@ -336,7 +522,7 @@ public class DefaultSpeculator extends AbstractService implements
     if (task == null) {
       return;
     }
-
+    
     estimator.updateAttempt(reportedStatus, timestamp);
 
     if (stateString.equals(TaskAttemptState.RUNNING.name())) {
@@ -348,6 +534,9 @@ public class DefaultSpeculator extends AbstractService implements
       }
     }
   }
+  
+  
+  
 
 /*   *************************************************************    */
 
@@ -371,19 +560,20 @@ public class DefaultSpeculator extends AbstractService implements
     Map<TaskAttemptId, TaskAttempt> attempts = task.getAttempts();
     long acceptableRuntime = Long.MIN_VALUE;
     long result = Long.MIN_VALUE;
-
+    
     if (!mayHaveSpeculated.contains(taskID)) {
       acceptableRuntime = estimator.thresholdRuntime(taskID);
       if (acceptableRuntime == Long.MAX_VALUE) {
-        return ON_SCHEDULE;
+    	  return ON_SCHEDULE;
       }
     }
 
     TaskAttemptId runningTaskAttemptID = null;
 
     int numberRunningAttempts = 0;
-
+    
     for (TaskAttempt taskAttempt : attempts.values()) {
+        
       if (taskAttempt.getState() == TaskAttemptState.RUNNING
           || taskAttempt.getState() == TaskAttemptState.STARTING) {
         if (++numberRunningAttempts > 1) {
@@ -442,16 +632,16 @@ public class DefaultSpeculator extends AbstractService implements
         }
 
         result = estimatedEndTime - estimatedReplacementEndTime;
+      
       }
     }
-
+    
     // If we are here, there's at most one task attempt.
     if (numberRunningAttempts == 0) {
       return NOT_RUNNING;
     }
 
-
-
+    
     if (acceptableRuntime == Long.MIN_VALUE) {
       acceptableRuntime = estimator.thresholdRuntime(taskID);
       if (acceptableRuntime == Long.MAX_VALUE) {
@@ -459,6 +649,7 @@ public class DefaultSpeculator extends AbstractService implements
       }
     }
 
+    
     return result;
   }
 
@@ -470,6 +661,18 @@ public class DefaultSpeculator extends AbstractService implements
     mayHaveSpeculated.add(taskID);
   }
 
+  // @Cesar: I will use this to send my map speculative attempt for now
+  // It can change if at the end of the day i discover that is the same
+  // using addSpeculativeAttempt
+  protected void relaunchTask(TaskId taskID, String mapperHost, TaskAttemptId mapId) {
+    LOG.info
+        ("DefaultSpeculator.relaunchTask -- we are speculating a map task of id " + taskID);
+    eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ATTEMPT_KILLED, mapperHost, mapId));
+    // @Cesar: Add this as speculated
+	mayHaveSpeculated.add(taskID);
+	shuffleTable.unsucceedTaskAtHost(mapperHost, taskID);
+  }
+  
   @Override
   public void handle(SpeculatorEvent event) {
     processSpeculatorEvent(event);
@@ -485,10 +688,8 @@ public class DefaultSpeculator extends AbstractService implements
   }
 
   private int maybeScheduleASpeculation(TaskType type) {
-    int successes = 0;
-
+	int successes = 0;
     long now = clock.getTime();
-
     ConcurrentMap<JobId, AtomicInteger> containerNeeds
         = type == TaskType.MAP ? mapContainerNeeds : reduceContainerNeeds;
 
@@ -514,7 +715,7 @@ public class DefaultSpeculator extends AbstractService implements
       int numberAllowedSpeculativeTasks
           = (int) Math.max(minimumAllowedSpeculativeTasks,
               proportionTotalTasksSpeculatable * tasks.size());
-
+     
       TaskId bestTaskID = null;
       long bestSpeculationValue = -1L;
 
@@ -543,11 +744,12 @@ public class DefaultSpeculator extends AbstractService implements
       // If we found a speculation target, fire it off
       if (bestTaskID != null
           && numberAllowedSpeculativeTasks > numberSpeculationsAlready) {
+    	 
         addSpeculativeAttempt(bestTaskID);
         ++successes;
       }
     }
-
+    
     return successes;
   }
 

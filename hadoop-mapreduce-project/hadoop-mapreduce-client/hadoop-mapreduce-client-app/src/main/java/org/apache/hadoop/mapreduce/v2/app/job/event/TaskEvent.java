@@ -19,6 +19,10 @@
 package org.apache.hadoop.mapreduce.v2.app.job.event;
 
 import org.apache.hadoop.yarn.event.AbstractEvent;
+
+import java.util.List;
+
+import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskId;
 
 /**
@@ -28,13 +32,37 @@ import org.apache.hadoop.mapreduce.v2.api.records.TaskId;
 public class TaskEvent extends AbstractEvent<TaskEventType> {
 
   private TaskId taskID;
-
+  // @Cesar: This mapper is slow during shuffle
+  private String slowMapper = null; 
+  // @Cesar: This the task attempt id
+  private TaskAttemptId slowMapperAttemptId = null;
+  
+  
   public TaskEvent(TaskId taskID, TaskEventType type) {
     super(type);
     this.taskID = taskID;
   }
 
+  // @Cesar: Added for support
+  public TaskEvent(TaskId taskID, TaskEventType type, String slowMapper, TaskAttemptId attemptId) {
+    super(type);
+    this.taskID = taskID;
+    this.slowMapper = slowMapper;
+    this.slowMapperAttemptId = attemptId;
+  }
+  
   public TaskId getTaskID() {
     return taskID;
   }
+  
+  public String getSlowMapper(){
+	  return slowMapper;
+  }
+
+  public TaskAttemptId getSlowMapperAttemptId() {
+	  return slowMapperAttemptId;
+  }
+
+  
+  
 }

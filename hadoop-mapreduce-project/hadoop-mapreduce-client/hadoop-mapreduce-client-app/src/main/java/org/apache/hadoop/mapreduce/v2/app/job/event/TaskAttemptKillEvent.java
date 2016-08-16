@@ -24,14 +24,28 @@ import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
 public class TaskAttemptKillEvent extends TaskAttemptEvent {
 
   private final String message;
+  private boolean justLog = false; 
 
+  // @Cesar: Added a new constructor
   public TaskAttemptKillEvent(TaskAttemptId attemptID,
       String message) {
     super(attemptID, TaskAttemptEventType.TA_KILL);
     this.message = message;
+    this.justLog = false;
   }
+  
+  public TaskAttemptKillEvent(TaskAttemptId attemptID,
+	      String message, boolean justLog) {
+	    super(attemptID, TaskAttemptEventType.TA_KILL);
+	    this.message = message;
+	    this.justLog = justLog;
+	  }
 
   public String getMessage() {
     return message;
+  }
+  
+  public boolean isJustLogging(){
+	  return this.justLog;
   }
 }

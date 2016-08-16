@@ -23,6 +23,7 @@ import java.util.Map;
 
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.mapreduce.Counters;
+import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
 import org.apache.hadoop.mapreduce.v2.api.records.Phase;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptState;
@@ -58,7 +59,8 @@ public class TaskAttemptStatusUpdateEvent extends TaskAttemptEvent {
     public TaskAttemptState taskState;
     // riza: PBSE piggyback
     public DatanodeID lastDatanodeID;
-    public Map<TaskAttemptId, Long> fetchRates;
     public String tag;
+    // @Cesar: fetch rate report
+    public FetchRateReport fetchRateReport;
   }
 }

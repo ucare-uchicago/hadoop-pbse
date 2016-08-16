@@ -21,6 +21,7 @@ package org.apache.hadoop.mapred;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.mapred.Counters.Counter;
+import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 import org.apache.hadoop.util.Progressable;
 
 /** 
@@ -68,9 +69,12 @@ public interface Reporter extends Progressable {
       public float getProgress() {
         return 0;
       }
+      
+      // @Cesar: Override in here
       @Override
-      public void setShuffleRate(TaskAttemptID taId, long rate) {
+      public void addFetchRateReport(String mapperHost, ShuffleData shuffleData) {
       }
+      
     };
 
   /**
@@ -134,5 +138,7 @@ public interface Reporter extends Progressable {
    */
   public float getProgress();
 
-  public void setShuffleRate(TaskAttemptID taId, long rate);
+  // @Cesar: Include fetch rate report
+  public void addFetchRateReport(String mapperHost, ShuffleData shuffleData);
+  
 }

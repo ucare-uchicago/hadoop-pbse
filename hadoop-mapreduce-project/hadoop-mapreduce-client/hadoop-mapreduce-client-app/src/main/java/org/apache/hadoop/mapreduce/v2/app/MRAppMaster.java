@@ -998,7 +998,11 @@ public class MRAppMaster extends CompositeService {
 
     @Override
     public Set<String> getBlacklistedNodes() {
-      return ((RMContainerRequestor) containerAllocator).getBlacklistedNodes();
+      // @Cesar: There is a problem here, ill fix it
+      if(containerAllocator instanceof RMContainerRequestor)
+    	  return ((RMContainerRequestor) containerAllocator).getBlacklistedNodes();
+      else
+    	 return ((RMContainerRequestor)((ContainerAllocatorRouter)containerAllocator).containerAllocator).getBlacklistedNodes();
     }
     
     @Override

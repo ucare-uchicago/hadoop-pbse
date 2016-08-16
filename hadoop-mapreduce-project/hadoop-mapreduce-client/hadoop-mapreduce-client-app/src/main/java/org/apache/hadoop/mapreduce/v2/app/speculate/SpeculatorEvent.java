@@ -20,14 +20,26 @@ package org.apache.hadoop.mapreduce.v2.app.speculate;
 
 import org.apache.hadoop.mapreduce.v2.app.job.event.TaskAttemptStatusUpdateEvent.TaskAttemptStatus;
 import org.apache.hadoop.yarn.event.AbstractEvent;
+import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
 import org.apache.hadoop.mapreduce.v2.api.records.JobId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskId;
 
 public class SpeculatorEvent extends AbstractEvent<Speculator.EventType> {
-
+	
+  // @Cesar: valid for ATTEMPT_FETCH_RATE_UPDATE
+  private String reducerNode = null;
+  private FetchRateReport report = null;
+  private TaskAttemptId reduceTaskId = null;
+  private String mapperHost = null;
+  private double progress = 0.0;
+  
   // valid for ATTEMPT_STATUS_UPDATE
   private TaskAttemptStatus reportedStatus;
+  // @Cesar: THis has a default value that is only
+  // set to true when the task has succeeded
+  private boolean succedded = false;
 
   // valid for TASK_CONTAINER_NEED_UPDATE
   private TaskId taskID;
@@ -46,6 +58,13 @@ public class SpeculatorEvent extends AbstractEvent<Speculator.EventType> {
     this.reportedStatus = reportedStatus;
   }
 
+  public SpeculatorEvent(TaskAttemptStatus reportedStatus, long timestamp, boolean success, String host) {
+	    super(Speculator.EventType.ATTEMPT_STATUS_UPDATE, timestamp);
+	    this.reportedStatus = reportedStatus;
+	    this.succedded = success;
+	    this.mapperHost = host;
+	  }
+  
   public SpeculatorEvent(TaskAttemptId attemptID, boolean flag, long timestamp) {
     super(Speculator.EventType.ATTEMPT_START, timestamp);
     this.reportedStatus = new TaskAttemptStatus();
@@ -53,6 +72,26 @@ public class SpeculatorEvent extends AbstractEvent<Speculator.EventType> {
     this.taskID = attemptID.getTaskId();
   }
 
+  // @Cesar: Includes map host
+  public SpeculatorEvent(TaskAttemptId attemptID, boolean flag, long timestamp, String mapHost) {
+	    super(Speculator.EventType.ATTEMPT_START, timestamp);
+	    this.reportedStatus = new TaskAttemptStatus();
+	    this.reportedStatus.id = attemptID;
+	    this.taskID = attemptID.getTaskId();
+	    this.mapperHost = mapHost;
+	  }
+  
+  // @Cesar: This was added by me to handle this fetch status update report
+  public SpeculatorEvent(TaskAttemptStatus reportedStatus, String reducerNode, 
+		  				 TaskAttemptId reduceTaskId,
+		  				 FetchRateReport fetchRateReport, long timestamp) {
+	    super(Speculator.EventType.ATTEMPT_FETCH_RATE_UPDATE, timestamp);
+	    this.reportedStatus = reportedStatus;
+	    this.reducerNode = reducerNode;
+	    this.report = fetchRateReport;
+	    this.reduceTaskId = reduceTaskId;
+  }
+  
   /*
    * This c'tor creates a TASK_CONTAINER_NEED_UPDATE event .
    * We send a +1 event when a task enters a state where it wants a container,
@@ -83,4 +122,41 @@ public class SpeculatorEvent extends AbstractEvent<Speculator.EventType> {
   public JobId getJobID() {
     return jobID;
   }
+
+  public String getReducerNode() {
+	return reducerNode;
+  }
+  
+  
+  public FetchRateReport getReport() {
+	return report;
+  }
+
+  public TaskAttemptId getReduceTaskId() {
+	return reduceTaskId;
+  }
+
+  public void setReduceTaskId(TaskAttemptId reduceTaskId) {
+	this.reduceTaskId = reduceTaskId;
+  }
+
+  public String getMapperHost() {
+	return mapperHost;
+  }
+
+
+  public double getProgress() {
+	return progress;
+  }
+
+  public boolean isSuccedded() {
+	return succedded;
+  }
+
+  public void setSuccedded(boolean succedded) {
+	this.succedded = succedded;
+  }
+  
+  
+  
 }

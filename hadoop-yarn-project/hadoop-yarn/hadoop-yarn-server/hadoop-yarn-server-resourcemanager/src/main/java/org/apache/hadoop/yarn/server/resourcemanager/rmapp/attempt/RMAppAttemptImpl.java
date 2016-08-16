@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -119,6 +120,11 @@ public class RMAppAttemptImpl implements RMAppAttempt, Recoverable {
     AM_CONTAINER_PRIORITY.setPriority(0);
   }
 
+  // @Cesar: Do not start app master on this nodes
+  private List<String> appMasterBlackList = new ArrayList<>();
+  // @Cesar: Should i fix the app master?
+  private boolean fixAppMaster = false;
+  
   private final StateMachine<RMAppAttemptState,
                              RMAppAttemptEventType,
                              RMAppAttemptEvent> stateMachine;
@@ -452,6 +458,11 @@ public class RMAppAttemptImpl implements RMAppAttempt, Recoverable {
 
     this.attemptMetrics =
         new RMAppAttemptMetrics(applicationAttemptId, rmContext);
+    
+    // @Cesar: Load conf from yarn file
+    Collection<String> blNodes = conf.getStringCollection("yarn.pbse.experiment.blAppMaster");
+    appMasterBlackList.addAll(blNodes);
+    fixAppMaster = conf.getBoolean("yarn.pbse.experiment.fixAppMaster", false);
     
     this.amReq = amReq;
   }
@@ -946,11 +957,24 @@ public class RMAppAttemptImpl implements RMAppAttempt, Recoverable {
         appAttempt.amReq.setResourceName(ResourceRequest.ANY);
         appAttempt.amReq.setRelaxLocality(true);
         
+        // @Cesar: black list nodes
         // AM resource has been checked when submission
+        if(appAttempt.fixAppMaster){
+        	LOG.info("@Cesar: Updating blackList with " + Arrays.toString(appAttempt.appMasterBlackList.toArray()));
+        }
+        
         Allocation amContainerAllocation =
             appAttempt.scheduler.allocate(appAttempt.applicationAttemptId,
                 Collections.singletonList(appAttempt.amReq),
-                EMPTY_CONTAINER_RELEASE_LIST, null, null);
+                EMPTY_CONTAINER_RELEASE_LIST, 
+                appAttempt.fixAppMaster? appAttempt.appMasterBlackList : null, null);
+        
+        if(appAttempt.fixAppMaster && LOG.isDebugEnabled()){
+	        LOG.debug("@Cesar: Allocated " + (amContainerAllocation != null && 
+					  amContainerAllocation.getContainers() != null? 
+					  amContainerAllocation.getContainers().size() : 0) + 
+	        		 " containers for this app!");
+	    }
         if (amContainerAllocation != null
             && amContainerAllocation.getContainers() != null) {
           assert (amContainerAllocation.getContainers().size() == 0);
@@ -970,11 +994,16 @@ public class RMAppAttemptImpl implements RMAppAttempt, Recoverable {
     @Override
     public RMAppAttemptState transition(RMAppAttemptImpl appAttempt,
         RMAppAttemptEvent event) {
-      // Acquire the AM container from the scheduler.
-      Allocation amContainerAllocation =
-          appAttempt.scheduler.allocate(appAttempt.applicationAttemptId,
-            EMPTY_CONTAINER_REQUEST_LIST, EMPTY_CONTAINER_RELEASE_LIST, null,
-            null);
+    	// @Cesar: unblacklist the mapper
+        // Acquire the AM container from the scheduler.
+        if(appAttempt.fixAppMaster){
+        	LOG.info("@Cesar: Removing blackList with " + Arrays.toString(appAttempt.appMasterBlackList.toArray()));
+        }
+        Allocation amContainerAllocation =
+            appAttempt.scheduler.allocate(appAttempt.applicationAttemptId,
+              EMPTY_CONTAINER_REQUEST_LIST, EMPTY_CONTAINER_RELEASE_LIST, null,
+              appAttempt.fixAppMaster? appAttempt.appMasterBlackList : null);
+        
       // There must be at least one container allocated, because a
       // CONTAINER_ALLOCATED is emitted after an RMContainer is constructed,
       // and is put in SchedulerApplication#newlyAllocatedContainers.

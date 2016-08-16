@@ -518,10 +518,21 @@ public abstract class RMContainerRequestor extends RMCommunicator {
   }
   
   protected boolean isNodeBlacklisted(String hostname) {
-    if (!nodeBlacklistingEnabled || ignoreBlacklisting.get()) {
-      return false;
+    try{
+		if (!nodeBlacklistingEnabled || ignoreBlacklisting.get()) {
+	      return false;
+	    }
+		// @Cesar: Else, compare
+	    return blacklistedNodes.contains(hostname);
     }
-    return blacklistedNodes.contains(hostname);
+    // @Cesar: Catch this exception, still check it in the
+    // logs
+    catch(NullPointerException npe){
+    	LOG.error("@Cesar: RMContainerRequestor.isNodeBlacklisted trhowed exception (NullPointer)." + 
+    			" hostname=" + hostname + ", ignoreBlacklisting=" + ignoreBlacklisting + 
+    			", blacklistedNodes=" + blacklistedNodes);
+    	return false;
+    }
   }
   
   protected ContainerRequest getFilteredContainerRequest(ContainerRequest orig) {

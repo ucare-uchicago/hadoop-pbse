@@ -62,6 +62,7 @@ import org.apache.hadoop.mapreduce.MRConfig;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.lib.reduce.WrappedReducer;
 import org.apache.hadoop.mapreduce.task.ReduceContextImpl;
+import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 import org.apache.hadoop.yarn.util.ResourceCalculatorProcessTree;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.util.Progress;
@@ -902,12 +903,13 @@ abstract public class Task implements Writable, Configurable {
         }
       }
     }
-
-    // riza: set shuffle progress rate
-    @Override
-    public void setShuffleRate(TaskAttemptID taId, long rate){
-      taskStatus.setFetchRate(taId, rate);
-    }
+    
+    // @Cesar: Add the info
+ 	@Override
+ 	public void addFetchRateReport(String mapperHost, ShuffleData shuffleData) {
+ 		taskStatus.setReportedFetchRates(mapperHost, shuffleData);	
+ 	}
+    
   }
   
   /**

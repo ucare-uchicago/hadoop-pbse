@@ -36,6 +36,7 @@ import org.apache.hadoop.mapred.MapOutputFile;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.CryptoUtils;
 import org.apache.hadoop.mapreduce.task.reduce.MergeManagerImpl.CompressAwarePath;
+import org.apache.hadoop.mapreduce.task.reduce.ShuffleData.DataSource;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -91,18 +92,22 @@ class OnDiskMapOutput<K, V> extends MapOutput<K, V> {
     input = new IFileInputStream(input, compressedLength, conf);
     // Copy data to local-disk
     long bytesLeft = compressedLength;
-    // riza: calc current map transfer rate
-    long elapsedTime = 0;
+    // @Cesar: We know the mapper host here
+ 	String mapperHost = host.getHostName();
     org.apache.hadoop.mapred.TaskAttemptID oldId =
         org.apache.hadoop.mapred.TaskAttemptID.downgrade(getMapId());
     try {
       final int BYTES_TO_READ = 64 * 1024;
       byte[] buf = new byte[BYTES_TO_READ];
+      // @Cesar: To measure
+      int reportNumber = 1;
+      long elapsedNanos = 0L;
       while (bytesLeft > 0) {
-        long rStart = System.currentTimeMillis();
+    	long startNanos = System.nanoTime();
         int n = ((IFileInputStream)input).readWithChecksum(buf, 0, (int) Math.min(bytesLeft, BYTES_TO_READ));
-        long rStop = System.currentTimeMillis();
-        elapsedTime += rStop-rStart;
+        long endNanos = System.nanoTime();
+        // @Cesar: calculate here
+        elapsedNanos += endNanos - startNanos;
         if (n < 0) {
           throw new IOException("read past end of stream reading " + 
                                 getMapId());
@@ -110,14 +115,33 @@ class OnDiskMapOutput<K, V> extends MapOutput<K, V> {
         disk.write(buf, 0, n);
         bytesLeft -= n;
         metrics.inputBytes(n);
-        if (compressedLength > 0 && elapsedTime > 0 && host.getHostName()!="Local")
-          reporter.setShuffleRate(oldId,
-              Math.round((compressedLength-bytesLeft)*8/(elapsedTime/1000.0)));
+        if (compressedLength > 0 && elapsedNanos > 0){
+        	// @Cesar: add info here
+			ShuffleData shuffleData = new ShuffleData();
+			shuffleData.setBytes(compressedLength - bytesLeft);
+			shuffleData.setNanos(elapsedNanos);
+			shuffleData.setTransferRate();
+			shuffleData.setDataSource(DataSource.ON_DISK);
+			shuffleData.setTotalBytes(compressedLength);
+			shuffleData.setMapTaskId(getMapId());
+			reporter.addFetchRateReport(mapperHost, shuffleData);
+			// @Cesar: Log at debug level
+			if(LOG.isDebugEnabled()){
+				LOG.info("@Cesar: [mapHost=" + mapperHost + "]Report " + reportNumber + " read " + shuffleData.getBytes() + 
+						 " of a total of " + shuffleData.getTotalBytes() + " bytes. Compressed lenght is " + compressedLength +
+						 ". The elapsed nanos are " + elapsedNanos + " and the reported transfer rate will be " + shuffleData.getTransferRate());
+			}
+			 ++reportNumber;
+			// @Cesar: Done, keep working
+        }
+        
+        // @Cesar: Progress
         reporter.progress();
       }
 
-      LOG.info("Read " + (compressedLength - bytesLeft) + 
-               " bytes from map-output for " + getMapId());
+      // @Cesar: Log when finished
+      LOG.info("@Cesar: Read " + compressedLength + " bytes from map-output for " +
+              	getMapId() + " in " + reportNumber + " iterations. This process took " + elapsedNanos + " nanoseconds");
 
       disk.close();
     } catch (IOException ioe) {

@@ -382,20 +382,8 @@ public class TaskAttemptListenerImpl extends CompositeService
       taskAttemptStatus.sortFinishTime = taskStatus.getSortFinishTime();
     }
 
-    // riza: Shuffle shufflingMapId & currentShufflingMapRate set by the task (reduce only)
-    if (taskStatus.getFetchRates() != null
-        //&& taskStatus.getFetchRates().size() > 0
-        ) {
-      taskAttemptStatus.fetchRates =
-          new HashMap<org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId, Long>();
-      for (Entry<TaskAttemptID, Long> entry :
-        taskStatus.getFetchRates().entrySet()) {
-        taskAttemptStatus.fetchRates.put(
-            TypeConverter.toYarn(entry.getKey()), entry.getValue());
-      }
-      LOG.info("riza: Reducer " + taskAttemptID + " fetch rates: "
-      + taskAttemptStatus.fetchRates);
-    }
+    // @Cesar: Get fetch rate report
+    taskAttemptStatus.fetchRateReport = taskStatus.getReportedFetchRates();
 
     // Not Setting the task state. Used by speculation - will be set in TaskAttemptImpl
     //taskAttemptStatus.taskState =  TypeConverter.toYarn(taskStatus.getRunState());

@@ -70,6 +70,7 @@ import org.apache.hadoop.mapreduce.jobhistory.TaskAttemptStartedEvent;
 import org.apache.hadoop.mapreduce.jobhistory.TaskAttemptUnsuccessfulCompletionEvent;
 import org.apache.hadoop.mapreduce.security.TokenCache;
 import org.apache.hadoop.mapreduce.security.token.JobTokenIdentifier;
+import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
 import org.apache.hadoop.mapreduce.v2.api.records.Avataar;
 import org.apache.hadoop.mapreduce.v2.api.records.Locality;
 import org.apache.hadoop.mapreduce.v2.api.records.Phase;
@@ -185,6 +186,9 @@ public abstract class TaskAttemptImpl implements
   private Locality locality;
   private Avataar avataar;
 
+  //@Cesar: Enable or disable fetch rate speculation
+  private boolean fetchRateSpeculationEnabled = false;
+  
   // riza: additional field
   protected String myContainerTag = "n";
   protected String myDatasourceTag = "n";
@@ -562,6 +566,8 @@ public abstract class TaskAttemptImpl implements
     // This "this leak" is okay because the retained pointer is in an
     //  instance variable.
     stateMachine = stateMachineFactory.make(this);
+    // @Cesar: Check if fetch rate speculation is enabled
+    fetchRateSpeculationEnabled = conf.getBoolean("mapreduce.experiment.enable_fetch_rate_speculation", false);
   }
 
   private int getMemoryRequired(Configuration conf, TaskType taskType) {
@@ -1371,6 +1377,16 @@ public abstract class TaskAttemptImpl implements
     return jce;
   }  
 
+  //@Cesar: Increment a counter here
+  private static JobCounterUpdateEvent createJobCounterUpdateEventTAKilledBySlowShuffle(TaskAttemptImpl taskAttempt){
+    JobCounterUpdateEvent jce = new JobCounterUpdateEvent(taskAttempt.getID().getTaskId().getJobId());
+    jce.addCounterUpdate(SlowShuffleSpeculationCounters.SlowShuffleCounterGroup.SLOW_SHUFFLE_SPECULATION_COUNT, 1);
+    if(LOG.isDebugEnabled()){
+    	LOG.debug("@Cesar: " + SlowShuffleSpeculationCounters.SlowShuffleCounterGroup.SLOW_SHUFFLE_SPECULATION_COUNT + " Incrementing counter for this job");
+    }
+    return jce;
+  } 
+  
   private static
       TaskAttemptUnsuccessfulCompletionEvent
       createTaskAttemptUnsuccessfulCompletionEvent(TaskAttemptImpl taskAttempt,
@@ -1663,9 +1679,17 @@ public abstract class TaskAttemptImpl implements
       taskAttempt.trackerName = nodeHttpInetAddr.getHostName();
       taskAttempt.httpPort = nodeHttpInetAddr.getPort();
       taskAttempt.sendLaunchedEvents();
-      taskAttempt.eventHandler.handle
+      // @Cesar: Also tell the speculator where this was launched
+      if(taskAttempt.getID().getTaskId().getTaskType() == TaskType.MAP && taskAttempt.fetchRateSpeculationEnabled){
+    	  taskAttempt.eventHandler.handle
           (new SpeculatorEvent
-              (taskAttempt.attemptId, true, taskAttempt.clock.getTime()));
+              (taskAttempt.attemptId, true, taskAttempt.clock.getTime(), taskAttempt.container.getNodeId().getHost()));  
+      }
+      else{
+    	  taskAttempt.eventHandler.handle
+          (new SpeculatorEvent
+              (taskAttempt.attemptId, true, taskAttempt.clock.getTime()));  
+      }
       //make remoteTask reference as null as it is no more needed
       //and free up the memory
       taskAttempt.remoteTask = null;
@@ -1723,9 +1747,17 @@ public abstract class TaskAttemptImpl implements
       taskAttempt.eventHandler.handle(new TaskTAttemptEvent(
           taskAttempt.attemptId,
           TaskEventType.T_ATTEMPT_SUCCEEDED));
-      taskAttempt.eventHandler.handle
-      (new SpeculatorEvent
-          (taskAttempt.reportedStatus, taskAttempt.clock.getTime()));
+      // @Cesar: Mark as success
+      if(taskAttempt.fetchRateSpeculationEnabled && taskAttempt.attemptId.getTaskId().getTaskType().equals(TaskType.MAP)){
+    	  taskAttempt.eventHandler.handle
+          (new SpeculatorEvent
+              (taskAttempt.reportedStatus, taskAttempt.clock.getTime(), true, taskAttempt.getNodeId().getHost()));
+      }
+      else{
+    	  taskAttempt.eventHandler.handle
+          (new SpeculatorEvent
+              (taskAttempt.reportedStatus, taskAttempt.clock.getTime()));
+      }
    }
   }
 
@@ -1862,6 +1894,14 @@ public abstract class TaskAttemptImpl implements
         TaskAttemptKillEvent msgEvent = (TaskAttemptKillEvent) event;
         //add to diagnostic
         taskAttempt.addDiagnosticInfo(msgEvent.getMessage());
+        if(LOG.isDebugEnabled()){
+        	LOG.debug("@Cesar: Added diagnostic for killed task due to slow shuffle");
+        }
+        taskAttempt.eventHandler
+        	.handle(createJobCounterUpdateEventTAKilledBySlowShuffle(taskAttempt));
+        if(LOG.isDebugEnabled()){
+        	LOG.debug("@Cesar: Counter for attempt incremented");
+        }
       }
 
       // not setting a finish time since it was set on success
@@ -1881,37 +1921,45 @@ public abstract class TaskAttemptImpl implements
   }
 
   private static class KilledTransition implements
-      SingleArcTransition<TaskAttemptImpl, TaskAttemptEvent> {
+  SingleArcTransition<TaskAttemptImpl, TaskAttemptEvent> {
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public void transition(TaskAttemptImpl taskAttempt,
-        TaskAttemptEvent event) {
-      //set the finish time
-      taskAttempt.setFinishTime();
-      if (taskAttempt.getLaunchTime() != 0) {
-        taskAttempt.eventHandler
-            .handle(createJobCounterUpdateEventTAKilled(taskAttempt, false));
-        TaskAttemptUnsuccessfulCompletionEvent tauce =
-            createTaskAttemptUnsuccessfulCompletionEvent(taskAttempt,
-                TaskAttemptStateInternal.KILLED);
-        taskAttempt.eventHandler.handle(new JobHistoryEvent(
-            taskAttempt.attemptId.getTaskId().getJobId(), tauce));
-      }else {
-        LOG.debug("Not generating HistoryFinish event since start event not " +
-            "generated for taskAttempt: " + taskAttempt.getID());
-      }
-
-      if (event instanceof TaskAttemptKillEvent) {
-        taskAttempt.addDiagnosticInfo(
-            ((TaskAttemptKillEvent) event).getMessage());
-      }
-
-//      taskAttempt.logAttemptFinishedEvent(TaskAttemptStateInternal.KILLED); Not logging Map/Reduce attempts in case of failure.
-      taskAttempt.eventHandler.handle(new TaskTAttemptEvent(
-          taskAttempt.attemptId,
-          TaskEventType.T_ATTEMPT_KILLED));
-    }
+	@SuppressWarnings("unchecked")
+	@Override
+	public void transition(TaskAttemptImpl taskAttempt,
+	    TaskAttemptEvent event) {
+	   // @Cesar: check this value 	
+	   boolean wasSuccessful = false;
+	   if (event instanceof TaskAttemptKillEvent) {
+		   wasSuccessful = ((TaskAttemptKillEvent) event).isJustLogging();
+		   if(LOG.isDebugEnabled()){
+			   LOG.debug("@Cesar: Just looging that attempt was successful");
+		   }
+	   }
+	  //set the finish time
+	  taskAttempt.setFinishTime();
+	  if (taskAttempt.getLaunchTime() != 0) {
+	    taskAttempt.eventHandler
+	        .handle(createJobCounterUpdateEventTAKilled(taskAttempt, wasSuccessful));
+	    TaskAttemptUnsuccessfulCompletionEvent tauce =
+	        createTaskAttemptUnsuccessfulCompletionEvent(taskAttempt,
+	            TaskAttemptStateInternal.KILLED);
+	    taskAttempt.eventHandler.handle(new JobHistoryEvent(
+	        taskAttempt.attemptId.getTaskId().getJobId(), tauce));
+	  }else {
+	    LOG.debug("Not generating HistoryFinish event since start event not " +
+	        "generated for taskAttempt: " + taskAttempt.getID());
+	  }
+	  
+	  if (event instanceof TaskAttemptKillEvent) {
+	    taskAttempt.addDiagnosticInfo(
+	        ((TaskAttemptKillEvent) event).getMessage());
+	  }
+	
+	  //taskAttempt.logAttemptFinishedEvent(TaskAttemptStateInternal.KILLED); Not logging Map/Reduce attempts in case of failure.
+	  taskAttempt.eventHandler.handle(new TaskTAttemptEvent(
+	      taskAttempt.attemptId,
+	      TaskEventType.T_ATTEMPT_KILLED));
+	}
   }
 
   private static class CleanupContainerTransition implements
@@ -1962,6 +2010,21 @@ public abstract class TaskAttemptImpl implements
       taskAttempt.reportedStatus = newReportedStatus;
       taskAttempt.reportedStatus.taskState = taskAttempt.getState();
 
+      // @Cesar: Got the fetch report
+      FetchRateReport fetchRateReport = taskAttempt.reportedStatus.fetchRateReport;
+      if(fetchRateReport != null && taskAttempt.fetchRateSpeculationEnabled){
+    	  if(LOG.isDebugEnabled()){
+    		  LOG.debug("@Cesar: Got fetch rate report from host " + taskAttempt.getNodeId().getHost() + ": " + 
+    				  fetchRateReport);
+    	  }
+    	  // @Cesar: Send this info to the speculator to store it
+    	  taskAttempt.eventHandler.handle
+          (new SpeculatorEvent
+              (taskAttempt.reportedStatus, taskAttempt.getNodeId().getHost(), 
+            		  taskAttempt.getID(),
+            		  fetchRateReport, taskAttempt.clock.getTime()));
+      }
+      
       // riza: update datasource tag
       String dnHostName = newReportedStatus.lastDatanodeID.getHostName();
       if (!dnHostName.equals("fake-localhost"))

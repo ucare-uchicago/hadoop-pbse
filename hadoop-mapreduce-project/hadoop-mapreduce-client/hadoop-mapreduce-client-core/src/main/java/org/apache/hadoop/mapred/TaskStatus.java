@@ -31,6 +31,8 @@ import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
+import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
+import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 import org.apache.hadoop.util.StringInterner;
 import org.apache.hadoop.util.StringUtils;
 /**************************************************
@@ -477,11 +479,13 @@ public abstract class TaskStatus implements Writable, Cloneable {
     return this.tag;
   }
 
-  public void setFetchRate(TaskAttemptID taId, long rate){
+  //@Cesar: fetch rate maps
+  public FetchRateReport  getReportedFetchRates(){
+	  return null;
   }
-
-  public Map<TaskAttemptID, Long> getFetchRates() {
-    return null;
+ 
+  public void setReportedFetchRates(String mapperHost, ShuffleData shuffleData){
+	  // @Cesar: Nothing by default
   }
 
   //////////////////////////////////////////////

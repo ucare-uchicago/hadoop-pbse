@@ -28,6 +28,8 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
+import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 
 
 
@@ -37,9 +39,8 @@ class ReduceTaskStatus extends TaskStatus {
   private long sortFinishTime; 
   private List<TaskAttemptID> failedFetchTasks = new ArrayList<TaskAttemptID>(1);
 
-  // riza: note current map attempt id
-  private Map<TaskAttemptID, Long> fetchRates =
-      new ConcurrentHashMap<TaskAttemptID, Long>();
+  //@Cesar: Keep shuffle info here
+  private FetchRateReport reportedFetchRates = new FetchRateReport();
   
   public ReduceTaskStatus() {}
 
@@ -142,18 +143,16 @@ class ReduceTaskStatus extends TaskStatus {
   synchronized void clearStatus() {
     super.clearStatus();
     failedFetchTasks.clear();
-    fetchRates.clear();
+    reportedFetchRates.getFetchRateReport().clear();
   }
 
-  // riza: PBSE piggyback
-  @Override
-  public void setFetchRate(TaskAttemptID taId, long rate){
-    this.fetchRates.put(taId, rate);
+  //@Cesar: fetch rate maps
+  public FetchRateReport  getReportedFetchRates(){
+	  return this.reportedFetchRates;
   }
-
-  @Override
-  public Map<TaskAttemptID, Long> getFetchRates(){
-    return this.fetchRates;
+ 
+  public void setReportedFetchRates(String mapperHost, ShuffleData shuffleData){
+	  this.reportedFetchRates.addReport(mapperHost, shuffleData);
   }
 
   @Override
@@ -162,15 +161,6 @@ class ReduceTaskStatus extends TaskStatus {
     shuffleFinishTime = in.readLong(); 
     sortFinishTime = in.readLong();
 
-    // riza: PBSE piggyback
-    int noFetchReport = in.readInt();
-    for (int i=0; i < noFetchReport; ++i) {
-      TaskAttemptID taId = new TaskAttemptID();
-      taId.readFields(in);
-      long rate = in.readLong();
-      fetchRates.put(taId, rate);
-    }
-
     int noFailedFetchTasks = in.readInt();
     failedFetchTasks = new ArrayList<TaskAttemptID>(noFailedFetchTasks);
     for (int i=0; i < noFailedFetchTasks; ++i) {
@@ -178,6 +168,9 @@ class ReduceTaskStatus extends TaskStatus {
       id.readFields(in);
       failedFetchTasks.add(id);
     }
+    
+    // @Cesar: Read fetch rate report
+    reportedFetchRates = FetchRateReport.readFrom(in);
   }
 
   @Override
@@ -186,19 +179,14 @@ class ReduceTaskStatus extends TaskStatus {
     out.writeLong(shuffleFinishTime);
     out.writeLong(sortFinishTime);
 
-    // riza: PBSE piggyback
-    List<Map.Entry<TaskAttemptID, Long>> tmpEntries =
-        new ArrayList<Map.Entry<TaskAttemptID, Long>>(fetchRates.entrySet());
-    out.writeInt(tmpEntries.size());
-    for (Entry<TaskAttemptID, Long> entry : tmpEntries) {
-      entry.getKey().write(out);
-      out.writeLong(entry.getValue());
-    }
-
     out.writeInt(failedFetchTasks.size());
     for (TaskAttemptID taskId : failedFetchTasks) {
       taskId.write(out);
     }
+    
+    // @Cesar: Add fetch rate reports
+    reportedFetchRates.writeTo(out);
+  
   }
   
 }
