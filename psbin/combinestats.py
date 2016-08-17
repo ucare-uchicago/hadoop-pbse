@@ -125,13 +125,22 @@ def setFigureLabel(fig,suptitle,axtitle,xlabel,ylabel):
 def combineGraphs(runs,selector,iscdf, xlim = -1):
   fig = plt.figure(figsize=(8, 6))
   maxval = -1
+  color = []
+  color.append('red')
+  color.append('blue')
+  color.append('green')
+  color.append('magenta')
+  color.append('black')
+  color.append('orange')
+  cont = 0
   for runid,data in sorted(runs.items(), key=lambda x:x[0]):
     dat = selector(data["apps"])
     X,Y = ([],[])
     X,Y = makeCDFPoints(dat)
     if (NORMALIZE):
       X = X.astype(float) / X.max()
-    plt.plot(X, Y, data["conf"]["style_line"], label=runid)
+    plt.plot(X, Y, data["conf"]["style_line"], label=runid, color=color[cont])
+    cont = cont + 1
     if maxval < X.max():
       maxval = X.max()
 
@@ -148,14 +157,16 @@ def printCombinedGraphs(runs):
   TASKS = lambda apps: [task for aname,a in apps.items() \
              for tname,task in a["containers"].items()]
   MAPS = lambda apps: [a for a in TASKS(apps) if (a["ismap"])]
+  REDUCES = lambda apps: [a for a in TASKS(apps) if (not a["ismap"])]
   AM = lambda apps: [a["master"] for aname,a in apps.items()]
   JC = lambda apps: [a["jobclient"] for aname,a in apps.items() if ("jobclient" in a)]
+  ALL_JOBS = lambda apps: [a for aname,a in apps.items()]
 
   # Heartbeat CDF
   dat = lambda apps: \
         [len(a["status_update"]) for a in MAPS(apps) \
          if ("status_update" in a)]
-  fig = combineGraphs(runs,dat,True,10)
+  fig = combineGraphs(runs,dat,True,100)
   setFigureLabel(fig,"Heartbeat CDF","","#hb/task","percentage")
   figs.append(fig)
   plt.close()
@@ -164,8 +175,26 @@ def printCombinedGraphs(runs):
   dat = lambda apps: \
         [(strToDate(a["time_stop"])-strToDate(a["time_start"])) .total_seconds() \
          for a in MAPS(apps) if ("time_start" in a) and ("time_stop" in a)]
-  fig = combineGraphs(runs,dat,True,20)
+  fig = combineGraphs(runs,dat,True,100)
   setFigureLabel(fig,"Map Running Time","","second","percentage")
+  figs.append(fig)
+  plt.close()
+
+  # Reduce Running Time
+  dat = lambda apps: \
+        [(strToDate(a["time_stop"])-strToDate(a["time_start"])) .total_seconds() \
+         for a in REDUCES(apps) if ("time_start" in a) and ("time_stop" in a)]
+  fig = combineGraphs(runs,dat,True,200)
+  setFigureLabel(fig,"Reduce Running Time","","second","percentage")
+  figs.append(fig)
+  plt.close()
+
+  # Shuffle Running Time
+  dat = lambda apps: \
+        [a["shuffleTime"] for a in REDUCES(apps) \
+         if ("shuffleTime" in a) and ("time_start" in a) and ("time_stop" in a)]
+  fig = combineGraphs(runs,dat,True,100)
+  setFigureLabel(fig,"Shuffle Running Time","","second","percentage")
   figs.append(fig)
   plt.close()
 
@@ -173,8 +202,41 @@ def printCombinedGraphs(runs):
   dat = lambda apps: \
         [(strToDate(a["time_stop"])-strToDate(a["time_start"])) .total_seconds() \
          for a in AM(apps) if ("time_start" in a) and ("time_stop" in a)]
-  fig = combineGraphs(runs,dat,True,75)
+  fig = combineGraphs(runs,dat,True,1000)
   setFigureLabel(fig,"Job Running Time (by AM)","","second","percentage")
+  figs.append(fig)
+  plt.close()
+
+  # Job Running Time for jobs where the slow node is involved in map
+  dat = lambda apps: \
+         [(strToDate(a["master"]["time_stop"])-strToDate(a["master"]["time_start"])).total_seconds() \
+         for a in ALL_JOBS(apps) if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (a["slowNodeInvolvedInMap"]) and (not a["slowNodeInvolvedInReduce"])]
+
+  fig = combineGraphs(runs,dat,True,-1)
+  setFigureLabel(fig,"Job Running Time (by AM, slow node involved as map only)","",\
+			 "second","percentage")
+  figs.append(fig)
+  plt.close()
+
+  # Job Running Time for jobs where the slow node is involved in reduce
+  dat = lambda apps: \
+         [(strToDate(a["master"]["time_stop"])-strToDate(a["master"]["time_start"])).total_seconds() \
+         for a in ALL_JOBS(apps) if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (not a["slowNodeInvolvedInMap"]) and (a["slowNodeInvolvedInReduce"])]
+
+  fig = combineGraphs(runs,dat,True,-1)
+  setFigureLabel(fig,"Job Running Time (by AM, slow node involved as reduce only)","",\
+			 "second","percentage")
+  figs.append(fig)
+  plt.close()
+
+  # Job Running Time for jobs where the slow node is involved in reduce and map
+  dat = lambda apps: \
+         [(strToDate(a["master"]["time_stop"])-strToDate(a["master"]["time_start"])).total_seconds() \
+         for a in ALL_JOBS(apps) if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (a["slowNodeInvolvedInMap"]) and (a["slowNodeInvolvedInReduce"])]
+
+  fig = combineGraphs(runs,dat,True,-1)
+  setFigureLabel(fig,"Job Running Time (by AM, slow node involved as reduce and map)","",\
+			 "second","percentage")
   figs.append(fig)
   plt.close()
 
@@ -182,7 +244,7 @@ def printCombinedGraphs(runs):
   dat = lambda apps: \
         [a["job_duration"] for a in JC(apps) if ("job_duration" in a)]
   fig = plt.figure(figsize=(8, 6))
-  fig = combineGraphs(runs,dat,True,600)
+  fig = combineGraphs(runs,dat,True,1000)
   setFigureLabel(fig,"Job Duration (by JobClient)","","second","percentage")
   figs.append(fig)
   plt.close()
@@ -192,7 +254,7 @@ def printCombinedGraphs(runs):
         [(strToDate(a["time_start"])-strToDate(a["time_submit"])).total_seconds() \
          for a in JC(apps) if ("time_start" in a) and ("time_submit" in a)]
   fig = plt.figure(figsize=(8, 6))
-  fig = combineGraphs(runs,dat,True,600)
+  fig = combineGraphs(runs,dat,True,-1)
   setFigureLabel(fig,"Job Waiting Time","","second","percentage")
   figs.append(fig)
   plt.close()

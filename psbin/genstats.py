@@ -27,6 +27,8 @@ re_jc_appid = re.compile(".+Submitted application (.+)")
 re_jc_startrun = re.compile(".+Job .+ running in uber mode.+")
 re_jc_stoprun = re.compile(".+Job .+ completed successfully")
 re_jc_duration = re.compile("The job took (.+) seconds.")
+re_shffle_duration = re.compile("(.+): Shuffle time for this reducer is (.+) nanoseconds")
+re_container_finished = re.compile(".+Task \'(.+)\' done\.")
 
 def getTaskId(ct):
   att = ct["attempt"]
@@ -112,7 +114,9 @@ def getMasterStats(app):
           "attempt": att, \
           "mapnode": "", \
           "datanode": [],
-          "ismap" : ("_m_" in att)
+          "ismap" : ("_m_" in att),
+		  "shuffleTime": 0.0,
+          "isSuccessful": False
         }
         app["containers"][ct] = container
 
@@ -153,6 +157,9 @@ def getMasterStats(app):
 
 def getContainerStats(app):
   appname = app["appid"]
+  # set flags to know if slow node is involded
+  app["slowNodeInvolvedInMap"] = False
+  app["slowNodeInvolvedInReduce"] = False
   for ctname,ct in app["containers"].items():
     syslog = os.path.join("yarn/userlogs", \
                             appname,ctname,"syslog")
@@ -175,10 +182,32 @@ def getContainerStats(app):
       if re_hb.match(line):
         ct["status_update"].append(getLogTime(line))
 
+      if re_container_finished.match(line):
+         ct["isSuccessful"] = True
+         if ct["ismap"] and SLOWHOST in ct["mapnode"]:
+            app["slowNodeInvolvedInMap"] = True
+         if not ct["ismap"] and SLOWHOST in ct["mapnode"]:
+            app["slowNodeInvolvedInReduce"] = True
+
       linect += 1
 
     if line:
       ct["time_stop"] = getLogTime(line)
+
+  # shuffle time
+  for ctname,ct in app["containers"].items():
+    syslog = os.path.join("yarn/userlogs", \
+                            appname,ctname,"syslog.shuffle")
+    if not os.path.exists(syslog):
+      continue
+    shuffleTime = 0.0
+    f = open(syslog)
+    fmatch = 0
+    for line in f:
+      match = re_shffle_duration.match(line)
+      if match:
+          shuffleTime = shuffleTime + int(match.group(2))
+    ct['shuffleTime'] = (shuffleTime / 1000000000)
 
 
 def getJobClientStats(apps):
@@ -229,7 +258,9 @@ def getTopology():
               "attempt": "", \
               "mapnode": "", \
               "datanode": [],
-              "ismap": False
+              "ismap": False,
+              "shuffleTime": 0.0,
+              "isSuccessful": False
               }
             apps[theroot]["containers"][subdirname] = container
           ctcount += 1
@@ -240,8 +271,10 @@ def getTopology():
 
   # get datanodes from container syslog
   for appname,app in apps.items():
-    getContainerStats(app)
-
+    try:
+       getContainerStats(app)
+    except Exception as e:
+       print 'One container failed with : ' + str(e)
   getJobClientStats(apps)
 
   return apps
@@ -271,8 +304,12 @@ def printGraphs(apps):
   TASKS = [task for aname,a in apps.items() \
              for tname,task in a["containers"].items()]
   MAPS = [a for a in TASKS if (a["ismap"])]
+  REDUCES = [a for a in TASKS if (not a["ismap"])]
+  # SLOW_MAPS = [a for a in TASKS if (a["ismap"]) and (SLOWHOST in a["mapnode"])]
+  # SLOW_REDUCES = [a for a in TASKS if (not a["ismap"]) and (SLOWHOST in a["mapnode"])]
   AM = [a["master"] for aname,a in apps.items()]
   JC = [a["jobclient"] for aname,a in apps.items() if ("jobclient" in a)]
+  ALL_JOBS = [a for aname,a in apps.items()]
 
   # Heartbeat CDF
   dat = [len(a["status_update"]) for a in MAPS if ("status_update" in a)]
@@ -297,6 +334,29 @@ def printGraphs(apps):
   figs.append(fig)
   plt.close()
 
+  # Reduce Running Time
+  dat = [(strToDate(a["time_stop"])-strToDate(a["time_start"])).total_seconds() \
+         for a in REDUCES if ("time_start" in a) and ("time_stop" in a)]
+  X,Y = makeCDFPoints(dat)
+  fig = plt.figure(figsize=(8, 6))
+  plt.plot(X, Y, 'r-')
+  plt.xlim([0,X.max()*1.1])
+  plt.ylim([0.0,1.0])
+  setFigureLabel(fig,"Reduce Running Time","#reduce"+str(len(dat)),"second","percentage")
+  figs.append(fig)
+  plt.close()
+
+  # Shuffle Running Time
+  dat = [a["shuffleTime"] for a in REDUCES if ("shuffleTime" in a) and ("time_start" in a) and ("time_stop" in a)]
+  X,Y = makeCDFPoints(dat)
+  fig = plt.figure(figsize=(8, 6))
+  plt.plot(X, Y, 'r-')
+  plt.xlim([0,X.max()*1.1])
+  plt.ylim([0.0,1.0])
+  setFigureLabel(fig,"Shuffle Running Time","#reduce"+str(len(dat)),"second","percentage")
+  figs.append(fig)
+  plt.close()
+
   # Job Running Time
   dat = [(strToDate(a["time_stop"])-strToDate(a["time_start"])).total_seconds() \
          for a in AM if ("time_start" in a) and ("time_stop" in a)]
@@ -306,6 +366,45 @@ def printGraphs(apps):
   plt.xlim([0,X.max()*1.1])
   plt.ylim([0.0,1.0])
   setFigureLabel(fig,"Job Running Time (by AM)","#job = "+str(len(dat)),\
+                 "second","percentage")
+  figs.append(fig)
+  plt.close()
+
+  # Job Running Time for jobs where the slow node is involved in map
+  dat = [(strToDate(a["master"]["time_stop"])-strToDate(a["master"]["time_start"])).total_seconds() \
+         for a in ALL_JOBS if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (a["slowNodeInvolvedInMap"]) and (not a["slowNodeInvolvedInReduce"])]
+  X,Y = makeCDFPoints(dat)
+  fig = plt.figure(figsize=(8, 6))
+  plt.plot(X, Y, 'r-')
+  plt.xlim([0,X.max()*1.1])
+  plt.ylim([0.0,1.0])
+  setFigureLabel(fig,"Job Running Time (by AM, slow node involved as map only)","#job = "+str(len(dat)),\
+                 "second","percentage")
+  figs.append(fig)
+  plt.close()
+
+  # Job Running Time for jobs where the slow node is involved in reduce
+  dat = [(strToDate(a["master"]["time_stop"])-strToDate(a["master"]["time_start"])).total_seconds() \
+         for a in ALL_JOBS if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (not a["slowNodeInvolvedInMap"]) and (a["slowNodeInvolvedInReduce"])]
+  X,Y = makeCDFPoints(dat)
+  fig = plt.figure(figsize=(8, 6))
+  plt.plot(X, Y, 'r-')
+  plt.xlim([0,X.max()*1.1])
+  plt.ylim([0.0,1.0])
+  setFigureLabel(fig,"Job Running Time (by AM, slow node involved as reduce only)","#job = "+str(len(dat)),\
+                 "second","percentage")
+  figs.append(fig)
+  plt.close()
+
+  # Job Running Time for jobs where the slow node is involved in reduce and map
+  dat = [(strToDate(a["master"]["time_stop"])-strToDate(a["master"]["time_start"])).total_seconds() \
+         for a in ALL_JOBS if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (a["slowNodeInvolvedInMap"]) and (a["slowNodeInvolvedInReduce"])]
+  X,Y = makeCDFPoints(dat)
+  fig = plt.figure(figsize=(8, 6))
+  plt.plot(X, Y, 'r-')
+  plt.xlim([0,X.max()*1.1])
+  plt.ylim([0.0,1.0])
+  setFigureLabel(fig,"Job Running Time (by AM, slow node involved as reduce and map)","#job = "+str(len(dat)),\
                  "second","percentage")
   figs.append(fig)
   plt.close()
