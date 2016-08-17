@@ -18,7 +18,7 @@
 
 <!--  <property>
     <name>yarn.nodemanager.local-dirs</name>
-    <value>/mnt/extra/dfs-riza/nm-local-dir</value>
+    <value>/mnt/extra/dfs-ucare/nm-local-dir</value>
   </property>-->
 
 <!-- MEMORY TUNING BEGIN

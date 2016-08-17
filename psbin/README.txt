@@ -20,7 +20,7 @@ SETUP ENV
    - mapred-site
    - yarn-site.xml
    - capacity-scheduler.xml
-   (example at /proj/ucare/riza/hadoop-etc/hadoop-2.7.1)
+   (example at psbin/pbse_conf/hadoop-etc/hadoop-2.7.1/)
 
 3. MAKE SURE to sync your mapred-site.xml and yarn-site.xml with the
    one at pbse_conf/writeconf and pbse_conf/readconf
