@@ -48,6 +48,7 @@ import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapred.IFile.Writer;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.security.TokenCache;
+import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 import org.apache.hadoop.mapred.Counters;
 import org.apache.hadoop.mapred.Counters.Counter;
 import org.apache.hadoop.mapred.Counters.Group;
@@ -645,7 +646,9 @@ public class TestPipeApplication {
     }
 
     @Override
-    public void setShuffleRate(TaskAttemptID taId, long rate) {
+    public void addFetchRateReport(String mapperHost, ShuffleData shuffleData) {
+      // TODO Auto-generated method stub
+
     }
 
   }
