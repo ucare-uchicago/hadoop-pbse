@@ -1,9 +1,9 @@
 #!/bin/bash
 
-hdfs dfsadmin -report > /tmp/dfsreport.txt
-yarn node -list -states RUNNING > /tmp/yarnreport.txt
-grep "^DFS Used:" /tmp/dfsreport.txt > /tmp/dfsused.txt
-cat /tmp/dfsused.txt > /tmp/healthreport.txt
-cat /tmp/yarnreport.txt >> /tmp/healthreport.txt
-#cat /tmp/dfsreport.txt >> /tmp/healthreport.txt
-cat /tmp/healthreport.txt
+hdfs dfsadmin -report > /tmp/dfsreport-$USER.txt
+yarn node -list -states RUNNING > /tmp/yarnreport-$USER.txt
+grep "^DFS Used:\|^Name:" /tmp/dfsreport-$USER.txt > /tmp/dfsused-$USER.txt
+cat /tmp/dfsused-$USER.txt > /tmp/healthreport-$USER.txt
+cat /tmp/yarnreport-$USER.txt >> /tmp/healthreport-$USER.txt
+#cat /tmp/dfsreport-$USER.txt >> /tmp/healthreport-$USER.txt
+cat /tmp/healthreport-$USER.txt

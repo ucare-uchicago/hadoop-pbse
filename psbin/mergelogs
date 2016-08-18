@@ -10,8 +10,8 @@ rm -rf logs
 for i in `seq 1 17`;
 do
   echo "node-$i"
-  ssh node-$i 'cd /tmp/hadoop-riza ; tarit logs ;'
-  scp node-$i:/tmp/hadoop-riza/logs.tgz /tmp/
+  ssh node-$i 'cd /tmp/hadoop-ucare ; tarit logs ;'
+  scp node-$i:/tmp/hadoop-ucare/logs.tgz /tmp/
   untarit logs.tgz
 done
 

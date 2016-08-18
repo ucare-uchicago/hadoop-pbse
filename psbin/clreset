@@ -1,17 +1,13 @@
 #!/bin/bash
 
-#rm -rf /proj/ucare/riza/datadir > /tmp/clreset.log
 
-echo "Resetting cluster" > /tmp/clreset.log
+echo "Resetting cluster" > /tmp/$USER-clreset.log
 
 for i in `seq 0 20`;
 do
-  echo "node-$i" >> /tmp/clreset.log
-#  mkdir -p /proj/ucare/riza/datadir/dfs-$i
+  echo "node-$i" >> /tmp/$USER-clreset.log
   ssh node-$i \
-   'rm -rf /tmp/hadoop-riza* ; rm -rf /mnt/extra/dfs-riza ;'  >> /tmp/clreset.log
+   'rm -rf /tmp/hadoop-ucare* ; rm -rf /mnt/extra/dfs-ucare ;'  >> /tmp/$USER-clreset.log
 done
 
-#    ln -s /proj/ucare/riza/datadir/dfs-'+$i+' /scratch/ucare/dfs-riza' \
-
-cat /tmp/clreset.log
+cat /tmp/$USER-clreset.log
