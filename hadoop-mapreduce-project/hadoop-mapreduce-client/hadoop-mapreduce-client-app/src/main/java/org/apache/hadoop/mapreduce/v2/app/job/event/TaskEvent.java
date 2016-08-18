@@ -22,6 +22,7 @@ import org.apache.hadoop.yarn.event.AbstractEvent;
 
 import java.util.List;
 
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskId;
 
@@ -36,6 +37,8 @@ public class TaskEvent extends AbstractEvent<TaskEventType> {
   private String slowMapper = null; 
   // @Cesar: This the task attempt id
   private TaskAttemptId slowMapperAttemptId = null;
+  // huanke
+  private DatanodeInfo ignoreNode;
   
   
   public TaskEvent(TaskId taskID, TaskEventType type) {
@@ -49,6 +52,17 @@ public class TaskEvent extends AbstractEvent<TaskEventType> {
     this.taskID = taskID;
     this.slowMapper = slowMapper;
     this.slowMapperAttemptId = attemptId;
+  }
+  
+  //huanke construct a new TaskEvent with ignore Datanode
+  public TaskEvent(TaskId taskID, TaskEventType type, DatanodeInfo ignoreNode) {
+    super(type);
+    this.taskID = taskID;
+    this.ignoreNode=ignoreNode;
+  }
+
+  public DatanodeInfo getIgnoreNode(){
+    return this.ignoreNode;
   }
   
   public TaskId getTaskID() {

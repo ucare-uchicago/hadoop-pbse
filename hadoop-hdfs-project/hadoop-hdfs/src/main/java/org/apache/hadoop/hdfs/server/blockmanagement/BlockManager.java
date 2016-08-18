@@ -1540,8 +1540,17 @@ public class BlockManager {
       final long blocksize,
       final List<String> favoredNodes,
       final byte storagePolicyID) throws IOException {
-    List<DatanodeDescriptor> favoredDatanodeDescriptors = 
-        getDatanodeDescriptors(favoredNodes);
+    LOG.info("@huanke favoredDatanodeDescriptors1::: "+favoredNodes+numOfReplicas);
+    //huanke favoredDatanodeDescriptors1::: [Unhappy]
+
+    //I want to say, here is so strange because it changed it from Unhappy into 10.1.1.5:50010
+    //let it come back we set favorNodes=null in above function, because this function the favoredNodes is a final type
+
+
+    List<DatanodeDescriptor> favoredDatanodeDescriptors = getDatanodeDescriptors(favoredNodes);
+    LOG.info("@huanke favoredDatanodeDescriptors2::: "+favoredDatanodeDescriptors);
+    //huanke favoredDatanodeDescriptors2::: [10.1.1.5:50010]
+
     final BlockStoragePolicy storagePolicy = storagePolicySuite.getPolicy(storagePolicyID);
     final DatanodeStorageInfo[] targets = blockplacement.chooseTarget(src,
         numOfReplicas, client, excludedNodes, blocksize, 
@@ -1554,6 +1563,39 @@ public class BlockManager {
           + " datanode(s) running and "
           + (excludedNodes == null? "no": excludedNodes.size())
           + " node(s) are excluded in this operation.");
+    }
+    return targets;
+  }
+
+
+  //huanke
+  public DatanodeStorageInfo[] chooseTarget4NewBlockHK(final String src,
+                                                     final int numOfReplicas, final Node client,
+                                                     final Set<Node> excludedNodes,
+                                                     final long blocksize,
+                                                     final List<String> favoredNodes,
+                                                     final byte storagePolicyID,
+                                                      List<String> IgnoreInfo, List<Boolean> OutputBoolean) throws IOException {
+
+    List<DatanodeDescriptor> favoredDatanodeDescriptors =
+            getDatanodeDescriptors(favoredNodes);
+    LOG.info("@huanke IgnoreInfo chooseTarget4NewBlockHK1 "+numOfReplicas+excludedNodes+"client: "+client + "favoredNodes: "+favoredNodes);
+    final BlockStoragePolicy storagePolicy = storagePolicySuite.getPolicy(storagePolicyID);
+    final DatanodeStorageInfo[] targets = blockplacement.chooseTargetHK(src,
+            numOfReplicas, client, excludedNodes, blocksize,
+            favoredDatanodeDescriptors, storagePolicy, IgnoreInfo, OutputBoolean);
+    LOG.info("@huanke IgnoreInfo chooseTarget4NewBlockHK "+IgnoreInfo+numOfReplicas+targets.length);
+//    huanke IgnoreInfo chooseTarget4NewBlockHK null22
+//    huanke IgnoreInfo chooseTarget4NewBlockHK [pc744.emulab.net]22
+
+    if (targets.length < minReplication) {
+      throw new IOException("File " + src + " could only be replicated to "
+              + targets.length + " nodes instead of minReplication (="
+              + minReplication + ").  There are "
+              + getDatanodeManager().getNetworkTopology().getNumOfLeaves()
+              + " datanode(s) running and "
+              + (excludedNodes == null? "no": excludedNodes.size())
+              + " node(s) are excluded in this operation.");
     }
     return targets;
   }
@@ -1705,7 +1747,8 @@ public class BlockManager {
        */
     }
   }
-  
+
+
   /**
    * StatefulBlockInfo is used to build the "toUC" list, which is a list of
    * updates to the information about under-construction blocks.

@@ -20,11 +20,16 @@ package org.apache.hadoop.mapreduce;
 
 import java.io.IOException;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.client.HdfsDataOutputStream;
+import org.apache.hadoop.mapred.*;
 import org.apache.hadoop.mapreduce.task.annotation.Checkpointable;
 
+import java.io.OutputStream;
 import java.util.Iterator;
 
 /** 
@@ -122,6 +127,7 @@ import java.util.Iterator;
 @InterfaceAudience.Public
 @InterfaceStability.Stable
 public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
+  private static final Log LOG = LogFactory.getLog(Reducer.class.getName());
 
   /**
    * The <code>Context</code> passed on to the {@link Reducer} implementations.
@@ -172,7 +178,39 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
         // If a back up store is used, reset it
         Iterator<VALUEIN> iter = context.getValues().iterator();
         if(iter instanceof ReduceContext.ValueIterator) {
-          ((ReduceContext.ValueIterator<VALUEIN>)iter).resetBackupStore();        
+          ((ReduceContext.ValueIterator<VALUEIN>)iter).resetBackupStore();
+        }
+      }
+    } finally {
+      cleanup(context);
+    }
+  }
+
+  //huanke after wrting one packet, the thread dataStreamer can get the pipeline info
+  public void run(Context context, OutputStream out, Task.TaskReporter taskReport, boolean flag) throws IOException, InterruptedException {
+    setup(context);
+    try {
+      while (context.nextKey()) {
+        reduce(context.getCurrentKey(), context.getValues(), context);
+        LOG.info("@huanke flagR :"+flag);
+        if(flag && out!=null){
+          LOG.info("@huanke output!=null runReducer" + out.getClass() + out.toString());
+          //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
+          if (out instanceof HdfsDataOutputStream) {
+            LOG.info("@huanke yes, it is!"+out.getClass());
+            if(((HdfsDataOutputStream) out).getPipeNodes()!=null){
+              LOG.info("@huanke Myfirst time to get pipeNodes from steream"+((HdfsDataOutputStream) out).getPipeNodes()[0]+((HdfsDataOutputStream) out).getPipeNodes()[1]);
+              taskReport.setOutputStream(out);
+              flag=false;
+            }else{
+              LOG.info("@huanke I haven't get the pipeNods from stream yet ");
+            }
+          }
+        }
+        // If a back up store is used, reset it
+        Iterator<VALUEIN> iter = context.getValues().iterator();
+        if(iter instanceof ReduceContext.ValueIterator) {
+          ((ReduceContext.ValueIterator<VALUEIN>)iter).resetBackupStore();
         }
       }
     } finally {

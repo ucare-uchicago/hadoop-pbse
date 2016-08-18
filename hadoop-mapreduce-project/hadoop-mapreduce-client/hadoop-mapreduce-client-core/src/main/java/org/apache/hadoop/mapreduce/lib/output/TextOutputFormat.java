@@ -20,6 +20,7 @@ package org.apache.hadoop.mapreduce.lib.output;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -29,6 +30,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FSDataOutputStream;
 
+import org.apache.hadoop.hdfs.DFSOutputStream;
+import org.apache.hadoop.hdfs.client.HdfsDataOutputStream;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -43,10 +46,12 @@ import org.apache.hadoop.util.*;
 @InterfaceStability.Stable
 public class TextOutputFormat<K, V> extends FileOutputFormat<K, V> {
   public static String SEPERATOR = "mapreduce.output.textoutputformat.separator";
+
   protected static class LineRecordWriter<K, V>
-    extends RecordWriter<K, V> {
+          extends RecordWriter<K, V> implements OutputStreamOwner {
     private static final String utf8 = "UTF-8";
     private static final byte[] newline;
+
     static {
       try {
         newline = "\n".getBytes(utf8);
@@ -71,9 +76,15 @@ public class TextOutputFormat<K, V> extends FileOutputFormat<K, V> {
       this(out, "\t");
     }
 
+    //huanke bypass DataOutputStream to LineRecordWriter
+    public OutputStream getOutputStream() {
+      return this.out;
+    }
+
     /**
      * Write the object to the byte stream, handling Text as a special
      * case.
+     *
      * @param o the object to print
      * @throws IOException if the write throws, we pass it on
      */
@@ -87,7 +98,7 @@ public class TextOutputFormat<K, V> extends FileOutputFormat<K, V> {
     }
 
     public synchronized void write(K key, V value)
-      throws IOException {
+            throws IOException {
 
       boolean nullKey = key == null || key instanceof NullWritable;
       boolean nullValue = value == null || value instanceof NullWritable;
@@ -106,37 +117,37 @@ public class TextOutputFormat<K, V> extends FileOutputFormat<K, V> {
       out.write(newline);
     }
 
-    public synchronized 
-    void close(TaskAttemptContext context) throws IOException {
+    public synchronized void close(TaskAttemptContext context) throws IOException {
       out.close();
     }
   }
 
-  public RecordWriter<K, V> 
-         getRecordWriter(TaskAttemptContext job
-                         ) throws IOException, InterruptedException {
+  public RecordWriter<K, V>
+  getRecordWriter(TaskAttemptContext job
+  ) throws IOException, InterruptedException {
     Configuration conf = job.getConfiguration();
     boolean isCompressed = getCompressOutput(job);
-    String keyValueSeparator= conf.get(SEPERATOR, "\t");
+    String keyValueSeparator = conf.get(SEPERATOR, "\t");
     CompressionCodec codec = null;
     String extension = "";
     if (isCompressed) {
-      Class<? extends CompressionCodec> codecClass = 
-        getOutputCompressorClass(job, GzipCodec.class);
+      Class<? extends CompressionCodec> codecClass =
+              getOutputCompressorClass(job, GzipCodec.class);
       codec = (CompressionCodec) ReflectionUtils.newInstance(codecClass, conf);
       extension = codec.getDefaultExtension();
     }
     Path file = getDefaultWorkFile(job, extension);
     FileSystem fs = file.getFileSystem(conf);
+    System.out.print("@huanke is Compressed? " + isCompressed);
     if (!isCompressed) {
       FSDataOutputStream fileOut = fs.create(file, false);
       return new LineRecordWriter<K, V>(fileOut, keyValueSeparator);
     } else {
       FSDataOutputStream fileOut = fs.create(file, false);
       return new LineRecordWriter<K, V>(new DataOutputStream
-                                        (codec.createOutputStream(fileOut)),
-                                        keyValueSeparator);
+              (codec.createOutputStream(fileOut)),
+              keyValueSeparator);
     }
   }
-}
 
+}

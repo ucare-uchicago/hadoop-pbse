@@ -20,6 +20,7 @@ package org.apache.hadoop.mapred;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -32,6 +33,7 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.GzipCodec;
+import org.apache.hadoop.mapreduce.lib.output.OutputStreamOwner;
 import org.apache.hadoop.util.*;
 
 /** 
@@ -42,9 +44,10 @@ import org.apache.hadoop.util.*;
 public class TextOutputFormat<K, V> extends FileOutputFormat<K, V> {
 
   protected static class LineRecordWriter<K, V>
-    implements RecordWriter<K, V> {
+          implements RecordWriter<K, V>, OutputStreamOwner {
     private static final String utf8 = "UTF-8";
     private static final byte[] newline;
+
     static {
       try {
         newline = "\n".getBytes(utf8);
@@ -72,6 +75,7 @@ public class TextOutputFormat<K, V> extends FileOutputFormat<K, V> {
     /**
      * Write the object to the byte stream, handling Text as a special
      * case.
+     *
      * @param o the object to print
      * @throws IOException if the write throws, we pass it on
      */
@@ -85,7 +89,7 @@ public class TextOutputFormat<K, V> extends FileOutputFormat<K, V> {
     }
 
     public synchronized void write(K key, V value)
-      throws IOException {
+            throws IOException {
 
       boolean nullKey = key == null || key instanceof NullWritable;
       boolean nullValue = value == null || value instanceof NullWritable;
@@ -107,36 +111,43 @@ public class TextOutputFormat<K, V> extends FileOutputFormat<K, V> {
     public synchronized void close(Reporter reporter) throws IOException {
       out.close();
     }
-  }
 
-  public RecordWriter<K, V> getRecordWriter(FileSystem ignored,
-                                                  JobConf job,
-                                                  String name,
-                                                  Progressable progress)
-    throws IOException {
-    boolean isCompressed = getCompressOutput(job);
-    String keyValueSeparator = job.get("mapreduce.output.textoutputformat.separator", 
-                                       "\t");
-    if (!isCompressed) {
-      Path file = FileOutputFormat.getTaskOutputPath(job, name);
-      FileSystem fs = file.getFileSystem(job);
-      FSDataOutputStream fileOut = fs.create(file, progress);
-      return new LineRecordWriter<K, V>(fileOut, keyValueSeparator);
-    } else {
-      Class<? extends CompressionCodec> codecClass =
-        getOutputCompressorClass(job, GzipCodec.class);
-      // create the named codec
-      CompressionCodec codec = ReflectionUtils.newInstance(codecClass, job);
-      // build the filename including the extension
-      Path file = 
-        FileOutputFormat.getTaskOutputPath(job, 
-                                           name + codec.getDefaultExtension());
-      FileSystem fs = file.getFileSystem(job);
-      FSDataOutputStream fileOut = fs.create(file, progress);
-      return new LineRecordWriter<K, V>(new DataOutputStream
-                                        (codec.createOutputStream(fileOut)),
-                                        keyValueSeparator);
+    //huanke-
+    @Override
+    public OutputStream getOutputStream() {
+      return this.out;
     }
   }
-}
+
+    public RecordWriter<K, V> getRecordWriter(FileSystem ignored,
+                                              JobConf job,
+                                              String name,
+                                              Progressable progress)
+            throws IOException {
+      boolean isCompressed = getCompressOutput(job);
+      String keyValueSeparator = job.get("mapreduce.output.textoutputformat.separator",
+              "\t");
+      if (!isCompressed) {
+        Path file = FileOutputFormat.getTaskOutputPath(job, name);
+        FileSystem fs = file.getFileSystem(job);
+        FSDataOutputStream fileOut = fs.create(file, progress);
+        return new LineRecordWriter<K, V>(fileOut, keyValueSeparator);
+      } else {
+        Class<? extends CompressionCodec> codecClass =
+                getOutputCompressorClass(job, GzipCodec.class);
+        // create the named codec
+        CompressionCodec codec = ReflectionUtils.newInstance(codecClass, job);
+        // build the filename including the extension
+        Path file =
+                FileOutputFormat.getTaskOutputPath(job,
+                        name + codec.getDefaultExtension());
+        FileSystem fs = file.getFileSystem(job);
+        FSDataOutputStream fileOut = fs.create(file, progress);
+        return new LineRecordWriter<K, V>(new DataOutputStream
+                (codec.createOutputStream(fileOut)),
+                keyValueSeparator);
+      }
+    }
+  }
+
 

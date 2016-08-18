@@ -34,6 +34,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.ipc.ProtocolSignature;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.Server;
@@ -367,6 +368,26 @@ public class TaskAttemptListenerImpl extends CompositeService
       taskAttemptStatus.lastDatanodeID = DatanodeID.createNullDatanodeID();
     }
 
+    //huanke
+    if(!taskStatus.getIsMap()&& taskStatus.getDNpath()!=null){
+      LOG.info("@huanke DNpath[0]: "+taskStatus.getDNpath()[0]+" DNpath[1]:" +taskStatus.getDNpath()[1]);
+      //huanke DNpath[0]: 0.0.0.0:0 DNpath[1]:0.0.0.0:0
+      taskAttemptStatus.DNpath=taskStatus.getDNpath();
+      for(DatanodeInfo ttemp: taskAttemptStatus.DNpath){
+        if(ttemp.getHostName().equals("fake-localhost")||ttemp.getHostName().isEmpty()){
+          LOG.info("@huanke ttemp2 "+ttemp.getHostName());
+        }
+        else{
+          LOG.info("@huanke ttemp1 "+ttemp.getHostName());
+          taskAttemptStatus.Pipeline.add(ttemp);
+        }
+      }
+    }else{
+      taskAttemptStatus.DNpath=DatanodeInfo.createDatanodeInfo();
+    }
+    LOG.info("@huanke taskAttemptStatus.Pipeline "+taskAttemptStatus.Pipeline);
+    
+    
     // Map Finish time set by the task (map only)
     if (taskStatus.getIsMap() && taskStatus.getMapFinishTime() != 0) {
       taskAttemptStatus.mapFinishTime = taskStatus.getMapFinishTime();

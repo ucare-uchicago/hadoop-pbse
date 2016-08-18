@@ -24,13 +24,10 @@ import java.util.*;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.StorageType;
-import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
+import org.apache.hadoop.hdfs.DFSClient;
+import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSUtil;
-import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.HdfsConstants;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage.State;
 import org.apache.hadoop.net.NetworkTopology;
 import org.apache.hadoop.net.Node;
@@ -63,17 +60,24 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
       };
 
   protected boolean considerLoad; 
+  //private boolean preferLocalNode = true;
+  //huanke not choose local node in function chooseLocalStorage()
   private boolean preferLocalNode = true;
   protected NetworkTopology clusterMap;
   protected Host2NodesMap host2datanodeMap;
   private FSClusterStats stats;
   protected long heartbeatInterval;   // interval for DataNode heartbeats
   private long staleInterval;   // interval used to identify stale DataNodes
+
   
   /**
    * A miss of that many heartbeats is tolerated for replica deletion policy.
    */
   protected int tolerateHeartbeatMultiplier;
+
+  //huanke
+  private Collection<String> slowDataNodes;
+  private List<String> IgnoreInfo=new ArrayList<>();
 
   protected BlockPlacementPolicyDefault() {
   }
@@ -96,6 +100,12 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
     this.staleInterval = conf.getLong(
         DFSConfigKeys.DFS_NAMENODE_STALE_DATANODE_INTERVAL_KEY, 
         DFSConfigKeys.DFS_NAMENODE_STALE_DATANODE_INTERVAL_DEFAULT);
+    //huanke
+    this.slowDataNodes=conf.getStringCollection("slow.pipeline.datanode");
+    //huanke-----------------------------------
+//    setslowDN(slowDataNodes);
+    //-------------------------------------
+//    this.fixReplica=conf.getInt("dfs.replication",2);
   }
 
   @Override
@@ -107,10 +117,44 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
                                     Set<Node> excludedNodes,
                                     long blocksize,
                                     final BlockStoragePolicy storagePolicy) {
+    LOG.info("@huanke Don't tell me you come out from here");
+    //huanke create a empty boolean list
+    List<Boolean> OutputBoolean=new ArrayList<Boolean>();
+    OutputBoolean.add(false);
+    OutputBoolean.add(false);
     return chooseTarget(numOfReplicas, writer, chosenNodes, returnChosenNodes,
-        excludedNodes, blocksize, storagePolicy);
+        excludedNodes, blocksize, storagePolicy, OutputBoolean);
   }
 
+
+  //huanke
+  public DatanodeStorageInfo[] chooseTargetHK(String srcPath,
+                                            int numOfReplicas,
+                                            Node writer,
+                                            List<DatanodeStorageInfo> chosenNodes,
+                                            boolean returnChosenNodes,
+                                            Set<Node> excludedNodes,
+                                            long blocksize,
+                                            final BlockStoragePolicy storagePolicy,
+                                              List<String> IgnoreInfo,List<Boolean> OutputBoolean) {
+    LOG.info("@huanke IgnoreInfo chooseTargetHK "+IgnoreInfo+OutputBoolean);
+    this.IgnoreInfo=IgnoreInfo;
+    LOG.info("@huanke numOfReplicas1: "+numOfReplicas+" writer: "+writer+" chosenNodes: "+chosenNodes+ " excludedNodes: "+excludedNodes );
+    return chooseTarget(numOfReplicas, writer, chosenNodes, returnChosenNodes,
+            excludedNodes, blocksize, storagePolicy, OutputBoolean);
+  }
+
+  //huanke
+  public List<String> getslowDN(){
+    return new ArrayList<>(this.slowDataNodes);
+  }
+//  public void setslowDN(Collection<String> slowDataNodes){
+//    clusterMap.setslowDN(slowDataNodes);
+//  }
+  public List<String> getIgnoreInfo() {return this.IgnoreInfo;}
+
+
+  //huanke just change chooseTarget into chooseTargetHK
   @Override
   DatanodeStorageInfo[] chooseTarget(String src,
       int numOfReplicas,
@@ -120,7 +164,13 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
       List<DatanodeDescriptor> favoredNodes,
       BlockStoragePolicy storagePolicy) {
     try {
+        LOG.info("@huanke getslowDN: "+getslowDN());
+       LOG.info("@huanke favoredNodes: "+favoredNodes+" favoredNodes.size()");
+
+      //huanke favoredNodes: [10.1.1.7:50010] favoredNodes.size()1
+
       if (favoredNodes == null || favoredNodes.size() == 0) {
+        LOG.info("@huanke favoredNodes=null: ");
         // Favored nodes not specified, fall back to regular block placement.
         return chooseTarget(src, numOfReplicas, writer,
             new ArrayList<DatanodeStorageInfo>(numOfReplicas), false, 
@@ -143,6 +193,7 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
       numOfReplicas = maxNodesAndReplicas[0];
       int maxNodesPerRack = maxNodesAndReplicas[1];
 
+      //huanke if favoredNodes.size()1, then it execute from here, no the final line, that we can not get the output
       for (int i = 0; i < favoredNodes.size() && results.size() < numOfReplicas; i++) {
         DatanodeDescriptor favoredNode = favoredNodes.get(i);
         // Choose a single node which is local to favoredNode.
@@ -189,10 +240,12 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
                                     boolean returnChosenNodes,
                                     Set<Node> excludedNodes,
                                     long blocksize,
-                                    final BlockStoragePolicy storagePolicy) {
-    if (numOfReplicas == 0 || clusterMap.getNumOfLeaves()==0) {
+                                    final BlockStoragePolicy storagePolicy, List<Boolean> OutputBoolean) {
+    DFSClient.LOG.info("@huanke----step9---BlockPlacementPolicyDefault.chooseTarget()------"+chosenStorage+" ex1: "+excludedNodes+" numRep: "+numOfReplicas + "OutputBoolean: "+OutputBoolean);
+    if (numOfReplicas == 0 || clusterMap.getNumOfLeaves()==0) {//I hope all the replica is equal to 2
       return DatanodeStorageInfo.EMPTY_ARRAY;
     }
+    LOG.info("@huanke----------"+chosenStorage+" ex2: "+excludedNodes+" numRep: "+numOfReplicas + "OutputBoolean: "+OutputBoolean);
       
     if (excludedNodes == null) {
       excludedNodes = new HashSet<Node>();
@@ -203,19 +256,25 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
     int maxNodesPerRack = result[1];
       
     final List<DatanodeStorageInfo> results = new ArrayList<DatanodeStorageInfo>(chosenStorage);
+    LOG.info("@huanke chosenStorage1 : "+chosenStorage);
     for (DatanodeStorageInfo storage : chosenStorage) {
       // add localMachine and related nodes to excludedNodes
       addToExcludedNodes(storage.getDatanodeDescriptor(), excludedNodes);
     }
+    LOG.info("@huanke excludedNodes1 : "+chosenStorage);
 
     boolean avoidStaleNodes = (stats != null
         && stats.isAvoidingStaleDataNodesForWrite());
+    LOG.info("@huanke chooseTarget implementation: "+" numOfReplicas: "+numOfReplicas+ " writer: "+writer+" chosenStorage: "+chosenStorage+" excludedNodes: "+excludedNodes); //130 times
     final Node localNode = chooseTarget(numOfReplicas, writer, excludedNodes,
         blocksize, maxNodesPerRack, results, avoidStaleNodes, storagePolicy,
-        EnumSet.noneOf(StorageType.class), results.isEmpty());
+        EnumSet.noneOf(StorageType.class), results.isEmpty(), OutputBoolean);
     if (!returnChosenNodes) {  
       results.removeAll(chosenStorage);
     }
+
+    LOG.info("@huanke writer: "+writer+" results: "+results); //284times
+    //Node type: IP:port
       
     // sorting nodes to form a pipeline
     return getPipeline(
@@ -240,9 +299,14 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
   private int[] getMaxNodesPerRack(int numOfChosen, int numOfReplicas) {
     int clusterSize = clusterMap.getNumOfLeaves();
     int totalNumOfReplicas = numOfChosen + numOfReplicas;
+    LOG.info("@huanke getMaxNodesPerRack: numOfChosen: "+numOfChosen + " numOfReplicas: "+numOfReplicas+ " clusterSize: "+clusterSize);
     if (totalNumOfReplicas > clusterSize) {
-      numOfReplicas -= (totalNumOfReplicas-clusterSize);
-      totalNumOfReplicas = clusterSize;
+      //huanke there are two outliers that I don't know why, later on it is possible that the numeber of replicas is 6
+//      huanke getMaxNodesPerRack: numOfChosen: 0 numOfReplicas: 10 clusterSize: 6
+//      uanke getMaxNodesPerRack: numOfChosen: 2 numOfReplicas: 8 clusterSize: 6
+
+        numOfReplicas -= (totalNumOfReplicas-clusterSize);
+        totalNumOfReplicas = clusterSize;
     }
     // No calculation needed when there is only one rack or picking one node.
     int numOfRacks = clusterMap.getNumOfRacks();
@@ -302,12 +366,29 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
                             final boolean avoidStaleNodes,
                             final BlockStoragePolicy storagePolicy,
                             final EnumSet<StorageType> unavailableStorages,
-                            final boolean newBlock) {
+                            final boolean newBlock,
+                            List<Boolean> OutputBoolean) {
+    LOG.info("@huanke clusterMap1: numofReplicas: "+numOfReplicas);  //130 times
     if (numOfReplicas == 0 || clusterMap.getNumOfLeaves()==0) {
       return (writer instanceof DatanodeDescriptor) ? writer : null;
     }
     final int numOfResults = results.size();
     final int totalReplicasExpected = numOfReplicas + numOfResults;
+    LOG.info("@huanke-----numOfReplicas: "+numOfReplicas+" numOfResults: "+numOfResults+" totalReplicasExpected: "+totalReplicasExpected); //13 times, then above if remove 117 times
+//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
+//    huanke-----numOfReplicas: 4 numOfResults: 2 totalReplicasExpected: 6
+//    huanke-----numOfReplicas: 6 numOfResults: 0 totalReplicasExpected: 6
+//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
+//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
+//    huanke-----numOfReplicas: 1 numOfResults: 5 totalReplicasExpected: 6
+//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
+//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
+//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
+//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
+//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
+//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
+//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2   //if numOfReplica!=2 (fixReplica) , just remove the case
+
     if ((writer == null || !(writer instanceof DatanodeDescriptor)) && !newBlock) {
       writer = results.get(0).getDatanodeDescriptor();
     }
@@ -335,37 +416,70 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
       }
 
       if (numOfResults == 0) {
+        LOG.info("@huanke testWriter: "+ writer);
+        if(OutputBoolean.get(0)){
+          writer = chooseLocalStorageHK(writer, excludedNodes, blocksize,
+                  maxNodesPerRack, results, avoidStaleNodes, storageTypes, true, OutputBoolean)
+                  .getDatanodeDescriptor();
+        }
+        if(OutputBoolean.get(1)){
+          writer = chooseLocalStorageHB(writer, excludedNodes, blocksize,
+                  maxNodesPerRack, results, avoidStaleNodes, storageTypes, true, OutputBoolean)
+                  .getDatanodeDescriptor();
+        }
         writer = chooseLocalStorage(writer, excludedNodes, blocksize,
-            maxNodesPerRack, results, avoidStaleNodes, storageTypes, true)
+                maxNodesPerRack, results, avoidStaleNodes, storageTypes, true)
                 .getDatanodeDescriptor();
+
+        LOG.info("@huanke numOfResults == 0--> writer: "+writer+" results: "+results+" numOfReplicas: "+numOfReplicas);
+        //numOfResults == 0--> writer: 10.1.1.2:50010 results: [[DISK]DS-f74f341c-3a29-4c19-bdaa-2e02aa41b4a2:NORMAL:10.1.1.2:50010] numOfReplicas: 2
         if (--numOfReplicas == 0) {
           return writer;
         }
       }
       final DatanodeDescriptor dn0 = results.get(0).getDatanodeDescriptor();
+      LOG.info("@huanke dn0 -> "+dn0);
       if (numOfResults <= 1) {
+        if(OutputBoolean.get(0)){
+          chooseRemoteRackHK(1, dn0, excludedNodes, blocksize, maxNodesPerRack,
+                  results, avoidStaleNodes, storageTypes, OutputBoolean);
+        }
+        if(OutputBoolean.get(1)){
+          chooseRemoteRackHB(1, dn0, excludedNodes, blocksize, maxNodesPerRack,
+                  results, avoidStaleNodes, storageTypes, OutputBoolean);
+        }
         chooseRemoteRack(1, dn0, excludedNodes, blocksize, maxNodesPerRack,
-            results, avoidStaleNodes, storageTypes);
+                results, avoidStaleNodes, storageTypes);
+
+        LOG.info("@huanke numOfResults  <= 1 --> writer: "+writer+" results: "+results+" numOfReplicas: "+numOfReplicas);
         if (--numOfReplicas == 0) {
           return writer;
         }
       }
       if (numOfResults <= 2) {
         final DatanodeDescriptor dn1 = results.get(1).getDatanodeDescriptor();
+        LOG.info("@huanke dn1 -> "+dn1);
         if (clusterMap.isOnSameRack(dn0, dn1)) {
+          LOG.info("@huanke---case1----");
+          //huanke----That's it!
           chooseRemoteRack(1, dn0, excludedNodes, blocksize, maxNodesPerRack,
               results, avoidStaleNodes, storageTypes);
         } else if (newBlock){
+          LOG.info("@huanke---case2----");
           chooseLocalRack(dn1, excludedNodes, blocksize, maxNodesPerRack,
               results, avoidStaleNodes, storageTypes);
         } else {
+          LOG.info("@huanke---case3----");
           chooseLocalRack(writer, excludedNodes, blocksize, maxNodesPerRack,
               results, avoidStaleNodes, storageTypes);
         }
+        LOG.info("@huanke numOfResults  <= 2 --> writer: "+writer+" results: "+results+" numOfReplicas: "+numOfReplicas);
         if (--numOfReplicas == 0) {
           return writer;
         }
       }
+
+      LOG.info("@huanke case4 and remaining number of replicas"+numOfReplicas+NodeBase.ROOT+excludedNodes+results);
       chooseRandom(numOfReplicas, NodeBase.ROOT, excludedNodes, blocksize,
           maxNodesPerRack, results, avoidStaleNodes, storageTypes);
     } catch (NotEnoughReplicasException e) {
@@ -397,7 +511,7 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
         numOfReplicas = totalReplicasExpected - results.size();
         return chooseTarget(numOfReplicas, writer, oldExcludedNodes, blocksize,
             maxNodesPerRack, results, false, storagePolicy, unavailableStorages,
-            newBlock);
+            newBlock, OutputBoolean);
       }
 
       boolean retry = false;
@@ -417,15 +531,16 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
         numOfReplicas = totalReplicasExpected - results.size();
         return chooseTarget(numOfReplicas, writer, oldExcludedNodes, blocksize,
             maxNodesPerRack, results, false, storagePolicy, unavailableStorages,
-            newBlock);
+            newBlock, OutputBoolean);
       }
     }
+    LOG.info("@huanke IgnoreInfo from DFSOutputStream "+IgnoreInfo);
     return writer;
   }
     
   /**
    * Choose <i>localMachine</i> as the target.
-   * if <i>localMachine</i> is not available, 
+   * if <i>localMachine</i> is not available,
    * choose a node on the same rack
    * @return the chosen storage
    */
@@ -436,9 +551,11 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
       throws NotEnoughReplicasException {
     // if no local machine, randomly choose one node
     if (localMachine == null) {
+      LOG.info("@huanke test1");
       return chooseRandom(NodeBase.ROOT, excludedNodes, blocksize,
           maxNodesPerRack, results, avoidStaleNodes, storageTypes);
     }
+      //default ---------------------choose local storage----------------------
     if (preferLocalNode && localMachine instanceof DatanodeDescriptor) {
       DatanodeDescriptor localDatanode = (DatanodeDescriptor) localMachine;
       // otherwise try local machine first
@@ -461,17 +578,429 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
             }
           }
         }
-      } 
+      }
     }
 
     if (!fallbackToLocalRack) {
       return null;
     }
     // try a node on local rack
-    return chooseLocalRack(localMachine, excludedNodes, blocksize,
-        maxNodesPerRack, results, avoidStaleNodes, storageTypes);
+
+    DatanodeStorageInfo LocalRackNode=chooseLocalRack(localMachine, excludedNodes, blocksize,
+            maxNodesPerRack, results, avoidStaleNodes, storageTypes);
+
+    LOG.info("@huanke test4" +LocalRackNode.getDatanodeDescriptor().getIpAddr());
+    return LocalRackNode;
   }
-  
+
+
+
+
+//huanke backup task don't choose ignore info
+  protected DatanodeStorageInfo chooseLocalStorageHB(Node localMachine,
+                                                     Set<Node> excludedNodes, long blocksize, int maxNodesPerRack,
+                                                     List<DatanodeStorageInfo> results, boolean avoidStaleNodes,
+                                                     EnumMap<StorageType, Integer> storageTypes, boolean fallbackToLocalRack, List<Boolean> OutputBoolean)
+          throws NotEnoughReplicasException {
+
+    if (!fallbackToLocalRack) {
+      return null;
+    }
+    // try a node on local rack
+    if (localMachine == null) {
+      return chooseRandom(NodeBase.ROOT, excludedNodes, blocksize,
+              maxNodesPerRack, results, avoidStaleNodes, storageTypes);
+    }
+    final String localRack = localMachine.getNetworkLocation();
+
+    DatanodeStorageInfo LocalRackNode=chooseRandomHB(1, localRack, excludedNodes, blocksize, maxNodesPerRack,
+            results, avoidStaleNodes, storageTypes, OutputBoolean);
+
+    LOG.info("@huanke tchooseLocalStorageHB : " +LocalRackNode.getDatanodeDescriptor().getIpAddr());
+//    huanke tchooseLocalStorageHB : 10.1.1.4
+    return LocalRackNode;
+  }
+
+  protected DatanodeStorageInfo chooseRandomHB(int numOfReplicas,
+                                               String scope,
+                                               Set<Node> excludedNodes,
+                                               long blocksize,
+                                               int maxNodesPerRack,
+                                               List<DatanodeStorageInfo> results,
+                                               boolean avoidStaleNodes,
+                                               EnumMap<StorageType, Integer> storageTypes, List<Boolean> OutputBoolean)
+          throws NotEnoughReplicasException {
+    int numOfAvailableNodes = clusterMap.countNumOfAvailableNodes(
+            scope, excludedNodes);
+    LOG.info("@huanke chooseRandom()--> scope: "+scope+" excludedNodes: "+excludedNodes+" results:"+results+" numOfAvailableNodes:"+numOfAvailableNodes+ " BackupOutput :" + OutputBoolean.get(1));
+    StringBuilder builder = null;
+    if (LOG.isDebugEnabled()) {
+      builder = debugLoggingBuilder.get();
+      builder.setLength(0);
+      builder.append("[");
+    }
+    boolean badTarget = false;
+    DatanodeStorageInfo firstChosen = null;
+    while(numOfReplicas > 0 && numOfAvailableNodes > 0) {
+      LOG.info("------------------------------------");
+      LOG.info("@huanke numOfReplicas: " + numOfReplicas + " || numOfAvailableNodes: " + numOfAvailableNodes + " || excludedNodesSize: " + excludedNodes.size());
+      LOG.info("@huanke excluded nodes list: " + excludedNodes);
+//      huanke excluded nodes list: [10.1.1.3:50010, 10.1.1.4:50010, 10.1.1.6:50010, 10.1.1.2:50010]
+//      huanke chosenNodeHK: 10.1.1.5
+
+      boolean flag=false;
+
+      DatanodeDescriptor chosenNode =
+              (DatanodeDescriptor)clusterMap.chooseRandom(scope);
+      LOG.info("@huanke chosenNodeHK: " + chosenNode.getIpAddr());
+      for(String slow: IgnoreInfo){
+        LOG.info("@huanke continue slow1: "+slow);
+        LOG.info("@huanke continue getHostname: "+chosenNode.getHostName());
+        if(chosenNode.getHostName().equals(slow)){
+          LOG.info("@huanke chooseLocalStorageHK: "+chosenNode.getHostName()+chosenNode.getIpAddr());
+          flag=true;
+          continue;
+        }
+      }
+
+      if(flag){
+        continue;
+      }
+      LOG.info("@huanke:  final chooseRandomHB chosenNode: " + chosenNode.getIpAddr());
+      if (excludedNodes.add(chosenNode)) { //was not in the excluded list
+        LOG.info("@huanke: inside excludedNodes if statement. excluded nodes size: " + excludedNodes.size());
+        LOG.info("@huanke: inside excludedNodes if statement. excluded list " + excludedNodes);
+//      if (true) { //was not in the excluded list
+        if (LOG.isDebugEnabled()) {
+          builder.append("\nNode ").append(NodeBase.getPath(chosenNode)).append(" [");
+        }
+        numOfAvailableNodes--;
+
+        final DatanodeStorageInfo[] storages = DFSUtil.shuffle(
+                chosenNode.getStorageInfos());
+        int i = 0;
+        boolean search = true;
+        for (Iterator<Map.Entry<StorageType, Integer>> iter = storageTypes
+                .entrySet().iterator(); search && iter.hasNext(); ) {
+          Map.Entry<StorageType, Integer> entry = iter.next();
+          for (i = 0; i < storages.length; i++) {
+            StorageType type = entry.getKey();
+            final int newExcludedNodes = addIfIsGoodTarget(storages[i],
+                    excludedNodes, blocksize, maxNodesPerRack, considerLoad, results,
+                    avoidStaleNodes, type);
+            if (newExcludedNodes >= 0) {
+              numOfReplicas--;
+              if (firstChosen == null) {
+                firstChosen = storages[i];
+              }
+              numOfAvailableNodes -= newExcludedNodes;
+              int num = entry.getValue();
+              if (num == 1) {
+                iter.remove();
+              } else {
+                entry.setValue(num - 1);
+              }
+              search = false;
+              break;
+            }
+          }
+        }
+        if (LOG.isDebugEnabled()) {
+          builder.append("\n]");
+        }
+
+        // If no candidate storage was found on this DN then set badTarget.
+        badTarget = (i == storages.length);
+      }
+      LOG.info("@huanke: outside excludedNodes if statement. excluded nodes size: " + excludedNodes.size());
+      LOG.info("@huanke: outside excludedNodes if statement. excluded list " + excludedNodes);
+    }
+
+    if (numOfReplicas>0) {
+      String detail = enableDebugLogging;
+      if (LOG.isDebugEnabled()) {
+        if (badTarget && builder != null) {
+          detail = builder.toString();
+          builder.setLength(0);
+        } else {
+          detail = "";
+        }
+      }
+      throw new NotEnoughReplicasException(detail);
+    }
+    LOG.info("@huanke: firstChosen:"+firstChosen.getDatanodeDescriptor());
+    return firstChosen;
+
+  }
+
+  //huanke if OriginalOuput=true, then localStorage is focus on choosing D5
+  /**
+   * Choose <i>localMachine</i> as the target.
+   * if <i>localMachine</i> is not available,
+   * choose a node on the same rack
+   * @return the chosen storage
+   */
+  protected DatanodeStorageInfo chooseLocalStorageHK(Node localMachine,
+                                                   Set<Node> excludedNodes, long blocksize, int maxNodesPerRack,
+                                                   List<DatanodeStorageInfo> results, boolean avoidStaleNodes,
+                                                   EnumMap<StorageType, Integer> storageTypes, boolean fallbackToLocalRack, List<Boolean> OutputBoolean)
+          throws NotEnoughReplicasException {
+
+    if (!fallbackToLocalRack) {
+      return null;
+    }
+    // try a node on local rack
+    if (localMachine == null) {
+      return chooseRandom(NodeBase.ROOT, excludedNodes, blocksize,
+              maxNodesPerRack, results, avoidStaleNodes, storageTypes);
+    }
+    final String localRack = localMachine.getNetworkLocation();
+
+    DatanodeStorageInfo LocalRackNode=chooseRandomHK(1, localRack, excludedNodes, blocksize, maxNodesPerRack,
+            results, avoidStaleNodes, storageTypes, OutputBoolean);
+
+    LOG.info("@huanke tchooseLocalStorageHK : " +LocalRackNode.getDatanodeDescriptor().getIpAddr());
+//    huanke tchooseLocalStorageHK : 10.1.1.7
+//    huanke tchooseLocalStorageHK : 10.1.1.7
+
+    return LocalRackNode;
+  }
+
+  protected DatanodeStorageInfo chooseRandomHK(int numOfReplicas,
+                                             String scope,
+                                             Set<Node> excludedNodes,
+                                             long blocksize,
+                                             int maxNodesPerRack,
+                                             List<DatanodeStorageInfo> results,
+                                             boolean avoidStaleNodes,
+                                             EnumMap<StorageType, Integer> storageTypes, List<Boolean> OutputBoolean)
+          throws NotEnoughReplicasException {
+    int numOfAvailableNodes = clusterMap.countNumOfAvailableNodes(
+            scope, excludedNodes);
+    LOG.info("@huanke chooseRandom()--> scope: "+scope+" excludedNodes: "+excludedNodes+" results:"+results+" numOfAvailableNodes:"+numOfAvailableNodes);
+    StringBuilder builder = null;
+    if (LOG.isDebugEnabled()) {
+      builder = debugLoggingBuilder.get();
+      builder.setLength(0);
+      builder.append("[");
+    }
+    boolean badTarget = false;
+    DatanodeStorageInfo firstChosen = null;
+    while(numOfReplicas > 0 && numOfAvailableNodes > 0) {
+      LOG.info("------------------------------------");
+      LOG.info("@huanke numOfReplicas: " + numOfReplicas + " || numOfAvailableNodes: " + numOfAvailableNodes + " || excludedNodesSize: " + excludedNodes.size());
+      LOG.info("@huanke excluded nodes list: " + excludedNodes);
+//      huanke excluded nodes list: [10.1.1.3:50010, 10.1.1.4:50010, 10.1.1.6:50010, 10.1.1.2:50010]
+//      huanke chosenNodeHK: 10.1.1.5
+
+      boolean flag=false;
+
+      DatanodeDescriptor chosenNode =
+              (DatanodeDescriptor)clusterMap.chooseRandom(scope);
+      LOG.info("@huanke chosenNodeHK: " + chosenNode.getIpAddr());
+        for(String slow: slowDataNodes){
+          LOG.info("@huanke continue slow1: "+slow);
+          LOG.info("@huanke continue getHostname: "+chosenNode.getHostName());
+          if(!chosenNode.getHostName().equals(slow)){
+            LOG.info("@huanke chooseLocalStorageHK: "+chosenNode.getHostName()+chosenNode.getIpAddr());
+            flag=true;
+            continue;
+          }
+      }
+
+      if(flag){
+        continue;
+      }
+      LOG.info("@huanke:  final chosenNode: " + chosenNode.getIpAddr());
+      if (excludedNodes.add(chosenNode)) { //was not in the excluded list
+        LOG.info("@huanke: inside excludedNodes if statement. excluded nodes size: " + excludedNodes.size());
+        LOG.info("@huanke: inside excludedNodes if statement. excluded list " + excludedNodes);
+//      if (true) { //was not in the excluded list
+        if (LOG.isDebugEnabled()) {
+          builder.append("\nNode ").append(NodeBase.getPath(chosenNode)).append(" [");
+        }
+        numOfAvailableNodes--;
+
+        final DatanodeStorageInfo[] storages = DFSUtil.shuffle(
+                chosenNode.getStorageInfos());
+        int i = 0;
+        boolean search = true;
+        for (Iterator<Map.Entry<StorageType, Integer>> iter = storageTypes
+                .entrySet().iterator(); search && iter.hasNext(); ) {
+          Map.Entry<StorageType, Integer> entry = iter.next();
+          for (i = 0; i < storages.length; i++) {
+            StorageType type = entry.getKey();
+            final int newExcludedNodes = addIfIsGoodTarget(storages[i],
+                    excludedNodes, blocksize, maxNodesPerRack, considerLoad, results,
+                    avoidStaleNodes, type);
+            if (newExcludedNodes >= 0) {
+              numOfReplicas--;
+              if (firstChosen == null) {
+                firstChosen = storages[i];
+              }
+              numOfAvailableNodes -= newExcludedNodes;
+              int num = entry.getValue();
+              if (num == 1) {
+                iter.remove();
+              } else {
+                entry.setValue(num - 1);
+              }
+              search = false;
+              break;
+            }
+          }
+        }
+        if (LOG.isDebugEnabled()) {
+          builder.append("\n]");
+        }
+
+        // If no candidate storage was found on this DN then set badTarget.
+        badTarget = (i == storages.length);
+      }
+      LOG.info("@huanke: outside excludedNodes if statement. excluded nodes size: " + excludedNodes.size());
+      LOG.info("@huanke: outside excludedNodes if statement. excluded list " + excludedNodes);
+    }
+
+    if (numOfReplicas>0) {
+      String detail = enableDebugLogging;
+      if (LOG.isDebugEnabled()) {
+        if (badTarget && builder != null) {
+          detail = builder.toString();
+          builder.setLength(0);
+        } else {
+          detail = "";
+        }
+      }
+      throw new NotEnoughReplicasException(detail);
+    }
+    LOG.info("@huanke: firstChosen:"+firstChosen.getDatanodeDescriptor());
+    return firstChosen;
+
+  }
+
+
+//huanke not choose D5
+
+  protected DatanodeStorageInfo chooseRandomHK1(int numOfReplicas,
+                                               String scope,
+                                               Set<Node> excludedNodes,
+                                               long blocksize,
+                                               int maxNodesPerRack,
+                                               List<DatanodeStorageInfo> results,
+                                               boolean avoidStaleNodes,
+                                               EnumMap<StorageType, Integer> storageTypes, List<Boolean> OutputBoolean)
+          throws NotEnoughReplicasException {
+    int numOfAvailableNodes = clusterMap.countNumOfAvailableNodes(
+            scope, excludedNodes);
+    LOG.info("@huanke chooseRandom()--> scope: "+scope+" excludedNodes: "+excludedNodes+" results:"+results+" numOfAvailableNodes:"+numOfAvailableNodes);
+    StringBuilder builder = null;
+    if (LOG.isDebugEnabled()) {
+      builder = debugLoggingBuilder.get();
+      builder.setLength(0);
+      builder.append("[");
+    }
+    boolean badTarget = false;
+    DatanodeStorageInfo firstChosen = null;
+    while(numOfReplicas > 0 && numOfAvailableNodes > 0) {
+      LOG.info("------------------------------------");
+      LOG.info("@huanke numOfReplicas: " + numOfReplicas + " || numOfAvailableNodes: " + numOfAvailableNodes + " || excludedNodesSize: " + excludedNodes.size());
+      LOG.info("@huanke excluded nodes list: " + excludedNodes);
+//      huanke excluded nodes list: [10.1.1.3:50010, 10.1.1.4:50010, 10.1.1.6:50010, 10.1.1.2:50010]
+//      huanke chosenNodeHK: 10.1.1.5
+
+      boolean flag=false;
+
+      DatanodeDescriptor chosenNode =
+              (DatanodeDescriptor)clusterMap.chooseRandom(scope);
+      LOG.info("@huanke chosenNodeHK: " + chosenNode.getIpAddr());
+      for(String slow: slowDataNodes){
+        LOG.info("@huanke continue slow1: "+slow);
+        LOG.info("@huanke continue getHostname: "+chosenNode.getHostName());
+        if(chosenNode.getHostName().equals(slow)){
+          LOG.info("@huanke chooseLocalStorageHK: "+chosenNode.getHostName()+chosenNode.getIpAddr());
+          flag=true;
+          continue;
+        }
+      }
+
+      if(flag){
+        continue;
+      }
+      LOG.info("@huanke:  final chooseRandomHK1 chosenNode: " + chosenNode.getIpAddr());
+      if (excludedNodes.add(chosenNode)) { //was not in the excluded list
+        LOG.info("@huanke: inside excludedNodes if statement. excluded nodes size: " + excludedNodes.size());
+        LOG.info("@huanke: inside excludedNodes if statement. excluded list " + excludedNodes);
+//      if (true) { //was not in the excluded list
+        if (LOG.isDebugEnabled()) {
+          builder.append("\nNode ").append(NodeBase.getPath(chosenNode)).append(" [");
+        }
+        numOfAvailableNodes--;
+
+        final DatanodeStorageInfo[] storages = DFSUtil.shuffle(
+                chosenNode.getStorageInfos());
+        int i = 0;
+        boolean search = true;
+        for (Iterator<Map.Entry<StorageType, Integer>> iter = storageTypes
+                .entrySet().iterator(); search && iter.hasNext(); ) {
+          Map.Entry<StorageType, Integer> entry = iter.next();
+          for (i = 0; i < storages.length; i++) {
+            StorageType type = entry.getKey();
+            final int newExcludedNodes = addIfIsGoodTarget(storages[i],
+                    excludedNodes, blocksize, maxNodesPerRack, considerLoad, results,
+                    avoidStaleNodes, type);
+            if (newExcludedNodes >= 0) {
+              numOfReplicas--;
+              if (firstChosen == null) {
+                firstChosen = storages[i];
+              }
+              numOfAvailableNodes -= newExcludedNodes;
+              int num = entry.getValue();
+              if (num == 1) {
+                iter.remove();
+              } else {
+                entry.setValue(num - 1);
+              }
+              search = false;
+              break;
+            }
+          }
+        }
+        if (LOG.isDebugEnabled()) {
+          builder.append("\n]");
+        }
+
+        // If no candidate storage was found on this DN then set badTarget.
+        badTarget = (i == storages.length);
+      }
+      LOG.info("@huanke: outside excludedNodes if statement. excluded nodes size: " + excludedNodes.size());
+      LOG.info("@huanke: outside excludedNodes if statement. excluded list " + excludedNodes);
+    }
+
+    if (numOfReplicas>0) {
+      String detail = enableDebugLogging;
+      if (LOG.isDebugEnabled()) {
+        if (badTarget && builder != null) {
+          detail = builder.toString();
+          builder.setLength(0);
+        } else {
+          detail = "";
+        }
+      }
+      throw new NotEnoughReplicasException(detail);
+    }
+    LOG.info("@huanke: firstChosen:"+firstChosen.getDatanodeDescriptor());
+    return firstChosen;
+
+  }
+
+
+
+
+
+
+
+
+
   /**
    * Add <i>localMachine</i> and related nodes to <i>excludedNodes</i>
    * for next replica choosing. In sub class, we can add more nodes within
@@ -505,7 +1034,10 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
           maxNodesPerRack, results, avoidStaleNodes, storageTypes);
     }
     final String localRack = localMachine.getNetworkLocation();
-      
+    LOG.info("@huanke chooseLocalRack() --> "+" localMachine: "+localMachine+"excludedNodes: " +excludedNodes+" results: "+results+ "localRack: "+localRack);
+    //huanke chooseLocalRack() -->  localMachine: 10.1.1.2:50010 excludedNodes: [] results: []localRack: /default-rack
+
+
     try {
       // choose one from the local rack
       return chooseRandom(localRack, excludedNodes,
@@ -590,6 +1122,61 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
     }
   }
 
+  //huanke OutputBoolean.get(0)=true, not choose D5
+  protected void chooseRemoteRackHK(int numOfReplicas,
+                                  DatanodeDescriptor localMachine,
+                                  Set<Node> excludedNodes,
+                                  long blocksize,
+                                  int maxReplicasPerRack,
+                                  List<DatanodeStorageInfo> results,
+                                  boolean avoidStaleNodes,
+                                  EnumMap<StorageType, Integer> storageTypes, List<Boolean> OutputBoolean)
+          throws NotEnoughReplicasException {
+    int oldNumOfReplicas = results.size();
+    // randomly choose one node from remote racks
+    try {
+      chooseRandomHK1(numOfReplicas, "~" + localMachine.getNetworkLocation(),
+              excludedNodes, blocksize, maxReplicasPerRack, results,
+              avoidStaleNodes, storageTypes, OutputBoolean);
+    } catch (NotEnoughReplicasException e) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Failed to choose remote rack (location = ~"
+                + localMachine.getNetworkLocation() + "), fallback to local rack", e);
+      }
+      chooseRandom(numOfReplicas-(results.size()-oldNumOfReplicas),
+              localMachine.getNetworkLocation(), excludedNodes, blocksize,
+              maxReplicasPerRack, results, avoidStaleNodes, storageTypes);
+    }
+  }
+
+
+  //huanke OutputBoolean.get(0)=true, not choose D5
+  protected void chooseRemoteRackHB(int numOfReplicas,
+                                    DatanodeDescriptor localMachine,
+                                    Set<Node> excludedNodes,
+                                    long blocksize,
+                                    int maxReplicasPerRack,
+                                    List<DatanodeStorageInfo> results,
+                                    boolean avoidStaleNodes,
+                                    EnumMap<StorageType, Integer> storageTypes, List<Boolean> OutputBoolean)
+          throws NotEnoughReplicasException {
+    int oldNumOfReplicas = results.size();
+    // randomly choose one node from remote racks
+    try {
+      chooseRandomHB(numOfReplicas, "~" + localMachine.getNetworkLocation(),
+              excludedNodes, blocksize, maxReplicasPerRack, results,
+              avoidStaleNodes, storageTypes, OutputBoolean);
+    } catch (NotEnoughReplicasException e) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Failed to choose remote rack (location = ~"
+                + localMachine.getNetworkLocation() + "), fallback to local rack", e);
+      }
+      chooseRandom(numOfReplicas-(results.size()-oldNumOfReplicas),
+              localMachine.getNetworkLocation(), excludedNodes, blocksize,
+              maxReplicasPerRack, results, avoidStaleNodes, storageTypes);
+    }
+  }
+
   /**
    * Randomly choose one target from the given <i>scope</i>.
    * @return the chosen storage, if there is any.
@@ -607,21 +1194,21 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
   }
 
   /**
-   * Randomly choose <i>numOfReplicas</i> targets from the given <i>scope</i>.
-   * @return the first chosen node, if there is any.
-   */
+   //   * Randomly choose <i>numOfReplicas</i> targets from the given <i>scope</i>.
+   //   * @return the first chosen node, if there is any.
+   //   */
   protected DatanodeStorageInfo chooseRandom(int numOfReplicas,
-                            String scope,
-                            Set<Node> excludedNodes,
-                            long blocksize,
-                            int maxNodesPerRack,
-                            List<DatanodeStorageInfo> results,
-                            boolean avoidStaleNodes,
-                            EnumMap<StorageType, Integer> storageTypes)
-                            throws NotEnoughReplicasException {
-      
+                                             String scope,
+                                             Set<Node> excludedNodes,
+                                             long blocksize,
+                                             int maxNodesPerRack,
+                                             List<DatanodeStorageInfo> results,
+                                             boolean avoidStaleNodes,
+                                             EnumMap<StorageType, Integer> storageTypes)
+          throws NotEnoughReplicasException {
     int numOfAvailableNodes = clusterMap.countNumOfAvailableNodes(
-        scope, excludedNodes);
+            scope, excludedNodes);
+    LOG.info("@huanke chooseRandom()--> scope: "+scope+" excludedNodes: "+excludedNodes+" results:"+results+" numOfAvailableNodes:"+numOfAvailableNodes);
     StringBuilder builder = null;
     if (LOG.isDebugEnabled()) {
       builder = debugLoggingBuilder.get();
@@ -631,26 +1218,66 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
     boolean badTarget = false;
     DatanodeStorageInfo firstChosen = null;
     while(numOfReplicas > 0 && numOfAvailableNodes > 0) {
-      DatanodeDescriptor chosenNode = 
-          (DatanodeDescriptor)clusterMap.chooseRandom(scope);
+      LOG.info("------------------------------------");
+      LOG.info("@huanke numOfReplicas: " + numOfReplicas + " || numOfAvailableNodes: " + numOfAvailableNodes + " || excludedNodesSize: " + excludedNodes.size());
+      LOG.info("@huanke excluded nodes list: " + excludedNodes);
+//      huanke excluded nodes list: [10.1.1.3:50010, 10.1.1.4:50010, 10.1.1.6:50010, 10.1.1.2:50010]
+//      huanke chosenNodeHK: 10.1.1.5
+
+      DatanodeDescriptor chosenNode =
+              (DatanodeDescriptor)clusterMap.chooseRandom(scope);
+      LOG.info("@huanke chosenNodeHK: " + chosenNode.getIpAddr());
+      //chosenNodeHK: 10.1.1.2:50010 ===== pc712.emulab.net  ===== 10.1.1.2  ===== pc712.emulab.net  =====  10.1.1.2:50075   =====  10.1.1.2:50010
+////
+//      //huanke  in order to jump two loops
+//      boolean flag=false;
+//
+//      //huanke, jump over from slow DNs
+//      for(String slow: slowDataNodes){
+//        LOG.info("@huanke continue slow1: "+slow);
+//        LOG.info("@huanke continue getHostname: "+chosenNode.getHostName());
+//        if(chosenNode.getHostName().equals(slow)){
+//          LOG.info("@huanke continue slow2: "+chosenNode.getHostName());
+//          flag=true;
+//          continue;
+//        }
+//        if(excludedNodes.contains(chosenNode)){
+//          LOG.info("@huanke continue slow3: "+chosenNode.getHostName());
+//          flag=true;
+//          continue;
+//        }
+//      }
+//
+//
+//     // huanke
+//      if(flag){
+//        LOG.info("@huanke has skipped slow node: ");
+//        continue;
+//      }
+
+      // @ scope: default-rack--> index: a random value in (numOfDataNodes) --> according to /etc/hosts order to choose one DN
+      LOG.info("@huanke:  final chosenNode: " + chosenNode.getIpAddr());
       if (excludedNodes.add(chosenNode)) { //was not in the excluded list
+        LOG.info("@huanke: inside excludedNodes if statement. excluded nodes size: " + excludedNodes.size());
+        LOG.info("@huanke: inside excludedNodes if statement. excluded list " + excludedNodes);
+//      if (true) { //was not in the excluded list
         if (LOG.isDebugEnabled()) {
           builder.append("\nNode ").append(NodeBase.getPath(chosenNode)).append(" [");
         }
         numOfAvailableNodes--;
 
         final DatanodeStorageInfo[] storages = DFSUtil.shuffle(
-            chosenNode.getStorageInfos());
+                chosenNode.getStorageInfos());
         int i = 0;
         boolean search = true;
         for (Iterator<Map.Entry<StorageType, Integer>> iter = storageTypes
-            .entrySet().iterator(); search && iter.hasNext(); ) {
+                .entrySet().iterator(); search && iter.hasNext(); ) {
           Map.Entry<StorageType, Integer> entry = iter.next();
           for (i = 0; i < storages.length; i++) {
             StorageType type = entry.getKey();
             final int newExcludedNodes = addIfIsGoodTarget(storages[i],
-                excludedNodes, blocksize, maxNodesPerRack, considerLoad, results,
-                avoidStaleNodes, type);
+                    excludedNodes, blocksize, maxNodesPerRack, considerLoad, results,
+                    avoidStaleNodes, type);
             if (newExcludedNodes >= 0) {
               numOfReplicas--;
               if (firstChosen == null) {
@@ -675,8 +1302,10 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
         // If no candidate storage was found on this DN then set badTarget.
         badTarget = (i == storages.length);
       }
+      LOG.info("@huanke: outside excludedNodes if statement. excluded nodes size: " + excludedNodes.size());
+      LOG.info("@huanke: outside excludedNodes if statement. excluded list " + excludedNodes);
     }
-      
+
     if (numOfReplicas>0) {
       String detail = enableDebugLogging;
       if (LOG.isDebugEnabled()) {
@@ -689,8 +1318,9 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
       }
       throw new NotEnoughReplicasException(detail);
     }
-    
+    LOG.info("@huanke: firstChosen:"+firstChosen.getDatanodeDescriptor());
     return firstChosen;
+
   }
 
   /**

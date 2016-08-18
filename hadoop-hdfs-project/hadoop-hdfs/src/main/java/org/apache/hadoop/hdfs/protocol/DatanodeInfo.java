@@ -21,6 +21,8 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSUtil;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.WritableUtils;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.net.NetworkTopology;
 import org.apache.hadoop.net.Node;
@@ -28,6 +30,10 @@ import org.apache.hadoop.net.NodeBase;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.Time;
 
+import javax.xml.crypto.Data;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
@@ -152,7 +158,9 @@ public class DatanodeInfo extends DatanodeID implements Node {
     this.location = networkLocation;
     this.adminState = adminState;
   }
-  
+
+
+
   /** Network location name */
   @Override
   public String getName() {
@@ -508,5 +516,52 @@ public class DatanodeInfo extends DatanodeID implements Node {
 
   public void setSoftwareVersion(String softwareVersion) {
     this.softwareVersion = softwareVersion;
+  }
+
+
+  //huanke create a empty DatanodeInfo instance at the beginning
+  public static DatanodeInfo[] createDatanodeInfo(){
+    DatanodeInfo[] DNpath =new DatanodeInfo[2];
+    DNpath[0]=new DatanodeInfo("0.0.0.0","fake-localhost","null-uuid",0,0,0,0,0,0,0,0,0,0,0,0,0,"/default-rack", AdminStates.NORMAL);
+    DNpath[1]=new DatanodeInfo("0.0.0.0","fake-localhost","null-uuid",0,0,0,0,0,0,0,0,0,0,0,0,0,"/default-rack", AdminStates.NORMAL);
+    return DNpath;
+  }
+
+  /*at the beginning, i createDatanodeInfo (.,,..., null), I just set AdminStates.NORMAL to be null, which will lead to WritableUtils.writeEnum(out, adminState) failed because of NullPointerException  */
+
+  // /
+  // ////////////////////////////////////////////
+  // huanke Writable
+  // ////////////////////////////////////////////
+  @Override
+  public void write(DataOutput out) throws IOException {
+    super.write(out);
+    out.writeLong(capacity);
+    out.writeLong(dfsUsed);
+    out.writeLong(remaining);
+    out.writeLong(blockPoolUsed);
+    out.writeLong(cacheCapacity);
+    out.writeLong(cacheUsed);
+    out.writeLong(lastUpdate);
+    out.writeLong(lastUpdateMonotonic);
+    out.writeInt(xceiverCount);
+    Text.writeString(out, location);
+    WritableUtils.writeEnum(out,adminState);
+  }
+
+  @Override
+  public void readFields(DataInput in) throws IOException {
+    super.readFields(in);
+    this.capacity=in.readLong();
+    this.dfsUsed=in.readLong();
+    this.remaining=in.readLong();
+    this.blockPoolUsed=in.readLong();
+    this.cacheCapacity=in.readLong();
+    this.cacheUsed=in.readLong();
+    this.lastUpdate=in.readLong();
+    this.lastUpdateMonotonic=in.readLong();
+    this.xceiverCount=in.readInt();
+    this.location=Text.readString(in);
+    this.adminState=WritableUtils.readEnum(in,AdminStates.class);
   }
 }

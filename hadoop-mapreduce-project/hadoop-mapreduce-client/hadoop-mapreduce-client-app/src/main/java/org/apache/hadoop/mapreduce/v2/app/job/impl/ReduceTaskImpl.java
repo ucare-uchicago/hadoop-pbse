@@ -18,15 +18,20 @@
 
 package org.apache.hadoop.mapreduce.v2.app.job.impl;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.ReduceTaskAttemptImpl;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.security.token.JobTokenIdentifier;
+import org.apache.hadoop.mapreduce.split.AMtoReduceTask;
 import org.apache.hadoop.mapreduce.v2.api.records.JobId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskType;
 import org.apache.hadoop.mapreduce.v2.app.AppContext;
 import org.apache.hadoop.mapreduce.v2.app.TaskAttemptListener;
+import org.apache.hadoop.mapreduce.v2.app.job.TaskAttempt;
 import org.apache.hadoop.mapreduce.v2.app.metrics.MRAppMetrics;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.token.Token;
@@ -35,19 +40,23 @@ import org.apache.hadoop.yarn.util.Clock;
 
 @SuppressWarnings({ "rawtypes" })
 public class ReduceTaskImpl extends TaskImpl {
+  //huanke
+  private static final Log LOG = LogFactory.getLog(ReduceTaskImpl.class);
   
   private final int numMapTasks;
+  private final AMtoReduceTask AMtoReduce;
 
   public ReduceTaskImpl(JobId jobId, int partition,
       EventHandler eventHandler, Path jobFile, JobConf conf,
       int numMapTasks, TaskAttemptListener taskAttemptListener,
       Token<JobTokenIdentifier> jobToken,
       Credentials credentials, Clock clock,
-      int appAttemptId, MRAppMetrics metrics, AppContext appContext) {
+      int appAttemptId, MRAppMetrics metrics, AppContext appContext, AMtoReduceTask AMtoReduce) {
     super(jobId, TaskType.REDUCE, partition, eventHandler, jobFile, conf,
         taskAttemptListener, jobToken, credentials, clock,
         appAttemptId, metrics, appContext);
     this.numMapTasks = numMapTasks;
+    this.AMtoReduce=AMtoReduce;
   }
 
   @Override
@@ -60,7 +69,7 @@ public class ReduceTaskImpl extends TaskImpl {
     return new ReduceTaskAttemptImpl(getID(), nextAttemptNumber,
         eventHandler, jobFile,
         partition, numMapTasks, conf, taskAttemptListener,
-        jobToken, credentials, clock, appContext);
+        jobToken, credentials, clock, appContext, AMtoReduce);
   }
 
   @Override
@@ -68,4 +77,38 @@ public class ReduceTaskImpl extends TaskImpl {
     return TaskType.REDUCE;
   }
 
-}
+  //huanke
+
+  protected void updateTaskOutputDN() {
+
+    TaskAttempt lastAttempt = getAttempt(this.lastAttemptId);
+
+    LOG.info("@huanke lastAttempt _h_r "+lastAttempt);
+    if(this.lastAttemptId==null){
+      LOG.info("@huanke you are null");
+    }else{
+      LOG.info("@huanke you are last"+this.lastAttemptId.getId());
+//      huanke you are last0
+//      huanke you are last1
+    }
+    /*
+    * huanke lastAttempt _h_r null
+      huanke lastAttempt _h_r null
+      huanke lastAttempt _h_r org.apache.hadoop.mapred.ReduceTaskAttemptImpl
+    * */
+    if (lastAttempt != null) {
+      TaskAttemptImpl att = (TaskAttemptImpl) lastAttempt;
+      LOG.info("@huanke this.ignoreNode == "+this.ignoreNode);
+      AMtoReduce.setAMtoTaskInfo(this.ignoreNode.getHostName());
+//      AMtoReduce.monitor();
+//      att.getInfo();
+      LOG.info("@huanke piggyback info : "+att.getID()+this.lastAttemptId.getTaskId().getTaskType()+AMtoReduce.getAMtaskInfo());
+      /**
+       huanke piggyback info : 0REDUCEMaMaMaMa
+       huanke piggyback info : 1REDUCEMaMaMaMa
+       */
+
+    }
+  }
+
+  }

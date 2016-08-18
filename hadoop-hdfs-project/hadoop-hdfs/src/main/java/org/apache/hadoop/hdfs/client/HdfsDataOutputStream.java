@@ -19,6 +19,8 @@ package org.apache.hadoop.hdfs.client;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.channels.Pipe;
+import java.util.ArrayList;
 import java.util.EnumSet;
 
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -26,9 +28,13 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.crypto.CryptoOutputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DFSOutputStream;
 
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
+
+import javax.xml.crypto.Data;
 
 /**
  * The Hdfs implementation of {@link FSDataOutputStream}.
@@ -58,6 +64,19 @@ public class HdfsDataOutputStream extends FSDataOutputStream {
     this(out, stats, 0L);
   }
 
+//huanke
+  private DFSOutputStream getDFSOutputStream(){
+    if(this.getWrappedStream() instanceof CryptoOutputStream){
+      return (DFSOutputStream) ((CryptoOutputStream) this.getWrappedStream()).getWrappedStream();
+    }
+    return (DFSOutputStream) this.getWrappedStream();
+  }
+
+
+    //huanke
+    public OutputStream getWrappedStream() {
+        return super.getWrappedStream();
+    }
   /**
    * Get the actual number of replicas of the current block.
    * 
@@ -77,7 +96,34 @@ public class HdfsDataOutputStream extends FSDataOutputStream {
     }
     return ((DFSOutputStream) wrappedStream).getCurrentBlockReplication();
   }
-  
+
+    //huanke
+    public DatanodeInfo[] getPipeNodes() {
+      DatanodeInfo[] PipeNodes = getDFSOutputStream().getPipeNodes();
+      if(PipeNodes==null){
+        DFSClient.LOG.info("@huanke HDFS getPipeNodes : is null");
+      }else{
+        DFSClient.LOG.info("@huanke HDFS getPipeNodes : " + "-----and-----" + PipeNodes[0].getHostName() + PipeNodes[1].getHostName());
+      }
+//      int count = 5;
+//      while (count-- > 0 && PipeNodes == null) {
+//        try {
+//          DFSClient.LOG.info("@huanke waiting for pipeline to be created");
+//          Thread.sleep(1000);
+//        } catch (InterruptedException e) {
+//          DFSClient.LOG.error(e.getMessage());
+//          DFSClient.LOG.error(e.getStackTrace());
+//        }
+//        PipeNodes=getDFSOutputStream().getPipeNodes();
+
+//      }
+      return PipeNodes;
+    }
+
+//    public DatanodeInfo[] getPipeline() { return getDFSOutputStream().getPipeline(); }
+
+
+
   /**
    * Sync buffered data to DataNodes (flush to disk devices).
    * 
@@ -94,7 +140,18 @@ public class HdfsDataOutputStream extends FSDataOutputStream {
     }
     ((DFSOutputStream) wrappedStream).hsync(syncFlags);
   }
-  
+
+
+  //huanke
+  public void switchPipeline(String tmp) {
+    DFSClient.LOG.info("@huanke---Hdfs switchPipeline: --->"+tmp);
+    getDFSOutputStream().switchPipeline(tmp);
+//    huanke---Hdfs switchPipeline: --->HelloWorld
+//    huanke---Hdfs switchPipeline: --->HelloWorld --> because we have two reduce tasks now
+
+
+  }
+
   public static enum SyncFlag {
 
     /**

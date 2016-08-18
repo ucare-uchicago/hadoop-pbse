@@ -119,6 +119,9 @@ public class JobConf extends Configuration {
     ConfigUtil.loadResources();
   }
 
+  //huanke
+  public String Info="";
+  
   /**
    * @deprecated Use {@link #MAPREDUCE_JOB_MAP_MEMORY_MB_PROPERTY} and
    * {@link #MAPREDUCE_JOB_REDUCE_MEMORY_MB_PROPERTY}

@@ -19,10 +19,12 @@
 package org.apache.hadoop.mapreduce.lib.output;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
+import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.SequenceFile.CompressionType;
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -40,78 +42,96 @@ import org.apache.hadoop.conf.Configuration;
 /** An {@link OutputFormat} that writes {@link SequenceFile}s. */
 @InterfaceAudience.Public
 @InterfaceStability.Stable
+
 public class SequenceFileOutputFormat <K,V> extends FileOutputFormat<K, V> {
 
   protected SequenceFile.Writer getSequenceWriter(TaskAttemptContext context,
-      Class<?> keyClass, Class<?> valueClass) 
-      throws IOException {
+                                                  Class<?> keyClass, Class<?> valueClass)
+          throws IOException {
     Configuration conf = context.getConfiguration();
-	    
+
     CompressionCodec codec = null;
     CompressionType compressionType = CompressionType.NONE;
     if (getCompressOutput(context)) {
       // find the kind of compression to do
       compressionType = getOutputCompressionType(context);
       // find the right codec
-      Class<?> codecClass = getOutputCompressorClass(context, 
-                                                     DefaultCodec.class);
-      codec = (CompressionCodec) 
-        ReflectionUtils.newInstance(codecClass, conf);
+      Class<?> codecClass = getOutputCompressorClass(context,
+              DefaultCodec.class);
+      codec = (CompressionCodec)
+              ReflectionUtils.newInstance(codecClass, conf);
     }
-    // get the path of the temporary output file 
+    // get the path of the temporary output file
     Path file = getDefaultWorkFile(context, "");
     FileSystem fs = file.getFileSystem(conf);
     return SequenceFile.createWriter(fs, conf, file,
-             keyClass,
-             valueClass,
-             compressionType,
-             codec,
-             context);
+            keyClass,
+            valueClass,
+            compressionType,
+            codec,
+            context);
   }
-  
-  public RecordWriter<K, V> 
-         getRecordWriter(TaskAttemptContext context
-                         ) throws IOException, InterruptedException {
+
+  public RecordWriter<K, V>
+  getRecordWriter(TaskAttemptContext context
+  ) throws IOException, InterruptedException {
     final SequenceFile.Writer out = getSequenceWriter(context,
-      context.getOutputKeyClass(), context.getOutputValueClass());
+            context.getOutputKeyClass(), context.getOutputValueClass());
+    DFSClient.LOG.info("@huanke getRecordWriter in SequenceFile 1");
+    return new SequenceFileRecordWriter<K, V>(out);
 
-    return new RecordWriter<K, V>() {
-
-        public void write(K key, V value)
-          throws IOException {
-
-          out.append(key, value);
-        }
-
-        public void close(TaskAttemptContext context) throws IOException { 
-          out.close();
-        }
-      };
   }
 
   /**
    * Get the {@link CompressionType} for the output {@link SequenceFile}.
    * @param job the {@link Job}
-   * @return the {@link CompressionType} for the output {@link SequenceFile}, 
+   * @return the {@link CompressionType} for the output {@link SequenceFile},
    *         defaulting to {@link CompressionType#RECORD}
    */
   public static CompressionType getOutputCompressionType(JobContext job) {
-    String val = job.getConfiguration().get(FileOutputFormat.COMPRESS_TYPE, 
-                                            CompressionType.RECORD.toString());
+    String val = job.getConfiguration().get(FileOutputFormat.COMPRESS_TYPE,
+            CompressionType.RECORD.toString());
     return CompressionType.valueOf(val);
   }
-  
+
   /**
    * Set the {@link CompressionType} for the output {@link SequenceFile}.
    * @param job the {@link Job} to modify
    * @param style the {@link CompressionType} for the output
-   *              {@link SequenceFile} 
+   *              {@link SequenceFile}
    */
-  public static void setOutputCompressionType(Job job, 
-		                                          CompressionType style) {
+  public static void setOutputCompressionType(Job job,
+                                              CompressionType style) {
     setCompressOutput(job, true);
-    job.getConfiguration().set(FileOutputFormat.COMPRESS_TYPE, 
-                               style.toString());
+    job.getConfiguration().set(FileOutputFormat.COMPRESS_TYPE,
+            style.toString());
+  }
+
+  //huanke  create a new class SequenceFileRecordWriter to implements OutputStream, then we can get outputstream from the SequenceFile.Writer
+  class SequenceFileRecordWriter<K, V> extends RecordWriter<K,V> implements OutputStreamOwner{
+
+    private SequenceFile.Writer out;
+
+    public SequenceFileRecordWriter (SequenceFile.Writer out){
+      this.out=out;
+      DFSClient.LOG.info("@huanke getRecordWriter in SequenceFile 2");
+    }
+
+    @Override
+    public void write(K key, V value) throws IOException, InterruptedException {
+      out.append(key, value);
+    }
+
+    @Override
+    public void close(TaskAttemptContext context) throws IOException, InterruptedException {
+      out.close();
+    }
+
+    @Override
+    public OutputStream getOutputStream() {
+      DFSClient.LOG.info("@huanke getRecordWriter in SequenceFile 3");
+      return out.getOutputStream();
+    }
   }
 
 }

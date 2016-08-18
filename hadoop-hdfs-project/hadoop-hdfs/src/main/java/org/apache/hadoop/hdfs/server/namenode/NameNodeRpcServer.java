@@ -66,6 +66,7 @@ import org.apache.hadoop.ha.ServiceFailedException;
 import org.apache.hadoop.ha.proto.HAServiceProtocolProtos.HAServiceProtocolService;
 import org.apache.hadoop.ha.protocolPB.HAServiceProtocolPB;
 import org.apache.hadoop.ha.protocolPB.HAServiceProtocolServerSideTranslatorPB;
+import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.HDFSPolicyProvider;
@@ -718,14 +719,52 @@ class NameNodeRpcServer implements NamenodeProtocols {
         excludedNodesSet.add(node);
       }
     }
+      DFSClient.LOG.info("@huanke---step6----NameNodeRPCServer.addBlock()-------");
     List<String> favoredNodesList = (favoredNodes == null) ? null
         : Arrays.asList(favoredNodes);
+      LOG.info("@huanke favoredNodesList : "+favoredNodesList);
+
+      //huanke let favoredNodesList to be null temporaliy
+//      favoredNodesList=null;
+      //----------------------------------------------------------
     LocatedBlock locatedBlock = namesystem.getAdditionalBlock(src, fileId,
         clientName, previous, excludedNodesSet, favoredNodesList);
     if (locatedBlock != null)
       metrics.incrAddBlockOps();
     return locatedBlock;
   }
+
+    //huanke
+    @Override
+    public LocatedBlock addBlockHK(String src, String clientName,
+                                 ExtendedBlock previous, DatanodeInfo[] excludedNodes, long fileId,
+                                 String[] favoredNodes, List<String> IgnoreInfo)
+            throws IOException {
+        checkNNStartup();
+        if (stateChangeLog.isDebugEnabled()) {
+            stateChangeLog.debug("*BLOCK* NameNode.addBlock: file " + src
+                    + " fileId=" + fileId + " for " + clientName);
+        }
+        Set<Node> excludedNodesSet = null;
+        if (excludedNodes != null) {
+            excludedNodesSet = new HashSet<Node>(excludedNodes.length);
+            for (Node node : excludedNodes) {
+                excludedNodesSet.add(node);
+            }
+        }
+        DFSClient.LOG.info("@huanke--HK-step61----NameNodeRPCServer.addBlock()-------");
+        List<String> favoredNodesList = (favoredNodes == null) ? null
+                : Arrays.asList(favoredNodes);
+//        LocatedBlock locatedBlock = namesystem.getAdditionalBlock(src, fileId,
+//                clientName, previous, excludedNodesSet, favoredNodesList);
+        LOG.info("@huanke IngoreInfo NN addblock() "+IgnoreInfo+" favoredNodesList: "+favoredNodesList);
+        LocatedBlock locatedBlock = namesystem.getAdditionalBlockHK(src, fileId,
+                clientName, previous, excludedNodesSet, favoredNodesList, IgnoreInfo);
+        if (locatedBlock != null)
+            metrics.incrAddBlockOps();
+        return locatedBlock;
+    }
+
 
   @Override // ClientProtocol
   public LocatedBlock getAdditionalDatanode(final String src,

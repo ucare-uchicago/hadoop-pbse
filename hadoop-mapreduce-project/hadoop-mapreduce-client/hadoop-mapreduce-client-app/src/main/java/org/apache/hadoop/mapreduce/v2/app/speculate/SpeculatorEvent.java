@@ -20,6 +20,10 @@ package org.apache.hadoop.mapreduce.v2.app.speculate;
 
 import org.apache.hadoop.mapreduce.v2.app.job.event.TaskAttemptStatusUpdateEvent.TaskAttemptStatus;
 import org.apache.hadoop.yarn.event.AbstractEvent;
+
+import java.util.ArrayList;
+
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
 import org.apache.hadoop.mapreduce.v2.api.records.JobId;
@@ -48,6 +52,9 @@ public class SpeculatorEvent extends AbstractEvent<Speculator.EventType> {
   // valid for CREATE_JOB
   private JobId jobID;
 
+  //huanke
+  private ArrayList<DatanodeInfo> DNpath;
+  
   public SpeculatorEvent(JobId jobID, long timestamp) {
     super(Speculator.EventType.JOB_CREATE, timestamp);
     this.jobID = jobID;
@@ -90,6 +97,17 @@ public class SpeculatorEvent extends AbstractEvent<Speculator.EventType> {
 	    this.reducerNode = reducerNode;
 	    this.report = fetchRateReport;
 	    this.reduceTaskId = reduceTaskId;
+  }
+  
+  //huanke
+  public SpeculatorEvent(TaskAttemptStatus reportedStatus, long timestamp,ArrayList<DatanodeInfo> DNpath ) {
+    super(Speculator.EventType.ATTEMPT_PIPELINE_UPDATE, timestamp);
+    this.reportedStatus = reportedStatus;
+    this.DNpath=DNpath;
+  }
+  //huanke
+  public ArrayList<DatanodeInfo> getDNpath(){
+    return this.DNpath;
   }
   
   /*

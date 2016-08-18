@@ -38,6 +38,7 @@ import org.apache.hadoop.util.ReflectionUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import org.apache.tools.ant.taskdefs.Ear;
 
 /** The class represents a cluster of computer with a tree hierarchical
  * network topology.
@@ -55,7 +56,41 @@ public class NetworkTopology {
   public final static int DEFAULT_HOST_LEVEL = 2;
   public static final Log LOG = 
     LogFactory.getLog(NetworkTopology.class);
-    
+
+//  class hkthread implements Runnable{
+//
+//    public void run() {
+//      while(true) {
+//        try {
+//          Thread.sleep(1000);
+//        } catch (Exception e) {
+//        }
+//        LOG.info("@getLeaf getslowDN:" + getslowDN() + " slowDataNodes: " + slowDataNodes);
+//      }
+//    }
+//  }
+  //huanke
+//  public List<String> slowDataNodes;
+//
+//
+//    //huanke
+//    public void setslowDN(Collection<String> slowDataNodes){
+//      LOG.info("@output I already set slowDN in NetworkTopology" +slowDataNodes);
+//      this.slowDataNodes=new ArrayList<>(slowDataNodes);
+//      LOG.info("@output after setting slowDN in NetworkTopology" +this.slowDataNodes);
+////      output I already set slowDN in NetworkTopology[pc859.emulab.net]
+////      output after setting slowDN in NetworkTopology[pc859.emulab.net]
+//
+//    }
+//
+//  //huanke
+//  public List<String> getslowDN(){
+//    LOG.info("@output after getslowDN in NetworkTopology : " +slowDataNodes);
+//    return slowDataNodes;
+//  }
+
+  //-----------------------------------------
+
   public static class InvalidTopologyException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     public InvalidTopologyException(String msg) {
@@ -82,7 +117,8 @@ public class NetworkTopology {
   static class InnerNode extends NodeBase {
     protected List<Node> children=new ArrayList<Node>();
     private int numOfLeaves;
-        
+
+
     /** Construct an InnerNode from a path-like string */
     InnerNode(String path) {
       super(path);
@@ -310,25 +346,46 @@ public class NetworkTopology {
       // calculate the total number of excluded leaf nodes
       int numOfExcludedLeaves =
         isLeaf ? 1 : ((InnerNode)excludedNode).getNumOfLeaves();
+      LOG.info("@getLeaf isLeaf: "+isLeaf+ " numOfExcludedLeaves: "+numOfExcludedLeaves+" isLeafParent(): "+isLeafParent());
+      //isLeaf: true numOfExcludedLeaves: 1 isLeafParent(): true
+
       if (isLeafParent()) { // children are leaves
         if (isLeaf) { // excluded node is a leaf node
           int excludedIndex = children.indexOf(excludedNode);
+          LOG.info("@getLeaf children: "+children+ " excludedNode: "+excludedNode+" excludedIndex(): "+excludedIndex);
+          //children: [10.1.1.2:50010, 10.1.1.6:50010, 10.1.1.7:50010, 10.1.1.3:50010, 10.1.1.5:50010, 10.1.1.4:50010] excludedNode: null excludedIndex(): -1
+
           if (excludedIndex != -1 && leafIndex >= 0) {
             // excluded node is one of the children so adjust the leaf index
             leafIndex = leafIndex>=excludedIndex ? leafIndex+1 : leafIndex;
+            LOG.info("@getLeaf leafIndex: "+leafIndex);
           }
         }
         // range check
         if (leafIndex<0 || leafIndex>=this.getNumOfChildren()) {
           return null;
         }
+        LOG.info("@getLeaf children: "+children+ " leafIndex: "+leafIndex+" children.get(leafIndex): "+children.get(leafIndex));
+        //children: [10.1.1.2:50010, 10.1.1.6:50010, 10.1.1.7:50010, 10.1.1.3:50010, 10.1.1.5:50010, 10.1.1.4:50010] leafIndex: 0 children.get(leafIndex): 10.1.1.2:50010
+        //2,6,7,3,5,4 --- node-0, node-4, node-5, node-2, node-4, node-3 ---> indext 0----> node-0
+        //children: [10.1.1.2:50010, 10.1.1.6:50010, 10.1.1.7:50010, 10.1.1.3:50010, 10.1.1.5:50010, 10.1.1.4:50010] leafIndex: 4 children.get(leafIndex): 10.1.1.5:50010
+        // it denpends on your order in /etc/hosts
+
+
+        //huanke
+        for(int i=0; i< children.size(); i++){
+          LOG.info("@counter i:"+i+" children.get(i).getName(): "+children.get(i).getName()+" children.get(i).getLevel(): "+children.get(i).getLevel()+" children.get(i).getParent(): "+children.get(i).getParent()+" children.get(i).getNetworkLocation(): "+children.get(i).getNetworkLocation());
+        }
         return children.get(leafIndex);
       } else {
         for(int i=0; i<children.size(); i++) {
           InnerNode child = (InnerNode)children.get(i);
+          LOG.info("@getLeaf child: "+child+ " children.size(): "+children.size()+"excludedNode: "+excludedNode);
+          //nothing happens in this else{...}
           if (excludedNode == null || excludedNode != child) {
             // not the excludedNode
             int numOfLeaves = child.getNumOfLeaves();
+            LOG.info("@getLeaf child: "+child+ " numOfLeaves: "+numOfLeaves);
             if (excludedNode != null && child.isAncestor(excludedNode)) {
               numOfLeaves -= numOfExcludedLeaves;
             }
@@ -384,8 +441,11 @@ public class NetworkTopology {
 
   public NetworkTopology() {
     clusterMap = new InnerNode(InnerNode.ROOT);
+
+//    (new Thread(new hkthread())).start();
   }
 
+  //
   /** Add a leaf node
    * Update node counter & rack counter if necessary
    * @param node node to be added; can be null
@@ -691,8 +751,11 @@ public class NetworkTopology {
     netlock.readLock().lock();
     try {
       if (scope.startsWith("~")) {
+        LOG.info("@HK ----case1------");
         return chooseRandom(NodeBase.ROOT, scope.substring(1));
       } else {
+        LOG.info("@HK ----case2------");
+        //That's it! scope: /default-rack
         return chooseRandom(scope, null);
       }
     } finally {
@@ -710,19 +773,27 @@ public class NetworkTopology {
       }
     }
     Node node = getNode(scope);
+    LOG.info("@HK ---scope: "+scope+ " node: "+node + " excludedScope: "+excludedScope);
+    //scope: /default-rack node: /default-rack excludedScope: null
     if (!(node instanceof InnerNode)) {
+      LOG.info("@HK ---node instanceof InnerNode");
+      //nothing here
       return node;
     }
     InnerNode innerNode = (InnerNode)node;
     int numOfDatanodes = innerNode.getNumOfLeaves();
+    LOG.info("@HK ---innerNode: "+innerNode+ " numOfDatanodes: "+numOfDatanodes);
+    //innerNode: /default-rack numOfDatanodes: 6
     if (excludedScope == null) {
       node = null;
     } else {
       node = getNode(excludedScope);
+      LOG.info("@HK ---getNode(excludedScope) :"+node);
       if (!(node instanceof InnerNode)) {
         numOfDatanodes -= 1;
       } else {
         numOfDatanodes -= ((InnerNode)node).getNumOfLeaves();
+        LOG.info("@HK ---numOfDatanodes: "+numOfDatanodes);
       }
     }
     if (numOfDatanodes == 0) {
@@ -731,6 +802,8 @@ public class NetworkTopology {
           "\" excludedScope=\"" + String.valueOf(excludedScope) + "\").");
     }
     int leaveIndex = r.nextInt(numOfDatanodes);
+    LOG.info("@HK ---innerNode: "+innerNode+ " leaveIndex: "+leaveIndex + " node: "+node + "NetworkTopology: "+this.toString()+ "innerNode.getLeaf(leaveIndex, node): "+innerNode.getLeaf(leaveIndex, node));
+    //innerNode: /default-rack leaveIndex: 4 node: null NetworkTopology: Number of racks: 1
     return innerNode.getLeaf(leaveIndex, node);
   }
 

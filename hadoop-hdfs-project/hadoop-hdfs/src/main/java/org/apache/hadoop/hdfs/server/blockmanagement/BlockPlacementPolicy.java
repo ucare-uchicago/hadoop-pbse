@@ -45,6 +45,7 @@ import org.apache.hadoop.util.ReflectionUtils;
 public abstract class BlockPlacementPolicy {
   static final Log LOG = LogFactory.getLog(BlockPlacementPolicy.class);
 
+
   @InterfaceAudience.Private
   public static class NotEnoughReplicasException extends Exception {
     private static final long serialVersionUID = 1L;
@@ -76,7 +77,20 @@ public abstract class BlockPlacementPolicy {
                                              Set<Node> excludedNodes,
                                              long blocksize,
                                              BlockStoragePolicy storagePolicy);
-  
+
+
+ //huanke
+ public abstract DatanodeStorageInfo[] chooseTargetHK(String srcPath,
+                                                    int numOfReplicas,
+                                                    Node writer,
+                                                    List<DatanodeStorageInfo> chosen,
+                                                    boolean returnChosenNodes,
+                                                    Set<Node> excludedNodes,
+                                                    long blocksize,
+                                                    BlockStoragePolicy storagePolicy, List<String> ignoreInfo, List<Boolean> OutputBoolean);
+
+
+
   /**
    * Same as {@link #chooseTarget(String, int, Node, Set, long, List, StorageType)}
    * with added parameter {@code favoredDatanodes}
@@ -90,13 +104,32 @@ public abstract class BlockPlacementPolicy {
       long blocksize,
       List<DatanodeDescriptor> favoredNodes,
       BlockStoragePolicy storagePolicy) {
+
     // This class does not provide the functionality of placing
     // a block in favored datanodes. The implementations of this class
     // are expected to provide this functionality
 
-    return chooseTarget(src, numOfReplicas, writer, 
-        new ArrayList<DatanodeStorageInfo>(numOfReplicas), false,
-        excludedNodes, blocksize, storagePolicy);
+//    return chooseTarget(src, numOfReplicas, writer,
+//        new ArrayList<DatanodeStorageInfo>(numOfReplicas), false,
+//        excludedNodes, blocksize, storagePolicy);
+      return chooseTarget(src, numOfReplicas, writer,
+              new ArrayList<DatanodeStorageInfo>(numOfReplicas), false,
+              excludedNodes, blocksize, storagePolicy);
+  }
+
+  //huanke
+  DatanodeStorageInfo[] chooseTargetHK(String src,
+                                       int numOfReplicas,
+                                       Node writer,
+                                       Set<Node> excludedNodes,
+                                       long blocksize,
+                                       List<DatanodeDescriptor> favoredDatanodeDescriptors,
+                                       BlockStoragePolicy storagePolicy,
+                                       List<String> ignoreInfo, List<Boolean> OutputBoolean){
+
+    return chooseTargetHK(src, numOfReplicas, writer,
+            new ArrayList<DatanodeStorageInfo>(numOfReplicas), false,
+            excludedNodes, blocksize, storagePolicy, ignoreInfo, OutputBoolean);
   }
 
   /**

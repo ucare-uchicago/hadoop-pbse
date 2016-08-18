@@ -191,6 +191,8 @@ import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.Update
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpdateBlockForPipelineResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpdatePipelineRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpdatePipelineResponseProto;
+import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.AddBlockRequestHKProto;
+import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.AddBlockResponseHKProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.CreateEncryptionZoneResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.CreateEncryptionZoneRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.GetEZForPathResponseProto;
@@ -499,6 +501,29 @@ public class ClientNamenodeProtocolServerSideTranslatorPB implements
               .toArray(new String[favor.size()]));
       return AddBlockResponseProto.newBuilder()
           .setBlock(PBHelper.convert(result)).build();
+    } catch (IOException e) {
+      throw new ServiceException(e);
+    }
+  }
+  //huanke
+  @Override
+  public AddBlockResponseHKProto addBlockHK(RpcController controller,
+                                        AddBlockRequestHKProto req) throws ServiceException {
+
+    try {
+      List<DatanodeInfoProto> excl = req.getExcludeNodesList();
+      List<String> favor = req.getFavoredNodesList();
+      List<String> IgnoreInfo = req.getIgnoreInfoList();
+      LocatedBlock result = server.addBlockHK(
+              req.getSrc(),
+              req.getClientName(),
+              req.hasPrevious() ? PBHelper.convert(req.getPrevious()) : null,
+              (excl == null || excl.size() == 0) ? null : PBHelper.convert(excl
+                      .toArray(new DatanodeInfoProto[excl.size()])), req.getFileId(),
+              (favor == null || favor.size() == 0) ? null : favor
+                      .toArray(new String[favor.size()]), (IgnoreInfo == null || IgnoreInfo.size() == 0) ? null : IgnoreInfo);
+      return AddBlockResponseHKProto.newBuilder()
+              .setBlock(PBHelper.convert(result)).build();
     } catch (IOException e) {
       throw new ServiceException(e);
     }

@@ -35,6 +35,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.Counters;
 import org.apache.hadoop.mapreduce.MRConfig;
@@ -134,6 +135,9 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
   protected TaskAttemptId firstAttemptId;
   protected TaskAttemptId lastAttemptId;
 
+  //huanke
+  protected DatanodeInfo ignoreNode;
+  
   private final Set<TaskAttemptId> failedAttempts;
   // Track the finished attempts - successful, failed and killed
   private final Set<TaskAttemptId> finishedAttempts;
@@ -602,20 +606,63 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     if (this instanceof MapTaskImpl) {
       LOG.debug("Updating MapTaskImpl.taskSplitMetaInfo");
       ((MapTaskImpl) this).updateTaskSplitMetaInfo();
+    }else{
+      //huanke
+      LOG.info("@huanke lauch1 a backup reduce task"+this.getID().getId());
+      ((ReduceTaskImpl) this).updateTaskOutputDN();
     }
 
     TaskAttempt attempt = addAttempt(avataar);
     inProgressAttempts.add(attempt.getID());
     //schedule the nextAttemptNumber
     if (failedAttempts.size() > 0) {
+      // huanke
+      LOG.info("@huanke TA_RESCHEDULE"+attempt.getID());
       eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
           TaskAttemptEventType.TA_RESCHEDULE));
     } else {
+      // huanke	
+      LOG.info("@huanke TA_SCHEDULE"+attempt.getID());
       eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
           TaskAttemptEventType.TA_SCHEDULE));
     }
   }
 
+  //huanke add ignore node here
+  private void addAndScheduleAttempt(Avataar avataar, DatanodeInfo ignoreNode) {
+    // riza: if map, check lastDatanodeID
+    if (this instanceof MapTaskImpl) {
+      LOG.debug("Updating MapTaskImpl.taskSplitMetaInfo");
+      ((MapTaskImpl) this).updateTaskSplitMetaInfo();
+    }else{
+      //huanke
+      this.ignoreNode=ignoreNode;
+      LOG.info("@huanke lauch2 a backup reduce task "+this.getID().getId()+ignoreNode+this.ignoreNode);
+      ((ReduceTaskImpl) this).updateTaskOutputDN();
+    }
+
+    //huanke
+
+    TaskAttempt attempt = addAttempt(avataar);
+    inProgressAttempts.add(attempt.getID());
+    //schedule the nextAttemptNumber
+    if (failedAttempts.size() > 0) {
+      LOG.info("@huanke TA_RESCHEDULE"+attempt.getID());
+      eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
+              TaskAttemptEventType.TA_RESCHEDULE));
+    } else {
+      LOG.info("@huanke TA_SCHEDULE"+attempt.getID());
+      eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
+              TaskAttemptEventType.TA_SCHEDULE));
+		//      huanke TA_SCHEDULEattempt_1471213582087_0002_m_000000_0
+		//      huanke TA_SCHEDULEattempt_1471213582087_0002_m_000001_0
+		//      huanke TA_SCHEDULEattempt_1471213582087_0002_r_000000_0
+		//      huanke TA_SCHEDULEattempt_1471213582087_0002_r_000001_0
+		//      huanke TA_SCHEDULEattempt_1471213582087_0002_r_000001_1
+
+    }
+  }
+  
   private TaskAttemptImpl addAttempt(Avataar avataar) {
     TaskAttemptImpl attempt = createAttempt();
     attempt.setAvataar(avataar);
@@ -901,6 +948,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 
     @Override
     public void transition(TaskImpl task, TaskEvent event) {
+      LOG.info("@huanke InitialScheduleTransition"+task.getID());
       task.addAndScheduleAttempt(Avataar.VIRGIN);
       task.scheduledTime = task.clock.getTime();
       task.sendTaskStartedEvent();
@@ -915,11 +963,20 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
   private static class RedundantScheduleTransition
     implements SingleArcTransition<TaskImpl, TaskEvent> {
 
-    @Override
-    public void transition(TaskImpl task, TaskEvent event) {
-      LOG.info("Scheduling a redundant attempt for task " + task.taskId);
-      task.addAndScheduleAttempt(Avataar.SPECULATIVE);
-    }
+	  @Override
+	  public void transition(TaskImpl task, TaskEvent event) {
+		  LOG.info("@huanke Scheduling a redundant attempt for task " + task.taskId);
+		  //huanke Scheduling a redundant attempt for task task_1470006109820_0002_m_000000
+		  //huanke Scheduling a redundant attempt for task task_1470006109820_0002_r_000001
+		  DatanodeInfo ignoreNode = event.getIgnoreNode();
+		  if(ignoreNode!=null&&task.getType()==TaskType.REDUCE){
+			  LOG.info("@huanke SPECULATIVE1 and ignoreNode--"+ignoreNode);
+			  task.addAndScheduleAttempt(Avataar.SPECULATIVE, ignoreNode);
+		  }else{
+			  LOG.info("@huanke SPECULATIVE2 ");
+			  task.addAndScheduleAttempt(Avataar.SPECULATIVE);
+		  }
+	  }
   }
 
   private static class AttemptCommitPendingTransition 
@@ -1158,6 +1215,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 	  
 	@Override
     public TaskStateInternal transition(TaskImpl task, TaskEvent event) {
+	  LOG.info("@huanke  T_ATTEMPT_KILLED");	
       TaskAttemptId attemptId = null;
       if (event instanceof TaskTAttemptEvent) {
         TaskTAttemptEvent castEvent = (TaskTAttemptEvent) event;

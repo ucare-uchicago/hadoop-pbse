@@ -31,12 +31,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.ClosedChannelException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -153,6 +148,11 @@ public class DFSOutputStream extends FSOutputSummer
   // closed is accessed by different threads under different locks.
   private volatile boolean closed = false;
 
+  //huanke
+  DatanodeInfo[] PipeNodes=new DatanodeInfo[2];
+  private List<String> slowDataNodes=null;
+  private List<String> IgnoreInfo=new ArrayList<>();
+
   private String src;
   private final long fileId;
   private final long blockSize;
@@ -215,6 +215,20 @@ public class DFSOutputStream extends FSOutputSummer
     return new DFSPacket(buf, 0, 0, DFSPacket.HEART_BEAT_SEQNO,
                          getChecksumSize(), false);
   }
+
+  public void switchPipeline(String tmp) {
+    DFSClient.LOG.info("@huanke -----------------ttttttt----------"+tmp);
+    if(tmp.isEmpty()){
+      DFSClient.LOG.info("@huanke ignoreString is empty");
+    }else{
+      DFSClient.LOG.info("@huanke ignoreString is: "+tmp);
+      IgnoreInfo.add(tmp);}
+//    huanke ignoreString is: pc744.emulab.net
+//    huanke ignoreString is empty
+//    huanke ignoreString is empty
+
+  }
+
 
   //
   // The DataStreamer class is responsible for sending data packets to the
@@ -373,13 +387,15 @@ public class DFSOutputStream extends FSOutputSummer
       setPipeline(null, null, null);
       stage = BlockConstructionStage.PIPELINE_SETUP_CREATE;
     }
-    
+
+
     /*
      * streamer thread is the only thread that opens streams to datanode, 
      * and closes them. Any error recovery is also done by this thread.
      */
     @Override
     public void run() {
+      DFSClient.LOG.info("@huanke---step4--DataStreamer.run()-------");
       long lastPacket = Time.monotonicNow();
       TraceScope scope = NullScope.INSTANCE;
       while (!streamerClosed && dfsClient.clientRunning) {
@@ -446,7 +462,31 @@ public class DFSOutputStream extends FSOutputSummer
             if(DFSClient.LOG.isDebugEnabled()) {
               DFSClient.LOG.debug("Allocating new block");
             }
-            setPipeline(nextBlockOutputStream());
+            DFSClient.LOG.info("@huanke---step5---BlockConstructionStage.PIPELINE_SETUP_CREATE---------");
+            DFSClient.LOG.info("@huanke---HelloWorld: --->"+IgnoreInfo);
+            //@huanke-----------------------------------------------
+            LocatedBlock pipe=nextBlockOutputStream();
+            PipeNodes= pipe.getLocations();
+            for (int i = 0; i < PipeNodes.length; i++) {
+              if(PipeNodes[i].getHostName()==null){
+                DFSClient.LOG.info("@huanke PipeNodes----------->null");
+              }
+              else{
+                DFSClient.LOG.info("@huanke PipeNodes----"+i+"+------->"+ PipeNodes[i].getHostName()+" length: "+PipeNodes.length);
+              }
+            }
+//            DatanodeInfo[] Pipeline= getPipeline();
+//            if(Pipeline==null){
+//              DFSClient.LOG.info("@huanke getPipeline() is null");
+//            }else{
+//              DFSClient.LOG.info("@huanke getPipeline() is not null");
+//            }
+//            for(DatanodeInfo tmp:Pipeline){
+//              DFSClient.LOG.info("@huanke DatanodeInfo tmp: "+tmp.getHostName()+tmp.getInfoAddr());
+//            }
+            DFSClient.LOG.info("@huanke PipeNodes----------->"+ PipeNodes);
+            //-------------------------------------------------------
+            setPipeline(pipe);
             initDataStreaming();
           } else if (stage == BlockConstructionStage.PIPELINE_SETUP_APPEND) {
             if(DFSClient.LOG.isDebugEnabled()) {
@@ -1422,13 +1462,34 @@ public class DFSOutputStream extends FSOutputSummer
 
     private LocatedBlock locateFollowingBlock(DatanodeInfo[] excludedNodes)  throws IOException {
       int retries = dfsClient.getConf().nBlockWriteLocateFollowingRetry;
+
+      //huanke---------------------------------
+      String[] toppings = new String[1];
+      toppings[0]="Unhappy";
+      //huanke---------------------------------
       long sleeptime = 400;
       while (true) {
         long localstart = Time.monotonicNow();
         while (true) {
           try {
-            return dfsClient.namenode.addBlock(src, dfsClient.clientName,
-                block, excludedNodes, fileId, favoredNodes);
+//            IgnoreInfo.add("HuanPig");
+//            huanke locateFollowingBlock IgnoreInfo-->[HelloWorld, HuanPig]
+//            huanke locateFollowingBlock IgnoreInfo-->[HelloWorld, HuanPig]
+//            huanke locateFollowingBlock IgnoreInfo-->[HuanPig]
+//            huanke locateFollowingBlock IgnoreInfo-->[HuanPig]
+//            huanke locateFollowingBlock IgnoreInfo-->[HuanPig]
+//            huanke locateFollowingBlock IgnoreInfo-->[HuanPig]
+//            huanke locateFollowingBlock IgnoreInfo-->[HuanPig]
+            //we have two reduce tasks, so we just have two HelloWorld above
+
+            DFSClient.LOG.info("@huanke locateFollowingBlock IgnoreInfo-->"+IgnoreInfo);
+//            return dfsClient.namenode.addBlock(src, dfsClient.clientName,
+//                block, excludedNodes, fileId, favoredNodes);
+            //huanke, add IgnoreInfo to NN through the ClientProtocol
+
+
+            return dfsClient.namenode.addBlockHK(src, dfsClient.clientName,
+                    block, excludedNodes, fileId, favoredNodes,IgnoreInfo);
           } catch (RemoteException e) {
             IOException ue = 
               e.unwrapRemoteException(FileNotFoundException.class,
@@ -1541,6 +1602,17 @@ public class DFSOutputStream extends FSOutputSummer
     return value;
   }
 
+  //huanke --> forward this to task report
+  public synchronized DatanodeInfo[] getPipeNodes(){
+    if(streamer.getNodes()!=null){
+            DFSClient.LOG.info("@huanke DFSOutput1 PipeNodes: "+streamer.getNodes()[0].getHostName()+streamer.getNodes()[1].getHostName()+" stream.getNodes: "+streamer.getNodes());
+            return streamer.getNodes();
+    }else{
+            DFSClient.LOG.info("@huanke DFSOutput1 PipeNodes: is null");
+            return streamer.getNodes();
+    }
+  }
+
   /** 
    * @return the object for computing checksum.
    *         The type is NULL if checksum is not computed.
@@ -1565,6 +1637,8 @@ public class DFSOutputStream extends FSOutputSummer
     this.blockReplication = stat.getReplication();
     this.fileEncryptionInfo = stat.getFileEncryptionInfo();
     this.progress = progress;
+    //huanke------------------slowDataNodes--------------------------------------------
+    this.slowDataNodes=new ArrayList<>(dfsClient.getConf().slowDN);
     this.cachingStrategy = new AtomicReference<CachingStrategy>(
         dfsClient.getDefaultWriteCachingStrategy());
     if ((progress != null) && DFSClient.LOG.isDebugEnabled()) {
@@ -1599,9 +1673,18 @@ public class DFSOutputStream extends FSOutputSummer
     computePacketChunkSize(dfsClient.getConf().writePacketSize, bytesPerChecksum);
 
     streamer = new DataStreamer(stat, null);
+
+    //huanke  set the ignore nodes inside favoredNodes, then we don't need to change the RPC function
+    //currently, addBlockHK(), the ClientNamenodeProtocolServerSideTranlatorPB.java and ClientNamenodeProtocolTranlatorPB.java
+    //I should setIgnoreInfo() and getIgnoreInfo(), for request and response, currently, I don't know where to define these two functions,
+    //so today, just use FavoredNodes to replace the IgnoreInfo.
+
+
     if (favoredNodes != null && favoredNodes.length != 0) {
       streamer.setFavoredNodes(favoredNodes);
     }
+
+//    streamer.setFavoredNodes(this.IgnoreNode);
   }
 
   static DFSOutputStream newStreamForCreate(DFSClient dfsClient, String src,
@@ -1726,6 +1809,7 @@ public class DFSOutputStream extends FSOutputSummer
     synchronized (dataQueue) {
       if (currentPacket == null) return;
       currentPacket.addTraceParent(Trace.currentSpan());
+      DFSClient.LOG.info("@huanke---step3--queueCurrentPacket()---->");
       dataQueue.addLast(currentPacket);
       lastQueuedSeqno = currentPacket.getSeqno();
       if (DFSClient.LOG.isDebugEnabled()) {
@@ -1739,6 +1823,7 @@ public class DFSOutputStream extends FSOutputSummer
   private void waitAndQueueCurrentPacket() throws IOException {
     synchronized (dataQueue) {
       try {
+        DFSClient.LOG.info("@huanke---step2--waitAndQueueCurrentPacket()---->");
       // If queue is full, then wait till we have enough space
         boolean firstWait = true;
         try {
@@ -1825,7 +1910,7 @@ public class DFSOutputStream extends FSOutputSummer
     bytesCurBlock += len;
 
     // If packet is full, enqueue it for transmission
-    //
+    //ls
     if (currentPacket.getNumChunks() == currentPacket.getMaxChunks() ||
         bytesCurBlock == blockSize) {
       if (DFSClient.LOG.isDebugEnabled()) {
@@ -1863,6 +1948,8 @@ public class DFSOutputStream extends FSOutputSummer
       }
     }
   }
+
+
 
   @Deprecated
   public void sync() throws IOException {

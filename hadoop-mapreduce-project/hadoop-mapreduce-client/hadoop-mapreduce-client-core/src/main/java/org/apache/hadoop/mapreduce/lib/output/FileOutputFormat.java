@@ -269,6 +269,7 @@ public static final String OUTDIR = "mapreduce.output.fileoutputformat.outputdir
     result.append('-');
     result.append(NUMBER_FORMAT.format(partition));
     result.append(extension);
+    System.out.print("@huanke taskId: "+taskId+ " partition: "+partition+"name: "+name+" NUMBER_FORMAT.format(partition): "+NUMBER_FORMAT.format(partition)+" extension: "+extension);
     return result.toString();
   }
 
@@ -283,6 +284,8 @@ public static final String OUTDIR = "mapreduce.output.fileoutputformat.outputdir
                                  String extension) throws IOException{
     FileOutputCommitter committer = 
       (FileOutputCommitter) getOutputCommitter(context);
+    System.out.print("@huanke committer.getWorkPath(): "+committer.getWorkPath()+ " getOutputName(context):"+getOutputName(context)+" extension: "+extension+" toString: " +committer.toString());
+    //committer.getWorkPath(): hdfs://node-0:9000/output3/_temporary/1/_temporary/attempt_1469465075769_0001_r_000000_0 getOutputName(context):part extension:  toString: org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter
     return new Path(committer.getWorkPath(), getUniqueFile(context, 
       getOutputName(context), extension));
   }

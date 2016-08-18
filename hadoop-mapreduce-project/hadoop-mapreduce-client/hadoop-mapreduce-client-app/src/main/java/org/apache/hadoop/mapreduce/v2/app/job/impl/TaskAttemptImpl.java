@@ -45,6 +45,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.JobContext;
@@ -1062,6 +1063,16 @@ public abstract class TaskAttemptImpl implements
     }
   }
 
+  //huanke
+  public  String getInfo(){
+    readLock.lock();
+    try{
+      return reportedStatus.info;
+    }finally {
+      readLock.unlock();
+    }
+  }
+  
   // riza: expose lastDatanodeID
   public DatanodeID getLastDatanodeID() {
     readLock.lock();
@@ -1493,22 +1504,36 @@ public abstract class TaskAttemptImpl implements
     @Override
     public void transition(TaskAttemptImpl taskAttempt, 
         TaskAttemptEvent event) {
+      //huanke---------------------------------------------------
+      TaskType type = event.getTaskAttemptID().getTaskId().getTaskType();
+      boolean taskFixnode=taskAttempt.conf.getBoolean("task.fix.node", false);
+      String [] hosts = taskFixnode? (type == TaskType.MAP?
+              new String[]{taskAttempt.conf.get("map.task.locations.scope")} :
+              new String[]{taskAttempt.conf.get("reduce.task.locations.scope")}) :
+              taskAttempt.dataLocalHosts.toArray(new  String[taskAttempt.dataLocalHosts.size()]);
+      String [] racks = taskFixnode? new String[0]:
+              taskAttempt.dataLocalRacks.toArray(new String[taskAttempt.dataLocalRacks.size()]);
+      //huanke---------------------------------------------------
+
       // Tell any speculator that we're requesting a container
       taskAttempt.eventHandler.handle
           (new SpeculatorEvent(taskAttempt.getID().getTaskId(), +1));
       //request for container
-      if (rescheduled) {
+      if (rescheduled && !taskFixnode) {
         taskAttempt.eventHandler.handle(
             ContainerRequestEvent.createContainerRequestEventForFailedContainer(
                 taskAttempt.attemptId, 
                 taskAttempt.resourceCapability));
-      } else {
+      }else if(rescheduled && taskFixnode){
+        taskAttempt.eventHandler.handle(new ContainerRequestEvent(
+                taskAttempt.attemptId, taskAttempt.resourceCapability,
+                hosts,
+                racks));
+      }else {
         taskAttempt.eventHandler.handle(new ContainerRequestEvent(
             taskAttempt.attemptId, taskAttempt.resourceCapability,
-            taskAttempt.dataLocalHosts.toArray(
-                new String[taskAttempt.dataLocalHosts.size()]),
-            taskAttempt.dataLocalRacks.toArray(
-                new String[taskAttempt.dataLocalRacks.size()])));
+            hosts,
+            racks));
         LOG.info("riza: dataLocalHosts are: "+taskAttempt.dataLocalHosts.toString()+
             " for attempt "+taskAttempt.attemptId.toString());
       }
@@ -2010,6 +2035,10 @@ public abstract class TaskAttemptImpl implements
       taskAttempt.reportedStatus = newReportedStatus;
       taskAttempt.reportedStatus.taskState = taskAttempt.getState();
 
+      //huanke
+      ArrayList<DatanodeInfo> DNpath=newReportedStatus.Pipeline;
+      LOG.info("@huanke StatusUpdater here, get DNpath from TaskAttemptListenerImpl.java"+DNpath);
+      
       // @Cesar: Got the fetch report
       FetchRateReport fetchRateReport = taskAttempt.reportedStatus.fetchRateReport;
       if(fetchRateReport != null && taskAttempt.fetchRateSpeculationEnabled){
@@ -2037,6 +2066,13 @@ public abstract class TaskAttemptImpl implements
       taskAttempt.eventHandler.handle
           (new SpeculatorEvent
               (taskAttempt.reportedStatus, taskAttempt.clock.getTime()));
+      
+      //huanke send Pipeline Info to DefaultSpeculator
+      if(DNpath!=null){
+        taskAttempt.eventHandler.handle
+                (new SpeculatorEvent
+                        (taskAttempt.reportedStatus, taskAttempt.clock.getTime(),DNpath));
+      }
       
       taskAttempt.updateProgressSplits();
       

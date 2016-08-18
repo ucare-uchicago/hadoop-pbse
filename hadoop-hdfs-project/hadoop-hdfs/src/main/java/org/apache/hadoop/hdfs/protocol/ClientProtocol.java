@@ -379,6 +379,14 @@ public interface ClientProtocol {
       NotReplicatedYetException, SafeModeException, UnresolvedLinkException,
       IOException;
 
+  //huanke
+  //./hadoop-hdfs-project/hadoop-hdfs/src/main/proto/ClientNamenodeProtocol.proto inside, we add addBlockHK
+  public LocatedBlock addBlockHK(String src, String clientName,
+                               ExtendedBlock previous, DatanodeInfo[] excludeNodes, long fileId,
+                               String[] favoredNodes, List<String> ingoreInfo)
+          throws AccessControlException, FileNotFoundException,
+          NotReplicatedYetException, SafeModeException, UnresolvedLinkException,
+          IOException;
   /** 
    * Get a datanode for an existing pipeline.
    * 
@@ -1451,4 +1459,6 @@ public interface ClientProtocol {
    */
   @Idempotent
   public EventBatchList getEditsFromTxid(long txid) throws IOException;
+
+
 }

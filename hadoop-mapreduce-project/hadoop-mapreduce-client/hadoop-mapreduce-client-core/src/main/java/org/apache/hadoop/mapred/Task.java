@@ -18,10 +18,7 @@
 
 package org.apache.hadoop.mapred;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.text.NumberFormat;
@@ -45,6 +42,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalDirAllocator;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FileSystem.Statistics;
+import org.apache.hadoop.hdfs.client.HdfsDataOutputStream;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.RawComparator;
@@ -73,13 +72,14 @@ import org.apache.hadoop.util.StringInterner;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.hdfs.client.HdfsDataInputStream;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
+import org.apache.hadoop.yarn.webapp.hamlet.HamletSpec;
 
 /**
  * Base class for tasks.
  */
 @InterfaceAudience.LimitedPrivate({"MapReduce"})
 @InterfaceStability.Unstable
-abstract public class Task implements Writable, Configurable {
+abstract public class Task implements Writable, Configurable{
   private static final Log LOG =
     LogFactory.getLog(Task.class);
 
@@ -88,6 +88,9 @@ abstract public class Task implements Writable, Configurable {
   
   // riza: lastDatanode being read
   private DatanodeID lastDatanodeId = DatanodeID.createNullDatanodeID();
+
+  private DatanodeInfo[] DNPath=DatanodeInfo.createDatanodeInfo();
+
 
   /**
    * @deprecated Provided for compatibility. Use {@link TaskCounter} instead.
@@ -649,16 +652,20 @@ abstract public class Task implements Writable, Configurable {
     private boolean done = true;
     private Object lock = new Object();
 
+
     // riza: PBSE fields
     private HdfsDataInputStream in = null;
 
+    //huanke
+    private HdfsDataOutputStream out = null;
+
     /**
      * flag that indicates whether progress update needs to be sent to parent.
-     * If true, it has been set. If false, it has been reset. 
-     * Using AtomicBoolean since we need an atomic read & reset method. 
-     */  
+     * If true, it has been set. If false, it has been reset.
+     * Using AtomicBoolean since we need an atomic read & reset method.
+     */
     private AtomicBoolean progressFlag = new AtomicBoolean(false);
-    
+
     TaskReporter(Progress taskProgress,
                  TaskUmbilicalProtocol umbilical) {
       this.umbilical = umbilical;
@@ -669,14 +676,17 @@ abstract public class Task implements Writable, Configurable {
     void setProgressFlag() {
       progressFlag.set(true);
     }
+
     boolean resetProgressFlag() {
       return progressFlag.getAndSet(false);
     }
+
     public void setStatus(String status) {
       taskProgress.setStatus(normalizeStatus(status, conf));
       // indicate that progress update needs to be sent
       setProgressFlag();
     }
+
     public void setProgress(float progress) {
       // set current phase progress.
       // This method assumes that task has phases.
@@ -684,15 +694,18 @@ abstract public class Task implements Writable, Configurable {
       // indicate that progress update needs to be sent
       setProgressFlag();
     }
-    
+
     public float getProgress() {
       return taskProgress.getProgress();
-    };
-    
+    }
+
+    ;
+
     public void progress() {
       // indicate that progress update needs to be sent
       setProgressFlag();
     }
+
     public Counters.Counter getCounter(String group, String name) {
       Counters.Counter counter = null;
       if (counters != null) {
@@ -700,58 +713,70 @@ abstract public class Task implements Writable, Configurable {
       }
       return counter;
     }
+
     public Counters.Counter getCounter(Enum<?> name) {
       return counters == null ? null : counters.findCounter(name);
     }
+
     public void incrCounter(Enum key, long amount) {
       if (counters != null) {
         counters.incrCounter(key, amount);
       }
       setProgressFlag();
     }
+
     public void incrCounter(String group, String counter, long amount) {
       if (counters != null) {
         counters.incrCounter(group, counter, amount);
       }
-      if(skipping && SkipBadRecords.COUNTER_GROUP.equals(group) && (
-          SkipBadRecords.COUNTER_MAP_PROCESSED_RECORDS.equals(counter) ||
-          SkipBadRecords.COUNTER_REDUCE_PROCESSED_GROUPS.equals(counter))) {
+      if (skipping && SkipBadRecords.COUNTER_GROUP.equals(group) && (
+              SkipBadRecords.COUNTER_MAP_PROCESSED_RECORDS.equals(counter) ||
+                      SkipBadRecords.COUNTER_REDUCE_PROCESSED_GROUPS.equals(counter))) {
         //if application reports the processed records, move the 
         //currentRecStartIndex to the next.
         //currentRecStartIndex is the start index which has not yet been 
         //finished and is still in task's stomach.
-        for(int i=0;i<amount;i++) {
+        for (int i = 0; i < amount; i++) {
           currentRecStartIndex = currentRecIndexIterator.next();
         }
       }
       setProgressFlag();
     }
+
     public void setInputSplit(InputSplit split) {
       this.split = split;
     }
+
     public InputSplit getInputSplit() throws UnsupportedOperationException {
       if (split == null) {
         throw new UnsupportedOperationException("Input only available on map");
       } else {
         return split;
       }
-    }  
-    /** 
-     * The communication thread handles communication with the parent (Task Tracker). 
-     * It sends progress updates if progress has been made or if the task needs to 
-     * let the parent know that it's alive. It also pings the parent to see if it's alive. 
+    }
+
+    // @Cesar: Add the info
+  	@Override
+  	public void addFetchRateReport(String mapperHost, ShuffleData shuffleData) {
+  		taskStatus.setReportedFetchRates(mapperHost, shuffleData);	
+  	}
+    
+    /**
+     * The communication thread handles communication with the parent (Task Tracker).
+     * It sends progress updates if progress has been made or if the task needs to
+     * let the parent know that it's alive. It also pings the parent to see if it's alive.
      */
     public void run() {
       final int MAX_RETRIES = 3;
       int remainingRetries = MAX_RETRIES;
       final int proginterval = conf.getInt("mapreduce.policy.faread.progress_interval",
-          PROGRESS_INTERVAL);
+              PROGRESS_INTERVAL);
 
       // riza: wait 3 times until lastDatanodeID set
       int datanodeRetries = isMapTask() ? 60000 / proginterval : 0;
       // riza: shall we query for switch instruction?
       boolean askForSwitch = isMapTask() && conf.getBoolean("mapreduce.policy.faread.avoid_single_readpath",
-          false);
+              false);
 
       // get current flag value and reset it as well
       boolean sendProgress = resetProgressFlag();
@@ -762,7 +787,7 @@ abstract public class Task implements Writable, Configurable {
         try {
           boolean taskFound = true; // whether TT knows about this task
           // sleep for a bit
-          synchronized(lock) {
+          synchronized (lock) {
             if (taskDone.get()) {
               break;
             }
@@ -772,28 +797,45 @@ abstract public class Task implements Writable, Configurable {
             break;
           }
 
-          if ((datanodeRetries > 0) && (this.in == null)){
+          if ((datanodeRetries > 0) && (this.in == null)) {
             datanodeRetries -= 1;
             LOG.info("riza: datastream still null, wait for next " + datanodeRetries
-                + " retry");
+                    + " retry");
             sendProgress = sendProgress || resetProgressFlag();
             continue;
           } else {
             datanodeRetries = 0;
           }
 
+          //huanke
+          int pathRetries = !isMapTask() ? 60000 / proginterval : 0;
+          if ((pathRetries > 0) && (this.out == null)) {
+            pathRetries -= 1;
+            LOG.info("@huanke: DNPath still null, wait for next " + pathRetries
+                    + " retry");
+            sendProgress = sendProgress || resetProgressFlag();
+            continue;
+          } else {
+            pathRetries = 0;
+          }
+
+
           if (sendProgress) {
             // we need to send progress update
             updateCounters();
             taskStatus.statusUpdate(taskProgress.get(),
-                                    taskProgress.toString(), 
-                                    counters);
+                    taskProgress.toString(),
+                    counters);
 
-            if (isMapTask()){
+            if (isMapTask()) {
               // riza: attach lastDatanodeID as additional information
               LOG.info("riza: reporting datanode " + lastDatanodeId.getHostName());
               taskStatus.setLastDatanodeID(lastDatanodeId);
             } else {
+              LOG.info("@huanke reporting pipeline info" + DNPath + " Pipeline1: " + DNPath[0].getHostName() + " Pipeline2: " + DNPath[1].getHostName());
+              //@huanke reporting pipeline info[Lorg.apache.hadoop.hdfs.protocol.DatanodeInfo;@85168c6 Pipeline1: fake-localhost Pipeline2: fake-localhost
+              //
+              taskStatus.setDNpath(DNPath);
               // riza: piggyback PBSE reduce information
             }
 
@@ -806,7 +848,7 @@ abstract public class Task implements Writable, Configurable {
               if (shallswitch == 1)
                 try {
                   LOG.info("riza: Asked for datanode switch. Switching from: "
-                      + lastDatanodeId);
+                          + lastDatanodeId);
                   this.in.switchDatanode(lastDatanodeId);
                 } catch (IOException ex) {
                   LOG.warn("riza: Datanode switch failed: " + ex.toString());
@@ -815,8 +857,7 @@ abstract public class Task implements Writable, Configurable {
               if (!askForSwitch)
                 LOG.info("riza: I am stop asking about datanode switch");
             }
-          }
-          else {
+          } else {
             // send ping 
             taskFound = umbilical.ping(taskId);
           }
@@ -824,7 +865,7 @@ abstract public class Task implements Writable, Configurable {
           // if Task Tracker is not aware of our task ID (probably because it died and 
           // came back up), kill ourselves
           if (!taskFound) {
-            LOG.warn("Parent died.  Exiting "+taskId);
+            LOG.warn("Parent died.  Exiting " + taskId);
             resetDoneFlag();
             System.exit(66);
           }
@@ -833,22 +874,30 @@ abstract public class Task implements Writable, Configurable {
           if (this.in != null) {
             if (!lastDatanodeId.equals(this.in.getCurrentDatanode())) {
               LOG.info("riza: switching datanode " + lastDatanodeId + " to "
-              + in.getCurrentDatanode());
+                      + in.getCurrentDatanode());
               lastDatanodeId = in.getCurrentDatanode();
               taskStatus.setLastDatanodeID(lastDatanodeId);
               setProgressFlag();
             }
           }
 
-          sendProgress = resetProgressFlag(); 
+          //huanke
+          if (this.out != null) {
+            LOG.info("@huanke this.DNPath is not null" + DNPath+" pipe1: "+DNPath[0].getHostName()+" pipe1: "+DNPath[1].getHostName());
+            taskStatus.setDNpath(DNPath);
+            setProgressFlag();
+          } else {
+            LOG.info("@huanke this.DNPath is null");
+          }
+
+          sendProgress = resetProgressFlag();
           remainingRetries = MAX_RETRIES;
-        } 
-        catch (Throwable t) {
+        } catch (Throwable t) {
           LOG.info("Communication exception: " + StringUtils.stringifyException(t));
-          remainingRetries -=1;
+          remainingRetries -= 1;
           if (remainingRetries == 0) {
             ReflectionUtils.logThreadInfo(LOG, "Communication exception", 0);
-            LOG.warn("Last retry, killing "+taskId);
+            LOG.warn("Last retry, killing " + taskId);
             resetDoneFlag();
             System.exit(65);
           }
@@ -857,12 +906,14 @@ abstract public class Task implements Writable, Configurable {
       //Notify that we are done with the work
       resetDoneFlag();
     }
+
     void resetDoneFlag() {
       synchronized (lock) {
         done = true;
         lock.notify();
       }
     }
+
     public void startCommunicationThread() {
       if (pingThread == null) {
         pingThread = new Thread(this, "communication thread");
@@ -870,16 +921,17 @@ abstract public class Task implements Writable, Configurable {
         pingThread.start();
       }
     }
+
     public void stopCommunicationThread() throws InterruptedException {
       if (pingThread != null) {
         // Intent of the lock is to not send an interupt in the middle of an
         // umbilical.ping or umbilical.statusUpdate
-        synchronized(lock) {
-        //Interrupt if sleeping. Otherwise wait for the RPC call to return.
-          lock.notify(); 
+        synchronized (lock) {
+          //Interrupt if sleeping. Otherwise wait for the RPC call to return.
+          lock.notify();
         }
 
-        synchronized (lock) { 
+        synchronized (lock) {
           while (!done) {
             lock.wait();
           }
@@ -892,7 +944,7 @@ abstract public class Task implements Writable, Configurable {
     // riza: memo the owner, its IS might not been initialized
     public void setInputStream(InputStream in) {
       synchronized (lastDatanodeId) {
-        if (isMapTask() && in instanceof HdfsDataInputStream){
+        if (isMapTask() && in instanceof HdfsDataInputStream) {
           this.in = (HdfsDataInputStream) in;
           if (!lastDatanodeId.equals(this.in.getCurrentDatanode())) {
             LOG.info("riza: first datanode is " + this.in.getCurrentDatanode());
@@ -903,518 +955,538 @@ abstract public class Task implements Writable, Configurable {
         }
       }
     }
-    
-    // @Cesar: Add the info
- 	@Override
- 	public void addFetchRateReport(String mapperHost, ShuffleData shuffleData) {
- 		taskStatus.setReportedFetchRates(mapperHost, shuffleData);	
- 	}
-    
-  }
-  
-  /**
-   *  Reports the next executing record range to TaskTracker.
-   *  
-   * @param umbilical
-   * @param nextRecIndex the record index which would be fed next.
-   * @throws IOException
-   */
-  protected void reportNextRecordRange(final TaskUmbilicalProtocol umbilical, 
-      long nextRecIndex) throws IOException{
-    //currentRecStartIndex is the start index which has not yet been finished 
-    //and is still in task's stomach.
-    long len = nextRecIndex - currentRecStartIndex +1;
-    SortedRanges.Range range = 
-      new SortedRanges.Range(currentRecStartIndex, len);
-    taskStatus.setNextRecordRange(range);
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("sending reportNextRecordRange " + range);
+
+
+    //huanke
+    public void setOutputStream(OutputStream out) {
+      synchronized (DNPath) {
+        LOG.info("@huanke setOutputStream from taskreporter ");
+        if (out instanceof HdfsDataOutputStream) {
+          LOG.info("@huanke setOuputStream---true");
+          this.out = (HdfsDataOutputStream) out;
+//          if (!DNPath.equals(this.out.getPipeNodes())) {
+          LOG.info("@huanke getPipeNodes: " + this.out.getPipeNodes() + this.out.getPipeNodes()[0] + this.out.getPipeNodes()[1]);
+          LOG.info("@huanke node0: " + this.out.getPipeNodes()[0].getHostName() + " node1: " + this.out.getPipeNodes()[1].getHostName());
+          DNPath = this.out.getPipeNodes();
+          taskStatus.setDNpath(DNPath);
+          setProgressFlag();
+//          }
+//        }else{
+//          LOG.info("@huanke setOuputStream---false");
+//        }
+        }
+      }
     }
-    umbilical.reportNextRecordRange(taskId, range);
+
   }
 
-  /**
-   * Create a TaskReporter and start communication thread
-   */
-  TaskReporter startReporter(final TaskUmbilicalProtocol umbilical) {  
-    // start thread that will handle communication with parent
-    TaskReporter reporter = new TaskReporter(getProgress(), umbilical);
-    reporter.startCommunicationThread();
-    return reporter;
-  }
-
-  /**
-   * Update resource information counters
-   */
-  void updateResourceCounters() {
-    // Update generic resource counters
-    updateHeapUsageCounter();
-
-    // Updating resources specified in ResourceCalculatorProcessTree
-    if (pTree == null) {
-      return;
-    }
-    pTree.updateProcessTree();
-    long cpuTime = pTree.getCumulativeCpuTime();
-    long pMem = pTree.getRssMemorySize();
-    long vMem = pTree.getVirtualMemorySize();
-    // Remove the CPU time consumed previously by JVM reuse
-    if (cpuTime != ResourceCalculatorProcessTree.UNAVAILABLE &&
-        initCpuCumulativeTime != ResourceCalculatorProcessTree.UNAVAILABLE) {
-      cpuTime -= initCpuCumulativeTime;
-    }
-    
-    if (cpuTime != ResourceCalculatorProcessTree.UNAVAILABLE) {
-      counters.findCounter(TaskCounter.CPU_MILLISECONDS).setValue(cpuTime);
-    }
-    
-    if (pMem != ResourceCalculatorProcessTree.UNAVAILABLE) {
-      counters.findCounter(TaskCounter.PHYSICAL_MEMORY_BYTES).setValue(pMem);
-    }
-
-    if (vMem != ResourceCalculatorProcessTree.UNAVAILABLE) {
-      counters.findCounter(TaskCounter.VIRTUAL_MEMORY_BYTES).setValue(vMem);
-    }
-  }
-
-  /**
-   * An updater that tracks the amount of time this task has spent in GC.
-   */
-  class GcTimeUpdater {
-    private long lastGcMillis = 0;
-    private List<GarbageCollectorMXBean> gcBeans = null;
-
-    public GcTimeUpdater() {
-      this.gcBeans = ManagementFactory.getGarbageCollectorMXBeans();
-      getElapsedGc(); // Initialize 'lastGcMillis' with the current time spent.
+    /**
+     * Reports the next executing record range to TaskTracker.
+     *
+     * @param umbilical
+     * @param nextRecIndex the record index which would be fed next.
+     * @throws IOException
+     */
+    protected void reportNextRecordRange(final TaskUmbilicalProtocol umbilical,
+                                         long nextRecIndex) throws IOException {
+      //currentRecStartIndex is the start index which has not yet been finished
+      //and is still in task's stomach.
+      long len = nextRecIndex - currentRecStartIndex + 1;
+      SortedRanges.Range range =
+              new SortedRanges.Range(currentRecStartIndex, len);
+      taskStatus.setNextRecordRange(range);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("sending reportNextRecordRange " + range);
+      }
+      umbilical.reportNextRecordRange(taskId, range);
     }
 
     /**
-     * @return the number of milliseconds that the gc has used for CPU
-     * since the last time this method was called.
+     * Create a TaskReporter and start communication thread
      */
-    protected long getElapsedGc() {
-      long thisGcMillis = 0;
-      for (GarbageCollectorMXBean gcBean : gcBeans) {
-        thisGcMillis += gcBean.getCollectionTime();
-      }
-
-      long delta = thisGcMillis - lastGcMillis;
-      this.lastGcMillis = thisGcMillis;
-      return delta;
+    TaskReporter startReporter(final TaskUmbilicalProtocol umbilical) {
+      // start thread that will handle communication with parent
+      TaskReporter reporter = new TaskReporter(getProgress(), umbilical);
+      reporter.startCommunicationThread();
+      return reporter;
     }
 
     /**
-     * Increment the gc-elapsed-time counter.
+     * Update resource information counters
      */
-    public void incrementGcCounter() {
-      if (null == counters) {
-        return; // nothing to do.
+    void updateResourceCounters() {
+      // Update generic resource counters
+      updateHeapUsageCounter();
+
+      // Updating resources specified in ResourceCalculatorProcessTree
+      if (pTree == null) {
+        return;
+      }
+      pTree.updateProcessTree();
+      long cpuTime = pTree.getCumulativeCpuTime();
+      long pMem = pTree.getRssMemorySize();
+      long vMem = pTree.getVirtualMemorySize();
+      // Remove the CPU time consumed previously by JVM reuse
+      if (cpuTime != ResourceCalculatorProcessTree.UNAVAILABLE &&
+              initCpuCumulativeTime != ResourceCalculatorProcessTree.UNAVAILABLE) {
+        cpuTime -= initCpuCumulativeTime;
       }
 
-      org.apache.hadoop.mapred.Counters.Counter gcCounter =
-        counters.findCounter(TaskCounter.GC_TIME_MILLIS);
-      if (null != gcCounter) {
-        gcCounter.increment(getElapsedGc());
+      if (cpuTime != ResourceCalculatorProcessTree.UNAVAILABLE) {
+        counters.findCounter(TaskCounter.CPU_MILLISECONDS).setValue(cpuTime);
+      }
+
+      if (pMem != ResourceCalculatorProcessTree.UNAVAILABLE) {
+        counters.findCounter(TaskCounter.PHYSICAL_MEMORY_BYTES).setValue(pMem);
+      }
+
+      if (vMem != ResourceCalculatorProcessTree.UNAVAILABLE) {
+        counters.findCounter(TaskCounter.VIRTUAL_MEMORY_BYTES).setValue(vMem);
       }
     }
-  }
 
-  /**
-   * An updater that tracks the last number reported for a given file
-   * system and only creates the counters when they are needed.
-   */
-  class FileSystemStatisticUpdater {
-    private List<FileSystem.Statistics> stats;
-    private Counters.Counter readBytesCounter, writeBytesCounter,
-        readOpsCounter, largeReadOpsCounter, writeOpsCounter;
-    private String scheme;
-    FileSystemStatisticUpdater(List<FileSystem.Statistics> stats, String scheme) {
-      this.stats = stats;
-      this.scheme = scheme;
+    /**
+     * An updater that tracks the amount of time this task has spent in GC.
+     */
+    class GcTimeUpdater {
+      private long lastGcMillis = 0;
+      private List<GarbageCollectorMXBean> gcBeans = null;
+
+      public GcTimeUpdater() {
+        this.gcBeans = ManagementFactory.getGarbageCollectorMXBeans();
+        getElapsedGc(); // Initialize 'lastGcMillis' with the current time spent.
+      }
+
+      /**
+       * @return the number of milliseconds that the gc has used for CPU
+       * since the last time this method was called.
+       */
+      protected long getElapsedGc() {
+        long thisGcMillis = 0;
+        for (GarbageCollectorMXBean gcBean : gcBeans) {
+          thisGcMillis += gcBean.getCollectionTime();
+        }
+
+        long delta = thisGcMillis - lastGcMillis;
+        this.lastGcMillis = thisGcMillis;
+        return delta;
+      }
+
+      /**
+       * Increment the gc-elapsed-time counter.
+       */
+      public void incrementGcCounter() {
+        if (null == counters) {
+          return; // nothing to do.
+        }
+
+        org.apache.hadoop.mapred.Counters.Counter gcCounter =
+                counters.findCounter(TaskCounter.GC_TIME_MILLIS);
+        if (null != gcCounter) {
+          gcCounter.increment(getElapsedGc());
+        }
+      }
     }
 
-    void updateCounters() {
-      if (readBytesCounter == null) {
-        readBytesCounter = counters.findCounter(scheme,
-            FileSystemCounter.BYTES_READ);
+    /**
+     * An updater that tracks the last number reported for a given file
+     * system and only creates the counters when they are needed.
+     */
+    class FileSystemStatisticUpdater {
+      private List<FileSystem.Statistics> stats;
+      private Counters.Counter readBytesCounter, writeBytesCounter,
+              readOpsCounter, largeReadOpsCounter, writeOpsCounter;
+      private String scheme;
+
+      FileSystemStatisticUpdater(List<FileSystem.Statistics> stats, String scheme) {
+        this.stats = stats;
+        this.scheme = scheme;
       }
-      if (writeBytesCounter == null) {
-        writeBytesCounter = counters.findCounter(scheme,
-            FileSystemCounter.BYTES_WRITTEN);
-      }
-      if (readOpsCounter == null) {
-        readOpsCounter = counters.findCounter(scheme,
-            FileSystemCounter.READ_OPS);
-      }
-      if (largeReadOpsCounter == null) {
-        largeReadOpsCounter = counters.findCounter(scheme,
-            FileSystemCounter.LARGE_READ_OPS);
-      }
-      if (writeOpsCounter == null) {
-        writeOpsCounter = counters.findCounter(scheme,
-            FileSystemCounter.WRITE_OPS);
-      }
-      long readBytes = 0;
-      long writeBytes = 0;
-      long readOps = 0;
-      long largeReadOps = 0;
-      long writeOps = 0;
-      for (FileSystem.Statistics stat: stats) {
-        readBytes = readBytes + stat.getBytesRead();
-        writeBytes = writeBytes + stat.getBytesWritten();
-        readOps = readOps + stat.getReadOps();
-        largeReadOps = largeReadOps + stat.getLargeReadOps();
-        writeOps = writeOps + stat.getWriteOps();
-      }
-      readBytesCounter.setValue(readBytes);
-      writeBytesCounter.setValue(writeBytes);
-      readOpsCounter.setValue(readOps);
-      largeReadOpsCounter.setValue(largeReadOps);
-      writeOpsCounter.setValue(writeOps);
-    }
-  }
-  
-  /**
-   * A Map where Key-> URIScheme and value->FileSystemStatisticUpdater
-   */
-  private Map<String, FileSystemStatisticUpdater> statisticUpdaters =
-     new HashMap<String, FileSystemStatisticUpdater>();
-  
-  private synchronized void updateCounters() {
-    Map<String, List<FileSystem.Statistics>> map = new 
-        HashMap<String, List<FileSystem.Statistics>>();
-    for(Statistics stat: FileSystem.getAllStatistics()) {
-      String uriScheme = stat.getScheme();
-      if (map.containsKey(uriScheme)) {
-        List<FileSystem.Statistics> list = map.get(uriScheme);
-        list.add(stat);
-      } else {
-        List<FileSystem.Statistics> list = new ArrayList<FileSystem.Statistics>();
-        list.add(stat);
-        map.put(uriScheme, list);
+
+      void updateCounters() {
+        if (readBytesCounter == null) {
+          readBytesCounter = counters.findCounter(scheme,
+                  FileSystemCounter.BYTES_READ);
+        }
+        if (writeBytesCounter == null) {
+          writeBytesCounter = counters.findCounter(scheme,
+                  FileSystemCounter.BYTES_WRITTEN);
+        }
+        if (readOpsCounter == null) {
+          readOpsCounter = counters.findCounter(scheme,
+                  FileSystemCounter.READ_OPS);
+        }
+        if (largeReadOpsCounter == null) {
+          largeReadOpsCounter = counters.findCounter(scheme,
+                  FileSystemCounter.LARGE_READ_OPS);
+        }
+        if (writeOpsCounter == null) {
+          writeOpsCounter = counters.findCounter(scheme,
+                  FileSystemCounter.WRITE_OPS);
+        }
+        long readBytes = 0;
+        long writeBytes = 0;
+        long readOps = 0;
+        long largeReadOps = 0;
+        long writeOps = 0;
+        for (FileSystem.Statistics stat : stats) {
+          readBytes = readBytes + stat.getBytesRead();
+          writeBytes = writeBytes + stat.getBytesWritten();
+          readOps = readOps + stat.getReadOps();
+          largeReadOps = largeReadOps + stat.getLargeReadOps();
+          writeOps = writeOps + stat.getWriteOps();
+        }
+        readBytesCounter.setValue(readBytes);
+        writeBytesCounter.setValue(writeBytes);
+        readOpsCounter.setValue(readOps);
+        largeReadOpsCounter.setValue(largeReadOps);
+        writeOpsCounter.setValue(writeOps);
       }
     }
-    for (Map.Entry<String, List<FileSystem.Statistics>> entry: map.entrySet()) {
-      FileSystemStatisticUpdater updater = statisticUpdaters.get(entry.getKey());
-      if(updater==null) {//new FileSystem has been found in the cache
-        updater = new FileSystemStatisticUpdater(entry.getValue(), entry.getKey());
-        statisticUpdaters.put(entry.getKey(), updater);
+
+    /**
+     * A Map where Key-> URIScheme and value->FileSystemStatisticUpdater
+     */
+    private Map<String, FileSystemStatisticUpdater> statisticUpdaters =
+            new HashMap<String, FileSystemStatisticUpdater>();
+
+    private synchronized void updateCounters() {
+      Map<String, List<FileSystem.Statistics>> map = new
+              HashMap<String, List<FileSystem.Statistics>>();
+      for (Statistics stat : FileSystem.getAllStatistics()) {
+        String uriScheme = stat.getScheme();
+        if (map.containsKey(uriScheme)) {
+          List<FileSystem.Statistics> list = map.get(uriScheme);
+          list.add(stat);
+        } else {
+          List<FileSystem.Statistics> list = new ArrayList<FileSystem.Statistics>();
+          list.add(stat);
+          map.put(uriScheme, list);
+        }
       }
-      updater.updateCounters();
+      for (Map.Entry<String, List<FileSystem.Statistics>> entry : map.entrySet()) {
+        FileSystemStatisticUpdater updater = statisticUpdaters.get(entry.getKey());
+        if (updater == null) {//new FileSystem has been found in the cache
+          updater = new FileSystemStatisticUpdater(entry.getValue(), entry.getKey());
+          statisticUpdaters.put(entry.getKey(), updater);
+        }
+        updater.updateCounters();
+      }
+
+      gcUpdater.incrementGcCounter();
+      updateResourceCounters();
     }
-    
-    gcUpdater.incrementGcCounter();
-    updateResourceCounters();
-  }
 
-  /**
-   * Updates the {@link TaskCounter#COMMITTED_HEAP_BYTES} counter to reflect the
-   * current total committed heap space usage of this JVM.
-   */
-  @SuppressWarnings("deprecation")
-  private void updateHeapUsageCounter() {
-    long currentHeapUsage = Runtime.getRuntime().totalMemory();
-    counters.findCounter(TaskCounter.COMMITTED_HEAP_BYTES)
-            .setValue(currentHeapUsage);
-  }
+    /**
+     * Updates the {@link TaskCounter#COMMITTED_HEAP_BYTES} counter to reflect the
+     * current total committed heap space usage of this JVM.
+     */
+    @SuppressWarnings("deprecation")
+    private void updateHeapUsageCounter() {
+      long currentHeapUsage = Runtime.getRuntime().totalMemory();
+      counters.findCounter(TaskCounter.COMMITTED_HEAP_BYTES)
+              .setValue(currentHeapUsage);
+    }
 
-  public void done(TaskUmbilicalProtocol umbilical,
-                   TaskReporter reporter
-                   ) throws IOException, InterruptedException {
-    LOG.info("Task:" + taskId + " is done."
-             + " And is in the process of committing");
-    updateCounters();
+    public void done(TaskUmbilicalProtocol umbilical,
+                     TaskReporter reporter
+    ) throws IOException, InterruptedException {
+      LOG.info("Task:" + taskId + " is done."
+              + " And is in the process of committing");
+      updateCounters();
 
-    boolean commitRequired = isCommitRequired();
-    if (commitRequired) {
+      boolean commitRequired = isCommitRequired();
+      if (commitRequired) {
+        int retries = MAX_RETRIES;
+        setState(TaskStatus.State.COMMIT_PENDING);
+        // say the task tracker that task is commit pending
+        while (true) {
+          try {
+            umbilical.commitPending(taskId, taskStatus);
+            break;
+          } catch (InterruptedException ie) {
+            // ignore
+          } catch (IOException ie) {
+            LOG.warn("Failure sending commit pending: " +
+                    StringUtils.stringifyException(ie));
+            if (--retries == 0) {
+              System.exit(67);
+            }
+          }
+        }
+        //wait for commit approval and commit
+        commit(umbilical, reporter, committer);
+      }
+      taskDone.set(true);
+      reporter.stopCommunicationThread();
+      // Make sure we send at least one set of counter increments. It's
+      // ok to call updateCounters() in this thread after comm thread stopped.
+      updateCounters();
+      sendLastUpdate(umbilical, reporter);
+      //signal the tasktracker that we are done
+      sendDone(umbilical);
+    }
+
+    /**
+     * Checks if this task has anything to commit, depending on the
+     * type of task, as well as on whether the {@link OutputCommitter}
+     * has anything to commit.
+     *
+     * @return true if the task has to commit
+     * @throws IOException
+     */
+    boolean isCommitRequired() throws IOException {
+      boolean commitRequired = false;
+      if (isMapOrReduce()) {
+        commitRequired = committer.needsTaskCommit(taskContext);
+      }
+      return commitRequired;
+    }
+
+    /**
+     * Send a status update to the task tracker
+     *
+     * @param umbilical
+     * @throws IOException
+     */
+    public void statusUpdate(TaskUmbilicalProtocol umbilical)
+            throws IOException {
       int retries = MAX_RETRIES;
-      setState(TaskStatus.State.COMMIT_PENDING);
-      // say the task tracker that task is commit pending
       while (true) {
         try {
-          umbilical.commitPending(taskId, taskStatus);
-          break;
+          // riza: attach lastDatanodeID as additional information
+          if (this.isMapTask()) {
+            LOG.info("riza: extra reporting datanode " + lastDatanodeId.getHostName());
+            taskStatus.setLastDatanodeID(lastDatanodeId);
+          } else {
+            LOG.info("@huanke extra reporting path info" + DNPath);
+            taskStatus.setDNpath(DNPath);
+          }
+
+          if (!umbilical.statusUpdate(getTaskID(), taskStatus)) {
+            LOG.warn("Parent died.  Exiting " + taskId);
+            System.exit(66);
+          }
+          taskStatus.clearStatus();
+          return;
         } catch (InterruptedException ie) {
-          // ignore
+          Thread.currentThread().interrupt(); // interrupt ourself
         } catch (IOException ie) {
-          LOG.warn("Failure sending commit pending: " + 
-                    StringUtils.stringifyException(ie));
+          LOG.warn("Failure sending status update: " +
+                  StringUtils.stringifyException(ie));
           if (--retries == 0) {
-            System.exit(67);
+            throw ie;
           }
         }
       }
-      //wait for commit approval and commit
-      commit(umbilical, reporter, committer);
     }
-    taskDone.set(true);
-    reporter.stopCommunicationThread();
-    // Make sure we send at least one set of counter increments. It's
-    // ok to call updateCounters() in this thread after comm thread stopped.
-    updateCounters();
-    sendLastUpdate(umbilical, reporter);
-    //signal the tasktracker that we are done
-    sendDone(umbilical);
-  }
 
-  /**
-   * Checks if this task has anything to commit, depending on the
-   * type of task, as well as on whether the {@link OutputCommitter}
-   * has anything to commit.
-   * 
-   * @return true if the task has to commit
-   * @throws IOException
-   */
-  boolean isCommitRequired() throws IOException {
-    boolean commitRequired = false;
-    if (isMapOrReduce()) {
-      commitRequired = committer.needsTaskCommit(taskContext);
+    /**
+     * Sends last status update before sending umbilical.done();
+     */
+    private void sendLastUpdate(TaskUmbilicalProtocol umbilical,
+                                TaskReporter reporter)
+            throws IOException {
+      taskStatus.setOutputSize(calculateOutputSize());
+      // send a final status report
+      taskStatus.statusUpdate(taskProgress.get(),
+              taskProgress.toString(),
+              counters);
+      statusUpdate(umbilical);
     }
-    return commitRequired;
-  }
 
-  /**
-   * Send a status update to the task tracker
-   * @param umbilical
-   * @throws IOException
-   */
-  public void statusUpdate(TaskUmbilicalProtocol umbilical) 
-  throws IOException {
-    int retries = MAX_RETRIES;
-    while (true) {
-      try {
-        // riza: attach lastDatanodeID as additional information
-        if (this.isMapTask()){
-          LOG.info("riza: extra reporting datanode " + lastDatanodeId.getHostName());
-          taskStatus.setLastDatanodeID(lastDatanodeId);
-        }
+    /**
+     * Calculates the size of output for this task.
+     *
+     * @return -1 if it can't be found.
+     */
+    private long calculateOutputSize() throws IOException {
+      if (!isMapOrReduce()) {
+        return -1;
+      }
 
-        if (!umbilical.statusUpdate(getTaskID(), taskStatus)) {
-          LOG.warn("Parent died.  Exiting "+taskId);
-          System.exit(66);
-        }
-        taskStatus.clearStatus();
-        return;
-      } catch (InterruptedException ie) {
-        Thread.currentThread().interrupt(); // interrupt ourself
-      } catch (IOException ie) {
-        LOG.warn("Failure sending status update: " + 
-                  StringUtils.stringifyException(ie));
-        if (--retries == 0) {
-          throw ie;
+      if (isMapTask() && conf.getNumReduceTasks() > 0) {
+        try {
+          Path mapOutput = mapOutputFile.getOutputFile();
+          FileSystem localFS = FileSystem.getLocal(conf);
+          return localFS.getFileStatus(mapOutput).getLen();
+        } catch (IOException e) {
+          LOG.warn("Could not find output size ", e);
         }
       }
-    }
-  }
-  
-  /**
-   * Sends last status update before sending umbilical.done(); 
-   */
-  private void sendLastUpdate(TaskUmbilicalProtocol umbilical,
-      TaskReporter reporter)
-  throws IOException {
-    taskStatus.setOutputSize(calculateOutputSize());
-    // send a final status report
-    taskStatus.statusUpdate(taskProgress.get(),
-                            taskProgress.toString(), 
-                            counters);
-    statusUpdate(umbilical);
-  }
-
-  /**
-   * Calculates the size of output for this task.
-   * 
-   * @return -1 if it can't be found.
-   */
-   private long calculateOutputSize() throws IOException {
-    if (!isMapOrReduce()) {
       return -1;
     }
 
-    if (isMapTask() && conf.getNumReduceTasks() > 0) {
-      try {
-        Path mapOutput =  mapOutputFile.getOutputFile();
-        FileSystem localFS = FileSystem.getLocal(conf);
-        return localFS.getFileStatus(mapOutput).getLen();
-      } catch (IOException e) {
-        LOG.warn ("Could not find output size " , e);
-      }
-    }
-    return -1;
-  }
-
-  private void sendDone(TaskUmbilicalProtocol umbilical) throws IOException {
-    int retries = MAX_RETRIES;
-    while (true) {
-      try {
-        umbilical.done(getTaskID());
-        LOG.info("Task '" + taskId + "' done.");
-        return;
-      } catch (IOException ie) {
-        LOG.warn("Failure signalling completion: " + 
-                 StringUtils.stringifyException(ie));
-        if (--retries == 0) {
-          throw ie;
-        }
-      }
-    }
-  }
-
-  private void commit(TaskUmbilicalProtocol umbilical,
-                      TaskReporter reporter,
-                      org.apache.hadoop.mapreduce.OutputCommitter committer
-                      ) throws IOException {
-    int retries = MAX_RETRIES;
-    while (true) {
-      try {
-        while (!umbilical.canCommit(taskId)) {
-          try {
-            Thread.sleep(1000);
-          } catch(InterruptedException ie) {
-            //ignore
+    private void sendDone(TaskUmbilicalProtocol umbilical) throws IOException {
+      int retries = MAX_RETRIES;
+      while (true) {
+        try {
+          umbilical.done(getTaskID());
+          LOG.info("Task '" + taskId + "' done.");
+          return;
+        } catch (IOException ie) {
+          LOG.warn("Failure signalling completion: " +
+                  StringUtils.stringifyException(ie));
+          if (--retries == 0) {
+            throw ie;
           }
-          reporter.setProgressFlag();
-        }
-        break;
-      } catch (IOException ie) {
-        LOG.warn("Failure asking whether task can commit: " + 
-            StringUtils.stringifyException(ie));
-        if (--retries == 0) {
-          //if it couldn't query successfully then delete the output
-          discardOutput(taskContext);
-          System.exit(68);
         }
       }
     }
-    
-    // task can Commit now  
-    try {
-      LOG.info("Task " + taskId + " is allowed to commit now");
-      committer.commitTask(taskContext);
-      return;
-    } catch (IOException iee) {
-      LOG.warn("Failure committing: " + 
-        StringUtils.stringifyException(iee));
-      //if it couldn't commit a successfully then delete the output
-      discardOutput(taskContext);
-      throw iee;
-    }
-  }
 
-  private 
-  void discardOutput(TaskAttemptContext taskContext) {
-    try {
+    private void commit(TaskUmbilicalProtocol umbilical,
+                        TaskReporter reporter,
+                        org.apache.hadoop.mapreduce.OutputCommitter committer
+    ) throws IOException {
+      int retries = MAX_RETRIES;
+      while (true) {
+        try {
+          while (!umbilical.canCommit(taskId)) {
+            try {
+              Thread.sleep(1000);
+            } catch (InterruptedException ie) {
+              //ignore
+            }
+            reporter.setProgressFlag();
+          }
+          break;
+        } catch (IOException ie) {
+          LOG.warn("Failure asking whether task can commit: " +
+                  StringUtils.stringifyException(ie));
+          if (--retries == 0) {
+            //if it couldn't query successfully then delete the output
+            discardOutput(taskContext);
+            System.exit(68);
+          }
+        }
+      }
+
+      // task can Commit now
+      try {
+        LOG.info("Task " + taskId + " is allowed to commit now");
+        committer.commitTask(taskContext);
+        return;
+      } catch (IOException iee) {
+        LOG.warn("Failure committing: " +
+                StringUtils.stringifyException(iee));
+        //if it couldn't commit a successfully then delete the output
+        discardOutput(taskContext);
+        throw iee;
+      }
+    }
+
+    private void discardOutput(TaskAttemptContext taskContext) {
+      try {
+        committer.abortTask(taskContext);
+      } catch (IOException ioe) {
+        LOG.warn("Failure cleaning up: " +
+                StringUtils.stringifyException(ioe));
+      }
+    }
+
+    protected void runTaskCleanupTask(TaskUmbilicalProtocol umbilical,
+                                      TaskReporter reporter)
+            throws IOException, InterruptedException {
+      taskCleanup(umbilical);
+      done(umbilical, reporter);
+    }
+
+    void taskCleanup(TaskUmbilicalProtocol umbilical)
+            throws IOException {
+      // set phase for this task
+      setPhase(TaskStatus.Phase.CLEANUP);
+      getProgress().setStatus("cleanup");
+      statusUpdate(umbilical);
+      LOG.info("Runnning cleanup for the task");
+      // do the cleanup
       committer.abortTask(taskContext);
-    } catch (IOException ioe)  {
-      LOG.warn("Failure cleaning up: " + 
-               StringUtils.stringifyException(ioe));
     }
-  }
 
-  protected void runTaskCleanupTask(TaskUmbilicalProtocol umbilical,
-                                TaskReporter reporter) 
-  throws IOException, InterruptedException {
-    taskCleanup(umbilical);
-    done(umbilical, reporter);
-  }
-
-  void taskCleanup(TaskUmbilicalProtocol umbilical) 
-  throws IOException {
-    // set phase for this task
-    setPhase(TaskStatus.Phase.CLEANUP);
-    getProgress().setStatus("cleanup");
-    statusUpdate(umbilical);
-    LOG.info("Runnning cleanup for the task");
-    // do the cleanup
-    committer.abortTask(taskContext);
-  }
-
-  protected void runJobCleanupTask(TaskUmbilicalProtocol umbilical,
-                               TaskReporter reporter
-                              ) throws IOException, InterruptedException {
-    // set phase for this task
-    setPhase(TaskStatus.Phase.CLEANUP);
-    getProgress().setStatus("cleanup");
-    statusUpdate(umbilical);
-    // do the cleanup
-    LOG.info("Cleaning up job");
-    if (jobRunStateForCleanup == JobStatus.State.FAILED 
-        || jobRunStateForCleanup == JobStatus.State.KILLED) {
-      LOG.info("Aborting job with runstate : " + jobRunStateForCleanup.name());
-      if (conf.getUseNewMapper()) {
-        committer.abortJob(jobContext, jobRunStateForCleanup);
+    protected void runJobCleanupTask(TaskUmbilicalProtocol umbilical,
+                                     TaskReporter reporter
+    ) throws IOException, InterruptedException {
+      // set phase for this task
+      setPhase(TaskStatus.Phase.CLEANUP);
+      getProgress().setStatus("cleanup");
+      statusUpdate(umbilical);
+      // do the cleanup
+      LOG.info("Cleaning up job");
+      if (jobRunStateForCleanup == JobStatus.State.FAILED
+              || jobRunStateForCleanup == JobStatus.State.KILLED) {
+        LOG.info("Aborting job with runstate : " + jobRunStateForCleanup.name());
+        if (conf.getUseNewMapper()) {
+          committer.abortJob(jobContext, jobRunStateForCleanup);
+        } else {
+          org.apache.hadoop.mapred.OutputCommitter oldCommitter =
+                  (org.apache.hadoop.mapred.OutputCommitter) committer;
+          oldCommitter.abortJob(jobContext, jobRunStateForCleanup);
+        }
+      } else if (jobRunStateForCleanup == JobStatus.State.SUCCEEDED) {
+        LOG.info("Committing job");
+        committer.commitJob(jobContext);
       } else {
-        org.apache.hadoop.mapred.OutputCommitter oldCommitter = 
-          (org.apache.hadoop.mapred.OutputCommitter)committer;
-        oldCommitter.abortJob(jobContext, jobRunStateForCleanup);
+        throw new IOException("Invalid state of the job for cleanup. State found "
+                + jobRunStateForCleanup + " expecting "
+                + JobStatus.State.SUCCEEDED + ", "
+                + JobStatus.State.FAILED + " or "
+                + JobStatus.State.KILLED);
       }
-    } else if (jobRunStateForCleanup == JobStatus.State.SUCCEEDED){
-      LOG.info("Committing job");
-      committer.commitJob(jobContext);
-    } else {
-      throw new IOException("Invalid state of the job for cleanup. State found "
-                            + jobRunStateForCleanup + " expecting "
-                            + JobStatus.State.SUCCEEDED + ", " 
-                            + JobStatus.State.FAILED + " or "
-                            + JobStatus.State.KILLED);
-    }
-    
-    // delete the staging area for the job
-    JobConf conf = new JobConf(jobContext.getConfiguration());
-    if (!keepTaskFiles(conf)) {
-      String jobTempDir = conf.get(MRJobConfig.MAPREDUCE_JOB_DIR);
-      Path jobTempDirPath = new Path(jobTempDir);
-      FileSystem fs = jobTempDirPath.getFileSystem(conf);
-      fs.delete(jobTempDirPath, true);
-    }
-    done(umbilical, reporter);
-  }
-  
-  protected boolean keepTaskFiles(JobConf conf) {
-    return (conf.getKeepTaskFilesPattern() != null || conf
-        .getKeepFailedTaskFiles());
-  }
 
-  protected void runJobSetupTask(TaskUmbilicalProtocol umbilical,
-                             TaskReporter reporter
-                             ) throws IOException, InterruptedException {
-    // do the setup
-    getProgress().setStatus("setup");
-    committer.setupJob(jobContext);
-    done(umbilical, reporter);
-  }
-  
-  public void setConf(Configuration conf) {
-    if (conf instanceof JobConf) {
-      this.conf = (JobConf) conf;
-    } else {
-      this.conf = new JobConf(conf);
+      // delete the staging area for the job
+      JobConf conf = new JobConf(jobContext.getConfiguration());
+      if (!keepTaskFiles(conf)) {
+        String jobTempDir = conf.get(MRJobConfig.MAPREDUCE_JOB_DIR);
+        Path jobTempDirPath = new Path(jobTempDir);
+        FileSystem fs = jobTempDirPath.getFileSystem(conf);
+        fs.delete(jobTempDirPath, true);
+      }
+      done(umbilical, reporter);
     }
-    this.mapOutputFile = ReflectionUtils.newInstance(
-        conf.getClass(MRConfig.TASK_LOCAL_OUTPUT_CLASS,
-          MROutputFiles.class, MapOutputFile.class), conf);
-    this.lDirAlloc = new LocalDirAllocator(MRConfig.LOCAL_DIR);
-    // add the static resolutions (this is required for the junit to
-    // work on testcases that simulate multiple nodes on a single physical
-    // node.
-    String hostToResolved[] = conf.getStrings(MRConfig.STATIC_RESOLUTIONS);
-    if (hostToResolved != null) {
-      for (String str : hostToResolved) {
-        String name = str.substring(0, str.indexOf('='));
-        String resolvedName = str.substring(str.indexOf('=') + 1);
-        NetUtils.addStaticResolution(name, resolvedName);
+
+    protected boolean keepTaskFiles(JobConf conf) {
+      return (conf.getKeepTaskFilesPattern() != null || conf
+              .getKeepFailedTaskFiles());
+    }
+
+    protected void runJobSetupTask(TaskUmbilicalProtocol umbilical,
+                                   TaskReporter reporter
+    ) throws IOException, InterruptedException {
+      // do the setup
+      getProgress().setStatus("setup");
+      committer.setupJob(jobContext);
+      done(umbilical, reporter);
+    }
+
+    public void setConf(Configuration conf) {
+      if (conf instanceof JobConf) {
+        this.conf = (JobConf) conf;
+      } else {
+        this.conf = new JobConf(conf);
+      }
+      this.mapOutputFile = ReflectionUtils.newInstance(
+              conf.getClass(MRConfig.TASK_LOCAL_OUTPUT_CLASS,
+                      MROutputFiles.class, MapOutputFile.class), conf);
+      this.lDirAlloc = new LocalDirAllocator(MRConfig.LOCAL_DIR);
+      // add the static resolutions (this is required for the junit to
+      // work on testcases that simulate multiple nodes on a single physical
+      // node.
+      String hostToResolved[] = conf.getStrings(MRConfig.STATIC_RESOLUTIONS);
+      if (hostToResolved != null) {
+        for (String str : hostToResolved) {
+          String name = str.substring(0, str.indexOf('='));
+          String resolvedName = str.substring(str.indexOf('=') + 1);
+          NetUtils.addStaticResolution(name, resolvedName);
+        }
       }
     }
-  }
 
-  public Configuration getConf() {
-    return this.conf;
-  }
+    public Configuration getConf() {
+      return this.conf;
+    }
 
-  public MapOutputFile getMapOutputFile() {
-    return mapOutputFile;
-  }
+    public MapOutputFile getMapOutputFile() {
+      return mapOutputFile;
+    }
 
   /**
    * OutputCollector for the combiner.
@@ -1779,6 +1851,7 @@ abstract public class Task implements Writable, Configurable {
                                                 committer,
                                                 reporter, comparator, keyClass,
                                                 valueClass);
+
       reducer.run(reducerContext);
     } 
   }

@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
 import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
@@ -39,6 +40,26 @@ class ReduceTaskStatus extends TaskStatus {
   private long sortFinishTime; 
   private List<TaskAttemptID> failedFetchTasks = new ArrayList<TaskAttemptID>(1);
 
+  //huanke
+  private DatanodeInfo[] DNpath = DatanodeInfo.createDatanodeInfo();
+
+  //huanke
+  @Override
+  public void setDNpath(DatanodeInfo[] DNpath) {
+    if(DNpath!=null){
+      LOG.info("@huanke setDNpath ReduceTaskStatus: "+DNpath[0].getHostName()+DNpath[1].getHostName());
+        this.DNpath=DNpath;
+    }
+  }
+
+  //huanke
+
+  //huanke  if taskAttemptListenerImpl get 0000 something, it means DNPath is not set at all
+  public DatanodeInfo[] getDNpath(){
+    LOG.info("@huanke getDNpath ReduceTaskStatus: "+DNpath[0].getHostName()+DNpath[1].getHostName());
+    return this.DNpath;
+  }
+  
   //@Cesar: Keep shuffle info here
   private FetchRateReport reportedFetchRates = new FetchRateReport();
   

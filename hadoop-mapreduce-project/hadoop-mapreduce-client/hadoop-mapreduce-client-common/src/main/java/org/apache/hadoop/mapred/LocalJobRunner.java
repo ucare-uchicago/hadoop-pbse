@@ -300,9 +300,9 @@ public class LocalJobRunner implements ClientProtocol {
           TaskAttemptID reduceId = new TaskAttemptID(new TaskID(
               jobId, TaskType.REDUCE, taskId), 0);
           LOG.info("Starting task: " + reduceId);
-
+          // huanke
           ReduceTask reduce = new ReduceTask(systemJobFile.toString(),
-              reduceId, taskId, mapIds.size(), 1);
+              reduceId, taskId, mapIds.size(), 1, null);
           reduce.setUser(UserGroupInformation.getCurrentUser().
               getShortUserName());
           setupChildMapredLocalDirs(reduce, localConf);

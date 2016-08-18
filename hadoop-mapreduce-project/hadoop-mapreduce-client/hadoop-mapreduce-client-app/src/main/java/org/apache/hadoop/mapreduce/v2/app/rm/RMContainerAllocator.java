@@ -263,11 +263,28 @@ public class RMContainerAllocator extends RMContainerRequestor
     int completedTasks = completedMaps + getJob().getCompletedReduces();
     if ((lastCompletedTasks != completedTasks) ||
           (scheduledRequests.maps.size() > 0)) {
+      LOG.info("@huanke-->completedMaps: "+completedMaps+"completedReduces: "+getJob().getCompletedReduces());
+//      huanke-->completedMaps: 0completedReduces: 0
+//      huanke-->completedMaps: 0completedReduces: 0
+//      huanke-->completedMaps: 0completedReduces: 0
+//      huanke-->completedMaps: 2completedReduces: 0
+//      huanke-->completedMaps: 2completedReduces: 1
+//      huanke-->completedMaps: 2completedReduces: 2
+
+      LOG.info("@huanke-->lastCompletedTasks: "+lastCompletedTasks+"completedTasks: "+completedTasks);
+//      huanke-->lastCompletedTasks: 0completedTasks: 0
+//      huanke-->lastCompletedTasks: 0completedTasks: 0
+//      huanke-->lastCompletedTasks: 0completedTasks: 0
+//      huanke-->lastCompletedTasks: 0completedTasks: 2
+//      huanke-->lastCompletedTasks: 2completedTasks: 3
+//      huanke-->lastCompletedTasks: 3completedTasks: 4
+
       lastCompletedTasks = completedTasks;
       recalculateReduceSchedule = true;
     }
 
     if (recalculateReduceSchedule) {
+      LOG.info("@huanke--> RMContainerAllocator.heartbeat()-->recalculateReduceSchedule? "+recalculateReduceSchedule);
       preemptReducesIfNeeded();
       scheduleReduces(
           getJob().getTotalMaps(), completedMaps,

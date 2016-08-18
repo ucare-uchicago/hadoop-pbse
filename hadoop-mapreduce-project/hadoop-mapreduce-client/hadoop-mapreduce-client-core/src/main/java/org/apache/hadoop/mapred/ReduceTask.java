@@ -21,13 +21,11 @@ package org.apache.hadoop.mapred;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.io.OutputStream;
+import java.text.NumberFormat;
+import java.util.*;
 
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -37,6 +35,10 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileSystem.Statistics;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.DFSOutputStream;
+
+import org.apache.hadoop.hdfs.client.HdfsDataOutputStream;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.RawComparator;
@@ -52,6 +54,8 @@ import org.apache.hadoop.mapreduce.MRConfig;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskCounter;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormatCounter;
+import org.apache.hadoop.mapreduce.lib.output.OutputStreamOwner;
+import org.apache.hadoop.mapreduce.split.AMtoReduceTask;
 import org.apache.hadoop.mapreduce.task.reduce.Shuffle;
 import org.apache.hadoop.util.Progress;
 import org.apache.hadoop.util.Progressable;
@@ -60,7 +64,7 @@ import org.apache.hadoop.util.ReflectionUtils;
 /** A Reduce task. */
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
-public class ReduceTask extends Task {
+public class ReduceTask extends Task{
 
   static {                                        // register a ctor
     WritableFactories.setFactory
@@ -69,7 +73,8 @@ public class ReduceTask extends Task {
          public Writable newInstance() { return new ReduceTask(); }
        });
   }
-  
+  //huanke
+  private AMtoReduceTask AMtask=new AMtoReduceTask();
   private static final Log LOG = LogFactory.getLog(ReduceTask.class.getName());
   private int numMaps;
 
@@ -79,6 +84,10 @@ public class ReduceTask extends Task {
   // be a mapping from map task attempts to their output files.
   // This will be null in other cases.
   private Map<TaskAttemptID, MapOutputFile> localMapFiles;
+
+  //huanke
+  private ArrayList<String> strArray = new ArrayList<String>();
+//  private DatanodeInfo[] PathInfo = new HashMap<TaskAttemptID, ArrayList<String>>();
 
   { 
     getProgress().setStatus("reduce"); 
@@ -132,10 +141,12 @@ public class ReduceTask extends Task {
     super();
   }
 
+
   public ReduceTask(String jobFile, TaskAttemptID taskId,
-                    int partition, int numMaps, int numSlotsRequired) {
+                    int partition, int numMaps, int numSlotsRequired, AMtoReduceTask AMtask) {
     super(jobFile, taskId, partition, numSlotsRequired);
     this.numMaps = numMaps;
+    this.AMtask=AMtask;
   }
   
 
@@ -179,14 +190,14 @@ public class ReduceTask extends Task {
   @Override
   public void write(DataOutput out) throws IOException {
     super.write(out);
-
+    AMtask.write(out);
     out.writeInt(numMaps);                        // write the number of maps
   }
 
   @Override
   public void readFields(DataInput in) throws IOException {
     super.readFields(in);
-
+    AMtask.readFields(in);
     numMaps = in.readInt();
   }
   
@@ -318,6 +329,7 @@ public class ReduceTask extends Task {
   @SuppressWarnings("unchecked")
   public void run(JobConf job, final TaskUmbilicalProtocol umbilical)
     throws IOException, InterruptedException, ClassNotFoundException {
+    LOG.info("@huanke run() ReduceTask");
     job.setBoolean(JobContext.SKIP_RECORDS, isSkipping());
 
     if (isMapOrReduce()) {
@@ -379,12 +391,22 @@ public class ReduceTask extends Task {
     mapOutputFilesOnDisk.clear();
     
     sortPhase.complete();                         // sort is complete
-    setPhase(TaskStatus.Phase.REDUCE); 
-    statusUpdate(umbilical);
+    setPhase(TaskStatus.Phase.REDUCE);
+    //huanke reocrd the write reduce phase start time
+    long StartTime = System.currentTimeMillis();
+    LOG.info("@huanke StartTime: "+StartTime);
+    statusUpdate(umbilical); //I don't want statusUpdate(umbilical) here, because I need to get datanodes from reduce phase . move it to reduce phase
     Class keyClass = job.getMapOutputKeyClass();
     Class valueClass = job.getMapOutputValueClass();
     RawComparator comparator = job.getOutputValueGroupingComparator();
-
+    LOG.info("@huanke useNewApi: "+useNewApi+getProgress().getProgress()); //0.6667
+    LOG.info("@huanke TaskID.getId():"+NumberFormat.getInstance().format(this.getTaskID().getId()));  //TaskID.getId():1/0
+//    if(NumberFormat.getInstance().format(this.getTaskID().getTaskID().getId()).equals("1")){
+//      LOG.info("@huanke 1TaskID.getId():"+NumberFormat.getInstance().format(this.getTaskID().getTaskID().getId()));
+//      getProgress().set((float) 0.0);
+//      statusUpdate(umbilical);
+//      LOG.info("@huanke huanke1: "+getProgress().getProgress());  //^^.7%
+//    }
     if (useNewApi) {
       runNewReducer(job, umbilical, reporter, rIter, comparator, 
                     keyClass, valueClass);
@@ -392,6 +414,11 @@ public class ReduceTask extends Task {
       runOldReducer(job, umbilical, reporter, rIter, comparator, 
                     keyClass, valueClass);
     }
+    LOG.info("@huanke huanke2: "+getProgress().getProgress());  //1.0
+    //huanke reocrd the write reduce phase start time
+    long EndTime = System.currentTimeMillis();
+    LOG.info("@huanke EndTime: "+StartTime);
+    LOG.info("@huanke ReducePhase time: "+ (EndTime-StartTime));
 
     shuffleConsumerPlugin.close();
     done(umbilical, reporter);
@@ -406,6 +433,7 @@ public class ReduceTask extends Task {
                      RawComparator<INKEY> comparator,
                      Class<INKEY> keyClass,
                      Class<INVALUE> valueClass) throws IOException {
+    LOG.info("@huanke runOldReducer");
     Reducer<INKEY,INVALUE,OUTKEY,OUTVALUE> reducer = 
       ReflectionUtils.newInstance(job.getReducerClass(), job);
     // make output collector
@@ -515,7 +543,7 @@ public class ReduceTask extends Task {
   }
 
   static class NewTrackingRecordWriter<K,V> 
-      extends org.apache.hadoop.mapreduce.RecordWriter<K,V> {
+      extends org.apache.hadoop.mapreduce.RecordWriter<K,V> implements OutputStreamOwner {
     private final org.apache.hadoop.mapreduce.RecordWriter<K,V> real;
     private final org.apache.hadoop.mapreduce.Counter outputRecordCounter;
     private final org.apache.hadoop.mapreduce.Counter fileOutputByteCounter;
@@ -568,6 +596,13 @@ public class ReduceTask extends Task {
         bytesWritten = bytesWritten + stat.getBytesWritten();
       }
       return bytesWritten;
+    }
+
+    //huanke
+    public OutputStream getOutputStream() {
+      System.out.print("@huanke real instanceof OutputStreamOwner"+real.getClass()+(real instanceof OutputStreamOwner));
+      return (real instanceof OutputStreamOwner) ? ((OutputStreamOwner) real)
+              .getOutputStream() : null;
     }
   }
 
@@ -623,13 +658,57 @@ public class ReduceTask extends Task {
                                                committer,
                                                reporter, comparator, keyClass,
                                                valueClass);
+    LOG.info("@huanke taskContext : "+taskContext + "reducer : "+ reducer+ "trackedRW: "+trackedRW+"reducerContext : "+reducerContext);
+    LOG.info("@huanke runNewReducer: "+AMtask.getAMtaskInfo()+" TaskAttemptId:"+getTaskID()+" TaskId: "+getTaskID().getTaskID()+" TaskId.getId()"+getTaskID().getTaskID().getId());
+//    huanke runNewReducer: Baba TaskAttemptId:attempt_1471318623508_0001_r_000001_0 TaskId: task_1471318623508_0001_r_000001 TaskId.getId()1
+//    huanke runNewReducer: Baba TaskAttemptId:attempt_1471318623508_0001_r_000000_0 TaskId: task_1471318623508_0001_r_000000 TaskId.getId()0
+//    huanke runNewReducer: pc747.emulab.net TaskAttemptId:attempt_1471318623508_0001_r_000001_1 TaskId: task_1471318623508_0001_r_000001 TaskId.getId()1
+
     try {
-      reducer.run(reducerContext);
+      if (trackedRW instanceof OutputStreamOwner) {
+        LOG.info("@huanke trackRW instanceof ");
+        OutputStream output = ((OutputStreamOwner) trackedRW).getOutputStream();
+        LOG.info("@huanke output HK " + ((output != null) ? 1 : 0));
+        if (output != null) {
+          LOG.info("@huanke output!=null " + output.getClass() + output.toString());
+          //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
+          if (output instanceof HdfsDataOutputStream) {
+            switchPipeline((HdfsDataOutputStream) output);
+          } else {
+            LOG.info("@huanke output is not HdfsDataOutputStream" + output.toString());
+          }
+        } else {
+          LOG.info("@huanke output is null");
+        }
+        boolean flag=job.getBoolean("reduce.get.pipenodes.flag", false);
+        //huanke .. it seems not work here.
+        reducer.run(reducerContext,output, reporter, flag);
+      }
+    }catch (Exception e){
+      LOG.error(e.getMessage());
+      LOG.error(e.getStackTrace());
     } finally {
       trackedRW.close(reducerContext);
     }
   }
-  
+
+  private void switchPipeline(HdfsDataOutputStream output) {
+    String tmp1 = AMtask.getAMtaskInfo();
+    LOG.info("@huanke tmp--"+tmp1);
+//    huanke tmp--
+//    huanke tmp--
+//    huanke tmp--pc744.emulab.net
+
+    try{
+      output.switchPipeline(tmp1);
+    }
+    catch(Exception exc){
+      LOG.error("@huanke : ERROR in reduce task");
+      LOG.error("@huanke : " + exc);
+    }
+
+  }
+
   private <OUTKEY, OUTVALUE>
   void closeQuietly(RecordWriter<OUTKEY, OUTVALUE> c, Reporter r) {
     if (c != null) {

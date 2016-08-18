@@ -28,6 +28,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
@@ -479,6 +480,19 @@ public abstract class TaskStatus implements Writable, Cloneable {
     return this.tag;
   }
 
+  
+  //huanke
+  public void setDNpath(DatanodeInfo[] DNpath) {
+    throw new UnsupportedOperationException(
+            "setDNpath() only supported by ReduceTask");
+  }
+
+  //huanke
+  public DatanodeInfo[] getDNpath(){
+    throw new UnsupportedOperationException(
+            "getDNpath() only supported by ReduceTask");
+  }
+  
   //@Cesar: fetch rate maps
   public FetchRateReport  getReportedFetchRates(){
 	  return null;

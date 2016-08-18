@@ -160,6 +160,8 @@ import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.Trunca
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpdateBlockForPipelineRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpdatePipelineRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.SetStoragePolicyRequestProto;
+import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.AddBlockRequestHKProto;
+import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.AddBlockResponseHKProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.CreateEncryptionZoneRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.GetEZForPathRequestProto;
@@ -416,6 +418,33 @@ public class ClientNamenodeProtocolTranslatorPB implements
     }
     try {
       return PBHelper.convert(rpcProxy.addBlock(null, req.build()).getBlock());
+    } catch (ServiceException e) {
+      throw ProtobufHelper.getRemoteException(e);
+    }
+  }
+
+  //huanke
+  @Override
+  public LocatedBlock addBlockHK(String src, String clientName,
+                               ExtendedBlock previous, DatanodeInfo[] excludeNodes, long fileId,
+                               String[] favoredNodes, List<String> IgnoreInfo)
+          throws AccessControlException, FileNotFoundException,
+          NotReplicatedYetException, SafeModeException, UnresolvedLinkException,
+          IOException {
+    AddBlockRequestHKProto.Builder req = AddBlockRequestHKProto.newBuilder()
+            .setSrc(src).setClientName(clientName).setFileId(fileId);
+    if (previous != null)
+      req.setPrevious(PBHelper.convert(previous));
+    if (excludeNodes != null)
+      req.addAllExcludeNodes(PBHelper.convert(excludeNodes));
+    if (favoredNodes != null) {
+      req.addAllFavoredNodes(Arrays.asList(favoredNodes));
+    } //huanke, add IgnoreInfo here
+    if(IgnoreInfo!=null){
+      req.addAllIgnoreInfo(IgnoreInfo);
+    }
+    try {
+      return PBHelper.convert(rpcProxy.addBlockHK(null, req.build()).getBlock());
     } catch (ServiceException e) {
       throw ProtobufHelper.getRemoteException(e);
     }
@@ -1513,4 +1542,5 @@ public class ClientNamenodeProtocolTranslatorPB implements
       throw ProtobufHelper.getRemoteException(e);
     }
   }
+
 }

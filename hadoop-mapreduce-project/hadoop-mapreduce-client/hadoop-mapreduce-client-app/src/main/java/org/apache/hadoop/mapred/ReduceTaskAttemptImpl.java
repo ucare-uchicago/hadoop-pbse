@@ -22,6 +22,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.TypeConverter;
 import org.apache.hadoop.mapreduce.security.token.JobTokenIdentifier;
+import org.apache.hadoop.mapreduce.split.AMtoReduceTask;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskId;
 import org.apache.hadoop.mapreduce.v2.app.AppContext;
 import org.apache.hadoop.mapreduce.v2.app.TaskAttemptListener;
@@ -35,26 +36,30 @@ import org.apache.hadoop.yarn.util.Clock;
 public class ReduceTaskAttemptImpl extends TaskAttemptImpl {
 
   private final int numMapTasks;
+  private AMtoReduceTask Amtask;
 
   public ReduceTaskAttemptImpl(TaskId id, int attempt,
-      EventHandler eventHandler, Path jobFile, int partition,
-      int numMapTasks, JobConf conf,
-      TaskAttemptListener taskAttemptListener,
-      Token<JobTokenIdentifier> jobToken,
-      Credentials credentials, Clock clock,
-      AppContext appContext) {
+                               EventHandler eventHandler, Path jobFile, int partition,
+                               int numMapTasks, JobConf conf,
+                               TaskAttemptListener taskAttemptListener,
+                               Token<JobTokenIdentifier> jobToken,
+                               Credentials credentials, Clock clock,
+                               AppContext appContext, AMtoReduceTask Amtask) {
     super(id, attempt, eventHandler, taskAttemptListener, jobFile, partition,
         conf, new String[] {}, jobToken, credentials, clock,
         appContext);
     this.numMapTasks = numMapTasks;
+    this.Amtask=Amtask;
+
   }
 
+  // huanke
   @Override
   public Task createRemoteTask() {
   //job file name is set in TaskAttempt, setting it null here
     ReduceTask reduceTask =
       new ReduceTask("", TypeConverter.fromYarn(getID()), partition,
-          numMapTasks, 1); // YARN doesn't have the concept of slots per task, set it as 1.
+          numMapTasks, 1, Amtask); // YARN doesn't have the concept of slots per task, set it as 1.
   reduceTask.setUser(conf.get(MRJobConfig.USER_NAME));
   reduceTask.setConf(conf);
     return reduceTask;

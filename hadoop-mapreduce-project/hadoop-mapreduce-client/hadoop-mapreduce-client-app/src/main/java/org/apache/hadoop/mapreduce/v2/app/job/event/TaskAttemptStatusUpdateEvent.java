@@ -18,10 +18,12 @@
 
 package org.apache.hadoop.mapreduce.v2.app.job.event;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.mapreduce.Counters;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
 import org.apache.hadoop.mapreduce.v2.api.records.Phase;
@@ -62,5 +64,9 @@ public class TaskAttemptStatusUpdateEvent extends TaskAttemptEvent {
     public String tag;
     // @Cesar: fetch rate report
     public FetchRateReport fetchRateReport;
+    //huanke: piggyback
+    public String info="MaMa";
+    public DatanodeInfo[] DNpath=new DatanodeInfo[2];
+    public ArrayList<DatanodeInfo> Pipeline=new ArrayList<DatanodeInfo>();
   }
 }

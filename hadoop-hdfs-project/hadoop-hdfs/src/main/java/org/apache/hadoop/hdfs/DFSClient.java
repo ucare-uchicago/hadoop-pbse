@@ -78,14 +78,7 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -345,6 +338,9 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     // riza: custom conf
     final boolean sortDatanode;
 
+    //huanke
+    final Collection<String> slowDN;
+
     public Conf(Configuration conf) {
       // The hdfsTimeout is currently the same as the ipc timeout 
       hdfsTimeout = Client.getTimeout(conf);
@@ -514,6 +510,9 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
           DFSConfigKeys.DFS_CLIENT_KEY_PROVIDER_CACHE_EXPIRY_DEFAULT);
 
       sortDatanode = conf.getBoolean("mapreduce.policy.faread.sort.datanode", false);
+
+      //huanke
+      slowDN = conf.getStringCollection("slow.fix.datanode");
     }
 
     public boolean isUseLegacyBlockReaderLocal() {

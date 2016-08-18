@@ -29,6 +29,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -68,6 +69,7 @@ import org.apache.hadoop.mapreduce.lib.chain.ChainReducer;
 import org.apache.hadoop.mapreduce.security.TokenCache;
 import org.apache.hadoop.mapreduce.security.token.JobTokenIdentifier;
 import org.apache.hadoop.mapreduce.security.token.JobTokenSecretManager;
+import org.apache.hadoop.mapreduce.split.AMtoReduceTask;
 import org.apache.hadoop.mapreduce.split.JobSplit.TaskSplitMetaInfo;
 import org.apache.hadoop.mapreduce.split.SplitMetaInfoReader;
 import org.apache.hadoop.mapreduce.task.JobContextImpl;
@@ -200,6 +202,11 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
   private Counters finalMapCounters = null;
   private Counters finalReduceCounters = null;
 
+  //huanke
+  private boolean taskFixnode=false;
+  private Collection<String> maplocations=null;
+  private Collection<String> reducelocations=null;
+  
     // FIXME:  
     //
     // Can then replace task-level uber counters (MR-2424) with job-level ones
@@ -711,6 +718,11 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
     this.maxFetchFailuresNotifications = conf.getInt(
         MRJobConfig.MAX_FETCH_FAILURES_NOTIFICATIONS,
         MRJobConfig.DEFAULT_MAX_FETCH_FAILURES_NOTIFICATIONS);
+    
+    //huanke
+    this.taskFixnode=conf.getBoolean("task.fix.node", false);
+    this.maplocations=conf.getStringCollection("map.task.locations.scope");
+    this.reducelocations=conf.getStringCollection("reduce.task.locations.scope");
   }
 
   protected StateMachine<JobStateInternal, JobEventType, JobEvent> getStateMachine() {
@@ -1524,6 +1536,13 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
     private void createMapTasks(JobImpl job, long inputLength,
                                 TaskSplitMetaInfo[] splits) {
       for (int i=0; i < job.numMapTasks; ++i) {
+    	//huanke
+        if(job.taskFixnode){
+          List<String> locations =new ArrayList<>(job.maplocations);
+          String onemap=locations.get(new Random().nextInt(locations.size()));
+          job.conf.set("map.task.fix.node", onemap);
+          LOG.info("@huanke location for maptask: "+ onemap);
+        }  
         TaskImpl task =
             new MapTaskImpl(job.jobId, i,
                 job.eventHandler, 
@@ -1540,22 +1559,43 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
           + ". Number of splits = " + splits.length);
     }
 
+    // huanke
     private void createReduceTasks(JobImpl job) {
-      for (int i = 0; i < job.numReduceTasks; i++) {
-        TaskImpl task =
-            new ReduceTaskImpl(job.jobId, i,
-                job.eventHandler, 
-                job.remoteJobConfFile, 
-                job.conf, job.numMapTasks, 
-                job.taskAttemptListener, job.jobToken,
-                job.jobCredentials, job.clock,
-                job.applicationAttemptId.getAttemptId(),
-                job.metrics, job.appContext);
-        job.addTask(task);
+        for (int i = 0; i < job.numReduceTasks; i++) {
+          //huanke
+          if(job.taskFixnode){
+            List<String> locations =new ArrayList<>(job.reducelocations);
+            String onereduce=locations.get(new Random().nextInt(locations.size()));
+            job.conf.set("reduce.task.fix.node", onereduce);
+            LOG.info("@huanke location for reducetask: "+ onereduce);
+          }
+          //huanke want to add AMtoTask info in new ReduceTaskImpl
+          AMtoReduceTask AMtoReduce=createAMtaskInfo();
+//          AMtoReduce.setAMtoTaskInfo("Baba");
+
+//          TaskImpl task =
+//              new ReduceTaskImpl(job.jobId, i,
+//                  job.eventHandler,
+//                  job.remoteJobConfFile,
+//                  job.conf, job.numMapTasks,
+//                  job.taskAttemptListener, job.jobToken,
+//                  job.jobCredentials, job.clock,
+//                  job.applicationAttemptId.getAttemptId(),
+//                  job.metrics, job.appContext);
+          TaskImpl task =
+                  new ReduceTaskImpl(job.jobId, i,
+                          job.eventHandler,
+                          job.remoteJobConfFile,
+                          job.conf, job.numMapTasks,
+                          job.taskAttemptListener, job.jobToken,
+                          job.jobCredentials, job.clock,
+                          job.applicationAttemptId.getAttemptId(),
+                          job.metrics, job.appContext, AMtoReduce);
+          job.addTask(task);
+        }
+        LOG.info("Number of reduces for job " + job.jobId + " = "
+            + job.numReduceTasks);
       }
-      LOG.info("Number of reduces for job " + job.jobId + " = "
-          + job.numReduceTasks);
-    }
 
     protected TaskSplitMetaInfo[] createSplits(JobImpl job, JobId jobId) {
       TaskSplitMetaInfo[] allTaskSplitMetaInfo;
@@ -1570,6 +1610,17 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
       return allTaskSplitMetaInfo;
     }
 
+    //huanke-------------------------
+    protected AMtoReduceTask createAMtaskInfo(){
+      AMtoReduceTask AMtask;
+      try{
+        AMtask=AMtoReduceTask.createNullInfo();
+
+      }catch (Exception e){
+        throw new YarnRuntimeException(e);}
+      return AMtask;
+    }
+    
     /**
      * If the number of tasks are greater than the configured value
      * throw an exception that will fail job initialization
