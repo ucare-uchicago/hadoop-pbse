@@ -91,7 +91,7 @@ public class HdfsDataInputStream extends FSDataInputStream {
   /**
    * Get the visible length of the file. It will include the length of the last
    * block even if that is in UnderConstruction state.
-   * 
+   *
    * @return The visible length of the file.
    */
   public long getVisibleLength() throws IOException {
@@ -112,11 +112,34 @@ public class HdfsDataInputStream extends FSDataInputStream {
     getDFSInputStream().clearReadStatistics();
   }
 
-  public void ignoreDatanode(DatanodeID lastDatanodeID) {
+  private DatanodeID ignoredDatanode;
+
+  /**
+   * Get ignored datanode by PBSE0 algorithm. If no datanode is ignored before,
+   * it will return null. If it is original task, it will return
+   * {@link DatanodeID#nullDatanodeID}
+   *
+   * @return null if {@link HdfsDataInputStream#ignoredDatanode} never invoked,
+   *         {@link DatanodeID#nullDatanodeID} if it is original task, or
+   *         {@link DatanodeID} from lastest previous attempt.
+   */
+  public DatanodeID getIgnoredDatanode() {
+    return ignoredDatanode;
+  }
+
+  private void ignoreDatanode(DatanodeID lastDatanodeID) {
+    this.ignoredDatanode = lastDatanodeID;
     getDFSInputStream().ignodeDatanode(lastDatanodeID);
   }
 
-  // riza: implement datanode switch
+  /**
+   * Set datanode to ignore by PBSE0 algorithm and switch datanode if current
+   * datanode is equal {@code ignoredDatanode}
+   *
+   * @param ignoredDatanode
+   *          datanode to ignore, by PBSE0 algorithm.
+   * @throws IOException
+   */
   public void switchDatanode(DatanodeID ignoredDatanode) throws IOException{
     this.ignoreDatanode(ignoredDatanode);
     if (ignoredDatanode.equals(this.getCurrentDatanode())) {
