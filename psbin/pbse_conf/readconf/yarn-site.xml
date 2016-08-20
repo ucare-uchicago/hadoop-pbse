@@ -36,14 +36,18 @@ MEMORY TUNING END -->
 
   <property>
     <name>yarn.nodemanager.resource.memory-mb</name>
+    <!-- <value>16384</value> maximizing container usage -->
+    <value>12288</value> <!-- using 12 containers per node -->
     <!-- <value>4096</value> write mode -->
-    <value>2048</value> <!-- experiment mode -->
+    <!-- <value>2048</value> experiment mode -->
   </property>
 
   <property>
     <name>yarn.nodemanager.resource.cpu-vcores</name>
+    <!-- <value>16</value> maximizing container usage -->
+    <value>12</value> <!-- using 12 containers per node -->
     <!-- <value>4</value> write mode -->
-    <value>2</value> <!-- experiment mode -->
+    <!-- <value>2</value> experiment mode -->
   </property>
 
   <property>
