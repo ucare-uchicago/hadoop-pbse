@@ -250,10 +250,7 @@ public class DefaultSpeculator extends AbstractService implements
                 //just test to launch a backup reduce task
               } else {
                 LOG.info("@huanke checkIntersection returns ignoreNode :" + ignoreNode);
-                for(TaskId i: TaskAndPipeline.keySet())
-                {
-                    LOG.info("PBSE-Write-Diversity-1 taskId " + i + " choose-datanode " + TaskAndPipeline.get(i)+" IntersectedNode "+ignoreNode);
-                }
+                LOG.info("PBSE-Write-Diversity-1 taskId " + TaskAndPipeline.keySet() + " choose-datanode " + TaskAndPipeline+" IntersectedNode "+ignoreNode);
                 relauchReduceTask(ignoreNode);
               }
               long mininumRecomp
