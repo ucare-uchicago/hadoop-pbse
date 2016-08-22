@@ -181,7 +181,11 @@ class ReduceTaskStatus extends TaskStatus {
     super.readFields(in);
     shuffleFinishTime = in.readLong(); 
     sortFinishTime = in.readLong();
-
+    // huanke
+    for(int i=0; i< 2;i++){
+        DNpath[i].readFields(in);
+      }
+    
     int noFailedFetchTasks = in.readInt();
     failedFetchTasks = new ArrayList<TaskAttemptID>(noFailedFetchTasks);
     for (int i=0; i < noFailedFetchTasks; ++i) {
@@ -200,6 +204,11 @@ class ReduceTaskStatus extends TaskStatus {
     out.writeLong(shuffleFinishTime);
     out.writeLong(sortFinishTime);
 
+    // huanke
+    for(int i=0; i<2;i++){
+        DNpath[i].write(out);
+    }
+    
     out.writeInt(failedFetchTasks.size());
     for (TaskAttemptID taskId : failedFetchTasks) {
       taskId.write(out);

@@ -28,8 +28,8 @@ public class ShuffleTable {
 	private Map<ShuffleRateInfo, Long> shuffleReportCount = new TreeMap<>();
 	// @Cesar: This map task were speculated
 	private Set<TaskId> alreadySpeculated = new TreeSet<>();
-	// @Cesar: Do not receive more reports from this guys
-	private Set<ShuffleRateInfo> bannedReports = new TreeSet<>();
+	// @Cesar: This map task attempts were killed
+	private Set<TaskAttemptId> alreadyRelaunched = new TreeSet<>();
 	// @Cesar: Store all attempts for a given host
 	private Map<String, Set<MapAttemptInfo>> attemptsSucceededPerHost = new TreeMap<>();
 	// @Cesar: Store all tasks started for a given host
@@ -80,30 +80,18 @@ public class ShuffleTable {
 		return alreadySpeculated.contains(mapTask);
 	}
 	
-	public boolean isReportBanned(ShuffleRateInfo info){
-		return bannedReports.contains(info);
+	public boolean wasRelaunched(TaskAttemptId mapTaskAttempt){
+		return alreadyRelaunched.contains(mapTaskAttempt);
 	}
 	
-	public synchronized void bannReportersAndCleanHost(Set<ShuffleRateInfo> infos, String host){
-		LOG.info("@Cesar: Cleaning host " + host + " for " + infos.size() + " reports");
+	// @Cesar: Remove all reports for a host
+	public synchronized void cleanHost(String host){
 		ShuffleHost shuffleHost = new ShuffleHost(host);
-		bannedReports.addAll(infos);
-		if(shuffleReports.containsKey(shuffleHost)){
-			Iterator<ShuffleRateInfo> infosIt = infos.iterator();
-			while(infosIt.hasNext()){
-				ShuffleRateInfo info = infosIt.next();
-				LOG.info("@Cesar: Report was be banned for host " + host + " : " + info);
-				// @Cesar: lets remove this attempt cause is not successful anymore
-				if(attemptsSucceededPerHost.get(host) != null){
-					attemptsSucceededPerHost.get(host).remove(new MapAttemptInfo(info.getMapTaskAttempId().getTaskId(),
-																				 info.getMapTaskAttempId()));
-					LOG.info("@Cesar: Removed successful attempt at host " + host + " : " + info.getMapTaskAttempId());
-				}
-		
+		if(shuffleReports.get(shuffleHost) != null){
+			if(LOG.isDebugEnabled()){
+				LOG.info("@Cesar: Cleaning host " + host);
 			}
-			// @Cesar: Clear if empty
-			if(attemptsSucceededPerHost.get(host) != null && attemptsSucceededPerHost.get(host).size() == 0)
-				attemptsSucceededPerHost.remove(host);
+			shuffleReports.get(shuffleHost).clear();
 		}
 	}
 	
@@ -112,10 +100,22 @@ public class ShuffleTable {
 		return alreadySpeculated.add(task);
 	}
 	
+	// @Cesar: Mark task attempt as killed
+	public synchronized boolean bannMapTaskAttempt(TaskAttemptId attempt){
+		return alreadyRelaunched.add(attempt);
+	}
+	
 	// @Cesar: Add a new report
 	public synchronized boolean reportRate(ShuffleHost host, ShuffleRateInfo info){
-		// @Cesar: Is banned?
-		if(isReportBanned(info)) return false;
+		// @Cesar: Is the map task banned?
+		if(info.getMapTaskAttempId() != null && wasRelaunched(info.getMapTaskAttempId()) == true){
+			if(LOG.isDebugEnabled()){
+				LOG.debug("@Cesar: Report for reduce task attempt " + info.getReduceTaskAttempId() + " and map task attempt " + 
+						 info.getMapTaskAttempId() + " [maphost=" + info.getMapHost() + ", reducehost=" + info.getReduceHost() + 
+						 "] wont be added since map task attempt was already relaunched");
+			}
+			return false;
+		}
 		// @Cesar: not banned?, well, then insert
 		updateShuffleReports(host, info);
 		updateReportCount(info);
@@ -184,28 +184,24 @@ public class ShuffleTable {
 		}
 	}
 	
-	// @Cesar: Can a host be speculated on, given the number of reports
+	// @Cesar: Can a host be speculated on, given the number of reports. 
+	// @Cesar: TODO --> Do we have reports from all attempts succeeded at this host?
 	public synchronized boolean canSpeculate(String host){
-		if(attemptsSucceededPerHost.get(host) != null && shuffleReports.get(new ShuffleHost(host)) != null)
-			return attemptsSucceededPerHost.get(host).size() <= shuffleReports.get(new ShuffleHost(host)).size(); 
-		return false;
+		if(attemptsSucceededPerHost.get(host) != null && shuffleReports.get(new ShuffleHost(host)) != null){
+			boolean result = attemptsSucceededPerHost.get(host).size() <= shuffleReports.get(new ShuffleHost(host)).size();
+			if(LOG.isDebugEnabled()){
+				LOG.debug("@Cesar: Should we speculate? is attemptsSucceededPerHost.get(host).size()=" +
+							attemptsSucceededPerHost.get(host).size() + " <= shuffleReports.get(new ShuffleHost(host)).size()=" + 
+							shuffleReports.get(new ShuffleHost(host)).size() + "? " + result);
+			}
+		}
+		if(LOG.isDebugEnabled()) 
+			LOG.debug("@Cesar: attemptsSucceededPerHost.get(host)= " + (attemptsSucceededPerHost.get(host) == null? "NULL" : "NOT NULL") + 
+						" and shuffleReports.get(new ShuffleHost(host))=" + (shuffleReports.get(new ShuffleHost(host)) == null? "NULL" : "NOT NULL"));
+		
+		// @Cesar: TODO --> This should do something 
+		return true;
 	}
-	
-	
-
-
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("ShuffleTable [shuffleReports=").append(shuffleReports).append(", shuffleReportCount=")
-				.append(shuffleReportCount).append(", alreadySpeculated=").append(alreadySpeculated)
-				.append(", bannedReports=").append(bannedReports).append(", attemptsSucceededPerHost=")
-				.append(attemptsSucceededPerHost).append(", tasksStartedPerHost=").append(tasksStartedPerHost)
-				.append(", tasksSuccessfulPerHost=").append(tasksSuccessfulPerHost).append("]");
-		return builder.toString();
-	}
-
-
 
 
 	// @Cesar: Utility class

@@ -53,7 +53,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import com.google.common.annotations.VisibleForTesting;
 
 class Fetcher<K,V> extends Thread {
-  
+  	
   private static final Log LOG = LogFactory.getLog(Fetcher.class);
   
   /** Number of ms before timing out a copy */
@@ -110,15 +110,16 @@ class Fetcher<K,V> extends Thread {
                  ExceptionReporter exceptionReporter, SecretKey shuffleKey) {
     this(job, reduceId, scheduler, merger, reporter, metrics,
         exceptionReporter, shuffleKey, ++nextId);
+    
   }
 
   @VisibleForTesting
   Fetcher(JobConf job, TaskAttemptID reduceId, 
-                 ShuffleSchedulerImpl<K,V> scheduler, MergeManager<K,V> merger,
-                 Reporter reporter, ShuffleClientMetrics metrics,
-                 ExceptionReporter exceptionReporter, SecretKey shuffleKey,
-                 int id) {
-    this.jobConf = job;
+         ShuffleSchedulerImpl<K,V> scheduler, MergeManager<K,V> merger,
+         Reporter reporter, ShuffleClientMetrics metrics,
+         ExceptionReporter exceptionReporter, SecretKey shuffleKey,
+         int id) {
+	this.jobConf = job;
     this.reporter = reporter;
     this.scheduler = scheduler;
     this.merger = merger;
@@ -191,6 +192,9 @@ class Fetcher<K,V> extends Thread {
 
           // Shuffle
           copyFromHost(host);
+          // @Cesar: Add some logging
+          LOG.info(PBSEShuffleMessage.createPBSESlowShuffleLogMessage(host.getHostName(), 
+        		  													  this.id));
         } finally {
           if (host != null) {
             scheduler.freeHost(host);

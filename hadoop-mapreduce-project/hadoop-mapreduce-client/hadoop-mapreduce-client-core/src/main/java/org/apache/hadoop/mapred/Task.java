@@ -806,18 +806,46 @@ abstract public class Task implements Writable, Configurable{
           } else {
             datanodeRetries = 0;
           }
-
+      
+          // @Cesar: Send progress every 60000 / proginterval seconds for reduce phase
+          // or until we have fetch rate reports or reduce pipeline
+          int sendReduceProgress = !isMapTask() ? 60000 / proginterval : 0;
+          boolean shouldSendShuffleProgress = (taskStatus == null ||
+        		  							   taskStatus.getReportedFetchRates() == null || 
+					 						   taskStatus.getReportedFetchRates().getFetchRateReport() == null || 
+					 						   taskStatus.getReportedFetchRates().getFetchRateReport().size() == 0);
+          boolean shouldSendHdfsWRiteProgress = (this.out == null);
+          
+          if (sendReduceProgress > 0 && (shouldSendHdfsWRiteProgress? shouldSendShuffleProgress : false)) {
+        	  sendReduceProgress -= 1;
+        	  if(LOG.isDebugEnabled()){
+	              LOG.debug("@Cesar: Not sending progress since flag is " + sendReduceProgress + " and " + 
+	            		  	"(shouldSendHdfsWRiteProgress=" + shouldSendHdfsWRiteProgress + ", " + 
+	            		  	"shouldSendShuffleProgress=" + shouldSendShuffleProgress + ")");
+        	  }
+              sendProgress = sendProgress || resetProgressFlag();
+              continue;
+            } else {
+            	sendReduceProgress = 0;
+            	if(LOG.isDebugEnabled()){
+            		LOG.debug("@Cesar: Time to send progress for reduce task!");
+            	}
+            	
+            }
+          
+          
           //huanke
-          int pathRetries = !isMapTask() ? 60000 / proginterval : 0;
-          if ((pathRetries > 0) && (this.out == null)) {
-            pathRetries -= 1;
-            LOG.info("@huanke: DNPath still null, wait for next " + pathRetries
-                    + " retry");
-            sendProgress = sendProgress || resetProgressFlag();
-            continue;
-          } else {
-            pathRetries = 0;
-          }
+          // @Cesar: Ill comment this out, since this blocks the progress of shuffle phase
+          //int pathRetries = !isMapTask() ? 60000 / proginterval : 0;
+          //if ((pathRetries > 0) && (this.out == null)) {
+          //  pathRetries -= 1;
+          //  LOG.info("@huanke: DNPath still null, wait for next " + pathRetries
+          //          + " retry");
+          //  sendProgress = sendProgress || resetProgressFlag();
+          //  continue;
+          //} else {
+          //  pathRetries = 0;
+          //}
 
 
           if (sendProgress) {

@@ -46,6 +46,7 @@ import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TypeConverter;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
+import org.apache.hadoop.mapreduce.task.reduce.PBSEShuffleMessage;
 import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 import org.apache.hadoop.mapreduce.v2.api.records.JobId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
@@ -248,7 +249,7 @@ public class DefaultSpeculator extends AbstractService implements
                 //just test to launch a backup reduce task
               } else {
                 LOG.info("@huanke checkIntersection returns ignoreNode :" + ignoreNode);
-                relauchRedueTask(ignoreNode);
+                relauchReduceTask(ignoreNode);
               }
               long mininumRecomp
                       = ignoreNode != null ? soonestRetryAfterSpeculate
@@ -279,12 +280,10 @@ public class DefaultSpeculator extends AbstractService implements
           while (!stopped && !Thread.currentThread().isInterrupted()) {
             long backgroundRunStartTime = clock.getTime();
             try {
-              LOG.info("@huanke My Thread is running"+TaskAndPipeline);
               int speculations = computeSpeculations();
               long mininumRecomp
                   = speculations > 0 ? soonestRetryAfterSpeculate
                                      : soonestRetryAfterNoSpeculate;
-
               long wait = Math.max(mininumRecomp,
                     clock.getTime() - backgroundRunStartTime);
 
@@ -292,13 +291,6 @@ public class DefaultSpeculator extends AbstractService implements
                 LOG.info("We launched " + speculations
                     + " speculations.  Sleeping " + wait + " milliseconds.");
               }
-              if(ignoreNode!=null){
-                LOG.info("@huanke now ignoreNode is "+ignoreNode);
-                relauchRedueTask(ignoreNode);
-              }else{
-                LOG.info("@huanke now ignoreNode is empty");
-              }
-
               Object pollResult
                   = scanControl.poll(wait, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
@@ -360,7 +352,7 @@ public class DefaultSpeculator extends AbstractService implements
 
   
   //huanke
-  private synchronized DatanodeInfo checkIntersection() {
+  private DatanodeInfo checkIntersection() {
     //huanke--------------------------------------------------------------
     TaskType type=TaskType.REDUCE;
     LOG.info("@huanke TaskSetSize :"+TaskSet+TaskAndPipeline);
@@ -426,7 +418,7 @@ public class DefaultSpeculator extends AbstractService implements
   }
 
   //huanke
-  private void relauchRedueTask(DatanodeInfo ignoreNode) {
+  private void relauchReduceTask(DatanodeInfo ignoreNode) {
     TaskId taskID=TaskAndPipeline.keySet().iterator().next();
     LOG.info("@huanke relauchRedueTask" + taskID);
     eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ADD_SPEC_ATTEMPT, ignoreNode));
@@ -464,8 +456,6 @@ public class DefaultSpeculator extends AbstractService implements
 	  // @Cesar: So, iterate the fetch rate table
 	  LOG.info("@Cesar: Starting fetch rate speculation check");
 	  Map<ShuffleHost, Set<ShuffleRateInfo>> allReports = shuffleTable.getReports();
-	  // @Cesar: Log some info also
-	  LOG.info("@Cesar: Fetch rate table is " + shuffleTable);
 	  // @Cesar: Done released object, now go
 	  // Lets iterate
 	  if(allReports != null){
@@ -501,14 +491,17 @@ public class DefaultSpeculator extends AbstractService implements
 						  relaunchTask(next.getTaskId(), nextEntry.getKey().getMapHost(), next);
 						  // @Cesar: also, add to the list of tasks that may have been speculated already
 						  shuffleTable.bannMapTask(next.getTaskId());
+						  // @Cesar: Mark this attempt as relaunched (killed)
+						  shuffleTable.unsucceedTaskAtHost(nextEntry.getKey().getMapHost(), next.getTaskId());
+						  shuffleTable.bannMapTaskAttempt(next);
 						  // @Cesar: This is the real number of speculated map tasks
 						  ++numSpeculatedMapTasks;
-						  // @Cesar: Bann reports
-						  shuffleTable.bannReportersAndCleanHost(nextEntry.getValue(), nextEntry.getKey().getMapHost());
 					  }
 					  else{
 						  LOG.info("@Cesar: Not going to relaunch " + next + " since task " + next.getTaskId() + " was speculated already");
 					  }
+					  // @Cesar: Clean host
+					  shuffleTable.cleanHost(nextEntry.getKey().getMapHost());
 				  }
 			  }
 			  else{
@@ -856,7 +849,7 @@ public class DefaultSpeculator extends AbstractService implements
   //huanke reduce task does not launch backup task as map task like T_ADD_SPEC_ATTEMPT
   protected void relaunchTask(TaskId taskID) {
     LOG.info
-            ("DefaultSpeculator.relaunchTask -- we are speculating a map task of id " + taskID);
+            ("DefaultSpeculator.@huanke-relaunchTask -- we are speculating a reduce task of id " + taskID);
     eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ATTEMPT_KILLED));
     // @huanke: Add this as speculated
     mayHaveSpeculated.add(taskID);
@@ -875,11 +868,13 @@ public class DefaultSpeculator extends AbstractService implements
   // using addSpeculativeAttempt
   protected void relaunchTask(TaskId taskID, String mapperHost, TaskAttemptId mapId) {
     LOG.info
-        ("DefaultSpeculator.relaunchTask -- we are speculating a map task of id " + taskID);
+        ("DefaultSpeculator.relaunchTask.@cesar -- we are speculating a map task of id " + taskID);
     eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ATTEMPT_KILLED, mapperHost, mapId));
+    // @Cesar: Log
+    LOG.info(PBSEShuffleMessage.createPBSESlowShuffleLogMessage(mapperHost));
     // @Cesar: Add this as speculated
 	mayHaveSpeculated.add(taskID);
-	shuffleTable.unsucceedTaskAtHost(mapperHost, taskID);
+	
   }
   
   @Override
