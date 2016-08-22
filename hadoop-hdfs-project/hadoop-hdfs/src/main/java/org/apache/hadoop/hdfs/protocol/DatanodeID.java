@@ -44,6 +44,7 @@ import com.google.common.annotations.VisibleForTesting;
 @InterfaceStability.Evolving
 public class DatanodeID implements Comparable<DatanodeID>, Writable {
   public static final DatanodeID[] EMPTY_ARRAY = {};
+  public static final DatanodeID nullDatanodeID = createNullDatanodeID();
 
   private String ipAddr;     // IP address
   private String hostName;   // hostname claimed by datanode

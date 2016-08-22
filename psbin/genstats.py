@@ -108,15 +108,17 @@ def getMasterStats(app):
       else:
         # killed container
         print "killed: "+appname+"/"+ct
-        container = {\
+        container = {
           "appid": app["appid"],
           "containerid": ct,
-          "attempt": att, \
-          "mapnode": "", \
+          "attempt": att,
+          "mapnode": "",
           "datanode": [],
           "ismap" : ("_m_" in att),
 		  "shuffleTime": 0.0,
-          "isSuccessful": False
+          "isSuccessful": False,
+          "isSlowMapnode": "",
+          "isSlowDatanode": "" 
         }
         app["containers"][ct] = container
 
@@ -128,6 +130,7 @@ def getMasterStats(app):
       for cname,ctr in app["containers"].items():
         if ctr["attempt"] == att:
           ctr["mapnode"] = mapnode
+          ctr["isSlowMapnode"] = mapnode.startswith(SLOWHOST)
 
     match = re_am_finalct.match(line)
     if match:
@@ -178,6 +181,8 @@ def getContainerStats(app):
       if match:
         datanode = match.group(1)
         ct["datanode"].append(datanode)
+        if datanode.startswith(SLOWIP):
+            ct["isSlowDatanode"] = True
 
       if re_hb.match(line):
         ct["status_update"].append(getLogTime(line))
@@ -252,15 +257,17 @@ def getTopology():
             apps[theroot]["appid"] = theroot
             apps[theroot]["master"]["syslogdir"] = subdirname
           else:
-            container = {\
+            container = {
               "appid": theroot,
               "containerid": subdirname,
-              "attempt": "", \
-              "mapnode": "", \
+              "attempt": "",
+              "mapnode": "",
               "datanode": [],
               "ismap": False,
               "shuffleTime": 0.0,
-              "isSuccessful": False
+              "isSuccessful": False,
+              "isSlowMapnode": False,
+              "isSlowDatanode": False
               }
             apps[theroot]["containers"][subdirname] = container
           ctcount += 1
