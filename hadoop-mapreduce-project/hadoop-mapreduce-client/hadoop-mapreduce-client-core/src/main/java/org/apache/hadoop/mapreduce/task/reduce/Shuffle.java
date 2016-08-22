@@ -66,7 +66,6 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
   @Override
   public void init(ShuffleConsumerPlugin.Context context) {
     this.context = context;
-
     this.reduceId = context.getReduceId();
     this.jobConf = context.getJobConf();
     this.umbilical = context.getUmbilical();
@@ -156,7 +155,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
 
     // @Cesar: Log shuffle finish time
     long shuffleTimeStop = System.nanoTime();
-    LOG.info("@Cesar: Shuffle time for this reducer is " + (shuffleTimeStop - shuffleTimeStart) + " nanoseconds");
+    LOG.info(PBSEShuffleMessage.createPBSESlowShuffleLogMessage(shuffleTimeStop));
     
     copyPhase.complete(); // copy is already complete
     taskStatus.setPhase(TaskStatus.Phase.SORT);

@@ -362,7 +362,7 @@ public class MapTask extends Task {
   }
 
  @SuppressWarnings("unchecked")
- private <T> T getSplitDetails(Path file, long offset) 
+ private <T> T getSplitDetails(Path file, long offset)
   throws IOException {
    FileSystem fs = file.getFileSystem(conf);
    FSDataInputStream inFile = fs.open(file);

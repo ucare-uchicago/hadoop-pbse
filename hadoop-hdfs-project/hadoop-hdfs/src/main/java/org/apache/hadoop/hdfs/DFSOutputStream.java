@@ -217,11 +217,11 @@ public class DFSOutputStream extends FSOutputSummer
   }
 
   public void switchPipeline(String tmp) {
-    DFSClient.LOG.info("@huanke -----------------ttttttt----------"+tmp);
+    DFSClient.LOG.debug("@huanke -----------------ttttttt----------"+tmp);
     if(tmp.isEmpty()){
-      DFSClient.LOG.info("@huanke ignoreString is empty");
+      DFSClient.LOG.debug("@huanke ignoreString is empty");
     }else{
-      DFSClient.LOG.info("@huanke ignoreString is: "+tmp);
+      DFSClient.LOG.debug("@huanke ignoreString is: "+tmp);
       IgnoreInfo.add(tmp);}
 //    huanke ignoreString is: pc744.emulab.net
 //    huanke ignoreString is empty
@@ -395,7 +395,7 @@ public class DFSOutputStream extends FSOutputSummer
      */
     @Override
     public void run() {
-      DFSClient.LOG.info("@huanke---step4--DataStreamer.run()-------");
+      DFSClient.LOG.debug("@huanke---step4--DataStreamer.run()-------");
       long lastPacket = Time.monotonicNow();
       TraceScope scope = NullScope.INSTANCE;
       while (!streamerClosed && dfsClient.clientRunning) {
@@ -462,17 +462,17 @@ public class DFSOutputStream extends FSOutputSummer
             if(DFSClient.LOG.isDebugEnabled()) {
               DFSClient.LOG.debug("Allocating new block");
             }
-            DFSClient.LOG.info("@huanke---step5---BlockConstructionStage.PIPELINE_SETUP_CREATE---------");
-            DFSClient.LOG.info("@huanke---HelloWorld: --->"+IgnoreInfo);
+            DFSClient.LOG.debug("@huanke---step5---BlockConstructionStage.PIPELINE_SETUP_CREATE---------");
+            DFSClient.LOG.debug("@huanke---HelloWorld: --->"+IgnoreInfo);
             //@huanke-----------------------------------------------
             LocatedBlock pipe=nextBlockOutputStream();
             PipeNodes= pipe.getLocations();
             for (int i = 0; i < PipeNodes.length; i++) {
               if(PipeNodes[i].getHostName()==null){
-                DFSClient.LOG.info("@huanke PipeNodes----------->null");
+                DFSClient.LOG.debug("@huanke PipeNodes----------->null");
               }
               else{
-                DFSClient.LOG.info("@huanke PipeNodes----"+i+"+------->"+ PipeNodes[i].getHostName()+" length: "+PipeNodes.length);
+                DFSClient.LOG.debug("@huanke PipeNodes----"+i+"+------->"+ PipeNodes[i].getHostName()+" length: "+PipeNodes.length);
               }
             }
 //            DatanodeInfo[] Pipeline= getPipeline();
@@ -484,7 +484,7 @@ public class DFSOutputStream extends FSOutputSummer
 //            for(DatanodeInfo tmp:Pipeline){
 //              DFSClient.LOG.info("@huanke DatanodeInfo tmp: "+tmp.getHostName()+tmp.getInfoAddr());
 //            }
-            DFSClient.LOG.info("@huanke PipeNodes----------->"+ PipeNodes);
+            DFSClient.LOG.debug("@huanke PipeNodes----------->"+ PipeNodes);
             //-------------------------------------------------------
             setPipeline(pipe);
             initDataStreaming();
@@ -1482,12 +1482,10 @@ public class DFSOutputStream extends FSOutputSummer
 //            huanke locateFollowingBlock IgnoreInfo-->[HuanPig]
             //we have two reduce tasks, so we just have two HelloWorld above
 
-            DFSClient.LOG.info("@huanke locateFollowingBlock IgnoreInfo-->"+IgnoreInfo);
+            DFSClient.LOG.debug("@huanke locateFollowingBlock IgnoreInfo-->"+IgnoreInfo);
 //            return dfsClient.namenode.addBlock(src, dfsClient.clientName,
 //                block, excludedNodes, fileId, favoredNodes);
             //huanke, add IgnoreInfo to NN through the ClientProtocol
-
-
             return dfsClient.namenode.addBlockHK(src, dfsClient.clientName,
                     block, excludedNodes, fileId, favoredNodes,IgnoreInfo);
           } catch (RemoteException e) {
@@ -1605,10 +1603,10 @@ public class DFSOutputStream extends FSOutputSummer
   //huanke --> forward this to task report
   public synchronized DatanodeInfo[] getPipeNodes(){
     if(streamer.getNodes()!=null){
-            DFSClient.LOG.info("@huanke DFSOutput1 PipeNodes: "+streamer.getNodes()[0].getHostName()+streamer.getNodes()[1].getHostName()+" stream.getNodes: "+streamer.getNodes());
+            DFSClient.LOG.debug("@huanke DFSOutput1 PipeNodes: "+streamer.getNodes()[0].getHostName()+streamer.getNodes()[1].getHostName()+" stream.getNodes: "+streamer.getNodes());
             return streamer.getNodes();
     }else{
-            DFSClient.LOG.info("@huanke DFSOutput1 PipeNodes: is null");
+            DFSClient.LOG.debug("@huanke DFSOutput1 PipeNodes: is null");
             return streamer.getNodes();
     }
   }
@@ -1809,7 +1807,7 @@ public class DFSOutputStream extends FSOutputSummer
     synchronized (dataQueue) {
       if (currentPacket == null) return;
       currentPacket.addTraceParent(Trace.currentSpan());
-      DFSClient.LOG.info("@huanke---step3--queueCurrentPacket()---->");
+      DFSClient.LOG.debug("@huanke---step3--queueCurrentPacket()---->");
       dataQueue.addLast(currentPacket);
       lastQueuedSeqno = currentPacket.getSeqno();
       if (DFSClient.LOG.isDebugEnabled()) {
@@ -1823,7 +1821,7 @@ public class DFSOutputStream extends FSOutputSummer
   private void waitAndQueueCurrentPacket() throws IOException {
     synchronized (dataQueue) {
       try {
-        DFSClient.LOG.info("@huanke---step2--waitAndQueueCurrentPacket()---->");
+        DFSClient.LOG.debug("@huanke---step2--waitAndQueueCurrentPacket()---->");
       // If queue is full, then wait till we have enough space
         boolean firstWait = true;
         try {

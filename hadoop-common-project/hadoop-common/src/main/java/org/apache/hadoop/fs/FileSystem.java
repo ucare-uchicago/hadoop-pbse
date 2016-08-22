@@ -777,7 +777,7 @@ public abstract class FileSystem extends Configured implements Closeable {
   }
 
   /**
-   * Create an FSDataOutputStream at the indicated Path.
+   * w
    * @param f the file to create
    * @param overwrite if a file with this name already exists, then if true,
    *   the file will be overwritten, and if false an exception will be thrown.

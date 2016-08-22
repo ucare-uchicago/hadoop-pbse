@@ -660,7 +660,7 @@ public class ReduceTask extends Task{
                                                valueClass);
     LOG.info("@huanke taskContext : "+taskContext + "reducer : "+ reducer+ "trackedRW: "+trackedRW+"reducerContext : "+reducerContext);
     LOG.info("@huanke runNewReducer: "+AMtask.getAMtaskInfo()+" TaskAttemptId:"+getTaskID()+" TaskId: "+getTaskID().getTaskID()+" TaskId.getId()"+getTaskID().getTaskID().getId());
-//    huanke runNewReducer: Baba TaskAttemptId:attempt_1471318623508_0001_r_000001_0 TaskId: task_1471318623508_0001_r_000001 TaskId.getId()1
+//    huanke runNewReducer: null TaskAttemptId:attempt_1471318623508_0001_r_000001_0 TaskId: task_1471318623508_0001_r_000001 TaskId.getId()1
 //    huanke runNewReducer: Baba TaskAttemptId:attempt_1471318623508_0001_r_000000_0 TaskId: task_1471318623508_0001_r_000000 TaskId.getId()0
 //    huanke runNewReducer: pc747.emulab.net TaskAttemptId:attempt_1471318623508_0001_r_000001_1 TaskId: task_1471318623508_0001_r_000001 TaskId.getId()1
 

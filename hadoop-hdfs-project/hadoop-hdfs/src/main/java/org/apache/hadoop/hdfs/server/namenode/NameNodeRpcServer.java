@@ -719,10 +719,10 @@ class NameNodeRpcServer implements NamenodeProtocols {
         excludedNodesSet.add(node);
       }
     }
-      DFSClient.LOG.info("@huanke---step6----NameNodeRPCServer.addBlock()-------");
+      DFSClient.LOG.debug("@huanke---step6----NameNodeRPCServer.addBlock()-------");
     List<String> favoredNodesList = (favoredNodes == null) ? null
         : Arrays.asList(favoredNodes);
-      LOG.info("@huanke favoredNodesList : "+favoredNodesList);
+      LOG.debug("@huanke favoredNodesList : "+favoredNodesList);
 
       //huanke let favoredNodesList to be null temporaliy
 //      favoredNodesList=null;
@@ -752,12 +752,12 @@ class NameNodeRpcServer implements NamenodeProtocols {
                 excludedNodesSet.add(node);
             }
         }
-        DFSClient.LOG.info("@huanke--HK-step61----NameNodeRPCServer.addBlock()-------");
+        DFSClient.LOG.debug("@huanke--HK-step61----NameNodeRPCServer.addBlock()-------");
         List<String> favoredNodesList = (favoredNodes == null) ? null
                 : Arrays.asList(favoredNodes);
 //        LocatedBlock locatedBlock = namesystem.getAdditionalBlock(src, fileId,
 //                clientName, previous, excludedNodesSet, favoredNodesList);
-        LOG.info("@huanke IngoreInfo NN addblock() "+IgnoreInfo+" favoredNodesList: "+favoredNodesList);
+        LOG.debug("@huanke IngoreInfo NN addblock() "+IgnoreInfo+" favoredNodesList: "+favoredNodesList);
         LocatedBlock locatedBlock = namesystem.getAdditionalBlockHK(src, fileId,
                 clientName, previous, excludedNodesSet, favoredNodesList, IgnoreInfo);
         if (locatedBlock != null)
