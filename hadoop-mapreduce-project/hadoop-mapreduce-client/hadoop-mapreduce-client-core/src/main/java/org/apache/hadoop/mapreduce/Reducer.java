@@ -200,11 +200,6 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
             LOG.info("@huanke yes, it is!"+out.getClass());
             if(((HdfsDataOutputStream) out).getPipeNodes()!=null){
               LOG.info("@huanke Myfirst time to get pipeNodes from steream"+((HdfsDataOutputStream) out).getPipeNodes()[0]+((HdfsDataOutputStream) out).getPipeNodes()[1]);
-<<<<<<< HEAD
-              LOG.info("PBSE-Write-Diversity-1 " + context.getTaskAttemptID().getTaskID() + " choose-datanode " + ((HdfsDataOutputStream) out).getPipeNodes());
-=======
-              LOG.info("PBSE-Write-Diversity-1: task " + context.getTaskAttemptID().getTaskID() + " choose-datanode " + ((HdfsDataOutputStream) out).getPipeNodes());
->>>>>>> 6f2238967464ff8ac9d59d623fd6d68bb02d765f
               taskReport.setOutputStream(out);
               flag=false;
             }else{

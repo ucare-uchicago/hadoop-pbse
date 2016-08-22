@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.client.HdfsDataOutputStream;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
@@ -249,6 +250,10 @@ public class DefaultSpeculator extends AbstractService implements
                 //just test to launch a backup reduce task
               } else {
                 LOG.info("@huanke checkIntersection returns ignoreNode :" + ignoreNode);
+                for(TaskId i: TaskAndPipeline.keySet())
+                {
+                    LOG.info("PBSE-Write-Diversity-1 taskId " + i + " choose-datanode " + TaskAndPipeline.get(i)+" IntersectedNode "+ignoreNode);
+                }
                 relauchReduceTask(ignoreNode);
               }
               long mininumRecomp
