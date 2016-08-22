@@ -28,6 +28,8 @@ public class ShuffleTable {
 	private Map<ShuffleRateInfo, Long> shuffleReportCount = new TreeMap<>();
 	// @Cesar: This map task were speculated
 	private Set<TaskId> alreadySpeculated = new TreeSet<>();
+	// @Cesar: This map task attempts were killed
+	private Set<TaskAttemptId> alreadyRelaunched = new TreeSet<>();
 	// @Cesar: Do not receive more reports from this guys
 	private Set<ShuffleRateInfo> bannedReports = new TreeSet<>();
 	// @Cesar: Store all attempts for a given host
@@ -80,31 +82,21 @@ public class ShuffleTable {
 		return alreadySpeculated.contains(mapTask);
 	}
 	
+	public boolean wasRelaunched(TaskAttemptId mapTaskAttempt){
+		return alreadyRelaunched.contains(mapTaskAttempt);
+	}
+	
 	public boolean isReportBanned(ShuffleRateInfo info){
 		return bannedReports.contains(info);
 	}
 	
-	public synchronized void bannReportersAndCleanHost(Set<ShuffleRateInfo> infos, String host){
-		LOG.info("@Cesar: Cleaning host " + host + " for " + infos.size() + " reports");
+	// @Cesar: Remove all reports for a host
+	public synchronized void cleanHost(String host){
 		ShuffleHost shuffleHost = new ShuffleHost(host);
-		bannedReports.addAll(infos);
-		if(shuffleReports.containsKey(shuffleHost)){
-			Iterator<ShuffleRateInfo> infosIt = infos.iterator();
-			while(infosIt.hasNext()){
-				ShuffleRateInfo info = infosIt.next();
-				LOG.info("@Cesar: Report was be banned for host " + host + " : " + info);
-				// @Cesar: lets remove this attempt cause is not successful anymore
-				if(attemptsSucceededPerHost.get(host) != null){
-					attemptsSucceededPerHost.get(host).remove(new MapAttemptInfo(info.getMapTaskAttempId().getTaskId(),
-																				 info.getMapTaskAttempId()));
-					LOG.info("@Cesar: Removed successful attempt at host " + host + " : " + info.getMapTaskAttempId());
-				}
-		
+		if(shuffleReports.get(shuffleHost) != null){
+			if(LOG.isDebugEnabled()){
+				LOG.info("@Cesar: Cleaning host " + host);
 			}
-			// @Cesar: Clear if empty
-			if(attemptsSucceededPerHost.get(host) != null && attemptsSucceededPerHost.get(host).size() == 0)
-				attemptsSucceededPerHost.remove(host);
-			// @Cesar: Also clean shuffle table
 			shuffleReports.get(shuffleHost).clear();
 		}
 	}
@@ -114,10 +106,22 @@ public class ShuffleTable {
 		return alreadySpeculated.add(task);
 	}
 	
+	// @Cesar: Mark task attempt as killed
+	public synchronized boolean bannMapTaskAttempt(TaskAttemptId attempt){
+		return alreadyRelaunched.add(attempt);
+	}
+	
 	// @Cesar: Add a new report
 	public synchronized boolean reportRate(ShuffleHost host, ShuffleRateInfo info){
-		// @Cesar: Is banned?
-		if(isReportBanned(info)) return false;
+		// @Cesar: Is the map task banned?
+		if(info.getMapTaskAttempId() != null && wasRelaunched(info.getMapTaskAttempId()) == true){
+			if(LOG.isDebugEnabled()){
+				LOG.debug("@Cesar: Report for reduce task attempt " + info.getReduceTaskAttempId() + " and map task attempt " + 
+						 info.getMapTaskAttempId() + " [maphost=" + info.getMapHost() + ", reducehost=" + info.getReduceHost() + 
+						 "] wont be added since map task attempt was already relaunched");
+			}
+			return false;
+		}
 		// @Cesar: not banned?, well, then insert
 		updateShuffleReports(host, info);
 		updateReportCount(info);

@@ -490,14 +490,17 @@ public class DefaultSpeculator extends AbstractService implements
 						  relaunchTask(next.getTaskId(), nextEntry.getKey().getMapHost(), next);
 						  // @Cesar: also, add to the list of tasks that may have been speculated already
 						  shuffleTable.bannMapTask(next.getTaskId());
+						  // @Cesar: Mark this attempt as relaunched (killed)
+						  shuffleTable.unsucceedTaskAtHost(nextEntry.getKey().getMapHost(), next.getTaskId());
+						  shuffleTable.bannMapTaskAttempt(next);
 						  // @Cesar: This is the real number of speculated map tasks
 						  ++numSpeculatedMapTasks;
-						  // @Cesar: Bann reports
-						  shuffleTable.bannReportersAndCleanHost(nextEntry.getValue(), nextEntry.getKey().getMapHost());
 					  }
 					  else{
 						  LOG.info("@Cesar: Not going to relaunch " + next + " since task " + next.getTaskId() + " was speculated already");
 					  }
+					  // @Cesar: Clean host
+					  shuffleTable.cleanHost(nextEntry.getKey().getMapHost());
 				  }
 			  }
 			  else{
@@ -882,7 +885,7 @@ public class DefaultSpeculator extends AbstractService implements
     LOG.info(createPBSESlowShuffleLogMessage(mapperHost));
     // @Cesar: Add this as speculated
 	mayHaveSpeculated.add(taskID);
-	shuffleTable.unsucceedTaskAtHost(mapperHost, taskID);
+	
   }
   
   @Override
