@@ -3033,8 +3033,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       ExtendedBlock previous, Set<Node> excludedNodes, 
       List<String> favoredNodes) throws IOException {
     LocatedBlock[] onRetryBlock = new LocatedBlock[1];
-    DFSClient.LOG.info("@huanke slowDataNodes: ");
-    DFSClient.LOG.info("@huanke---step7----FSNameSystem.getAdditionalBlock()-------");
+    DFSClient.LOG.debug("@huanke slowDataNodes: ");
+    DFSClient.LOG.debug("@huanke---step7----FSNameSystem.getAdditionalBlock()-------");
     DatanodeStorageInfo targets[] = getNewBlockTargets(src, fileId,
         clientName, previous, excludedNodes, favoredNodes, onRetryBlock);
     if (targets == null) {
@@ -3052,12 +3052,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
                                   ExtendedBlock previous, Set<Node> excludedNodes,
                                   List<String> favoredNodes, List<String> IgnoreInfo) throws IOException {
     LocatedBlock[] onRetryBlock = new LocatedBlock[1];
-    DFSClient.LOG.info("@huanke slowDataNodes: ");
-    DFSClient.LOG.info("@huanke---step7----FSNameSystem.getAdditionalBlock()-------");
+    DFSClient.LOG.debug("@huanke slowDataNodes: ");
+    DFSClient.LOG.debug("@huanke---step7----FSNameSystem.getAdditionalBlock()-------");
 //    DatanodeStorageInfo targets[] = getNewBlockTargets(src, fileId,
 //            clientName, previous, excludedNodes, favoredNodes, onRetryBlock);
     //huanke
-    LOG.info("@huanke IngoreInfo getAdditionalBlockHK "+IgnoreInfo);
+    LOG.debug("@huanke IngoreInfo getAdditionalBlockHK "+IgnoreInfo);
     DatanodeStorageInfo targets[] = getNewBlockTargetsHK(src, fileId,
             clientName, previous, excludedNodes, favoredNodes, onRetryBlock,IgnoreInfo);
     if (targets == null) {
@@ -3082,7 +3082,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   DatanodeStorageInfo[] getNewBlockTargets(String src, long fileId,
       String clientName, ExtendedBlock previous, Set<Node> excludedNodes,
       List<String> favoredNodes, LocatedBlock[] onRetryBlock) throws IOException {
-    DFSClient.LOG.info("@huanke---step7.1----FSNameSystem.getNewBlockTargets()-------");
+    DFSClient.LOG.debug("@huanke---step7.1----FSNameSystem.getNewBlockTargets()-------");
     final long blockSize;
     final int replication;
     final byte storagePolicyID;
@@ -3099,11 +3099,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     try {
       checkOperation(OperationCategory.READ);
       src = dir.resolvePath(pc, src, pathComponents);
-      DFSClient.LOG.info("@huanke -- src: "+src);
+      DFSClient.LOG.debug("@huanke -- src: "+src);
       FileState fileState = analyzeFileState(
           src, fileId, clientName, previous, onRetryBlock);
       final INodeFile pendingFile = fileState.inode;
-      DFSClient.LOG.info("@huanke -- pendingFile: "+pendingFile.getName());
+      DFSClient.LOG.debug("@huanke -- pendingFile: "+pendingFile.getName());
       // Check if the penultimate block is minimally replicated
       if (!checkFileProgress(src, pendingFile, false)) {
         throw new NotReplicatedYetException("Not replicated yet: " + src);
@@ -3126,7 +3126,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           .getClientMachine();
       clientNode = blockManager.getDatanodeManager().getDatanodeByHost(
           clientMachine);
-      DFSClient.LOG.info("@huanke---clientMachine: "+clientMachine+" clientNode: "+ clientNode);
+      DFSClient.LOG.debug("@huanke---clientMachine: "+clientMachine+" clientNode: "+ clientNode);
       replication = pendingFile.getFileReplication();
       storagePolicyID = pendingFile.getStoragePolicyID();
     } finally {
@@ -3138,9 +3138,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     }
 
     // choose targets for the new block to be allocated.
-    DFSClient.LOG.info("@huanke---step8----getBlockManager().chooseTarget4NewBlock()-------"+" clientNode: "+ clientNode);
+    DFSClient.LOG.debug("@huanke---step8----getBlockManager().chooseTarget4NewBlock()-------"+" clientNode: "+ clientNode);
     //huanke
-    LOG.info("@huanke IngoreInfo getNewBlockTargets "+favoredNodes);
+    LOG.debug("@huanke IngoreInfo getNewBlockTargets "+favoredNodes);
     //huanke IngoreInfo getNewBlockTargets [Unhappy]
     return getBlockManager().chooseTarget4NewBlock( 
         src, replication, clientNode, excludedNodes, blockSize, favoredNodes,
@@ -3151,7 +3151,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   DatanodeStorageInfo[] getNewBlockTargetsHK(String src, long fileId,
                                            String clientName, ExtendedBlock previous, Set<Node> excludedNodes,
                                            List<String> favoredNodes, LocatedBlock[] onRetryBlock, List<String> IngoreInfo) throws IOException {
-    DFSClient.LOG.info("@huanke---step7.1----FSNameSystem.getNewBlockTargets()-------");
+    DFSClient.LOG.debug("@huanke---step7.1----FSNameSystem.getNewBlockTargets()-------");
     final long blockSize;
     final int replication;
     final byte storagePolicyID;
@@ -3173,11 +3173,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     try {
       checkOperation(OperationCategory.READ);
       src = dir.resolvePath(pc, src, pathComponents);
-      DFSClient.LOG.info("@huanke -- src: "+src);
+      DFSClient.LOG.debug("@huanke -- src: "+src);
       FileState fileState = analyzeFileState(
               src, fileId, clientName, previous, onRetryBlock);
       final INodeFile pendingFile = fileState.inode;
-      DFSClient.LOG.info("@huanke -- pendingFile: "+pendingFile.getName());
+      DFSClient.LOG.debug("@huanke -- pendingFile: "+pendingFile.getName());
       // Check if the penultimate block is minimally replicated
       if (!checkFileProgress(src, pendingFile, false)) {
         throw new NotReplicatedYetException("Not replicated yet: " + src);
@@ -3203,23 +3203,23 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       replication = pendingFile.getFileReplication();
 
       if(pendingFile.getName().contains("part-r")&&IngoreInfo==null&&PBSEenable){
-        LOG.info("@huanke get the reduce task output file "+pendingFile);
+        LOG.debug("@huanke get the reduce task output file "+pendingFile);
 //        huanke get the reduce task output file part-r-00000
 //        huanke get the reduce task output file part-r-00001
         OriginalOutput=true;
       }
       if(pendingFile.getName().contains("part-r")&&IngoreInfo!=null&&PBSEenable){
-        LOG.info("@huanke get the reduce task output file "+pendingFile);
+        LOG.debug("@huanke get the reduce task output file "+pendingFile);
 //        huanke get the reduce task output file part-r-00000
 //        huanke get the reduce task output file part-r-00001
         BackupOutput=true;
       }
       OutputBoolean.add(OriginalOutput);
       OutputBoolean.add(BackupOutput);
-      LOG.info("@huanke OutputBoolean: "+OutputBoolean+PBSEenable);
+      LOG.debug("@huanke OutputBoolean: "+OutputBoolean+PBSEenable);
 
 
-      DFSClient.LOG.info("@huanke---clientMachine: "+clientMachine+" clientNode: "+ clientNode+" replication: "+replication+" pendingFile "+pendingFile);
+      DFSClient.LOG.debug("@huanke---clientMachine: "+clientMachine+" clientNode: "+ clientNode+" replication: "+replication+" pendingFile "+pendingFile);
       storagePolicyID = pendingFile.getStoragePolicyID();
     } finally {
       readUnlock();
@@ -3230,12 +3230,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     }
 
     // choose targets for the new block to be allocated.
-    DFSClient.LOG.info("@huanke---step8----getBlockManager().chooseTarget4NewBlock()-------"+" clientNode: "+ clientNode);
+    DFSClient.LOG.debug("@huanke---step8----getBlockManager().chooseTarget4NewBlock()-------"+" clientNode: "+ clientNode);
 //    return getBlockManager().chooseTarget4NewBlock(
 //            src, replication, clientNode, excludedNodes, blockSize, favoredNodes,
 //            storagePolicyID);
     //huanke
-    LOG.info("@huanke IngoreInfo getNewBlockTargetsHK "+IngoreInfo);
+    LOG.debug("@huanke IngoreInfo getNewBlockTargetsHK "+IngoreInfo);
     return getBlockManager().chooseTarget4NewBlockHK(
             src, replication, clientNode, excludedNodes, blockSize, favoredNodes,
             storagePolicyID, IngoreInfo, OutputBoolean);

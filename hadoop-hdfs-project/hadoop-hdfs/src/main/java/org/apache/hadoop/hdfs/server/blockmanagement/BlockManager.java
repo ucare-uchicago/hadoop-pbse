@@ -1540,7 +1540,7 @@ public class BlockManager {
       final long blocksize,
       final List<String> favoredNodes,
       final byte storagePolicyID) throws IOException {
-    LOG.info("@huanke favoredDatanodeDescriptors1::: "+favoredNodes+numOfReplicas);
+    LOG.debug("@huanke favoredDatanodeDescriptors1::: "+favoredNodes+numOfReplicas);
     //huanke favoredDatanodeDescriptors1::: [Unhappy]
 
     //I want to say, here is so strange because it changed it from Unhappy into 10.1.1.5:50010
@@ -1548,7 +1548,7 @@ public class BlockManager {
 
 
     List<DatanodeDescriptor> favoredDatanodeDescriptors = getDatanodeDescriptors(favoredNodes);
-    LOG.info("@huanke favoredDatanodeDescriptors2::: "+favoredDatanodeDescriptors);
+    LOG.debug("@huanke favoredDatanodeDescriptors2::: "+favoredDatanodeDescriptors);
     //huanke favoredDatanodeDescriptors2::: [10.1.1.5:50010]
 
     final BlockStoragePolicy storagePolicy = storagePolicySuite.getPolicy(storagePolicyID);
@@ -1579,12 +1579,12 @@ public class BlockManager {
 
     List<DatanodeDescriptor> favoredDatanodeDescriptors =
             getDatanodeDescriptors(favoredNodes);
-    LOG.info("@huanke IgnoreInfo chooseTarget4NewBlockHK1 "+numOfReplicas+excludedNodes+"client: "+client + "favoredNodes: "+favoredNodes);
+    LOG.debug("@huanke IgnoreInfo chooseTarget4NewBlockHK1 "+numOfReplicas+excludedNodes+"client: "+client + "favoredNodes: "+favoredNodes);
     final BlockStoragePolicy storagePolicy = storagePolicySuite.getPolicy(storagePolicyID);
     final DatanodeStorageInfo[] targets = blockplacement.chooseTargetHK(src,
             numOfReplicas, client, excludedNodes, blocksize,
             favoredDatanodeDescriptors, storagePolicy, IgnoreInfo, OutputBoolean);
-    LOG.info("@huanke IgnoreInfo chooseTarget4NewBlockHK "+IgnoreInfo+numOfReplicas+targets.length);
+    LOG.debug("@huanke IgnoreInfo chooseTarget4NewBlockHK "+IgnoreInfo+numOfReplicas+targets.length);
 //    huanke IgnoreInfo chooseTarget4NewBlockHK null22
 //    huanke IgnoreInfo chooseTarget4NewBlockHK [pc744.emulab.net]22
 
