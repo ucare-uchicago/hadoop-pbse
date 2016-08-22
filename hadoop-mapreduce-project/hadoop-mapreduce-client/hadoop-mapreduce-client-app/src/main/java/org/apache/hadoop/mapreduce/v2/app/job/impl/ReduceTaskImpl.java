@@ -99,7 +99,15 @@ public class ReduceTaskImpl extends TaskImpl {
     if (lastAttempt != null) {
       TaskAttemptImpl att = (TaskAttemptImpl) lastAttempt;
       LOG.info("@huanke this.ignoreNode == "+this.ignoreNode);
-      AMtoReduce.setAMtoTaskInfo(this.ignoreNode.getHostName());
+      if(this.ignoreNode == null){
+    	  LOG.info("@huanke: AMToReduce is " + 
+    			  (AMtoReduce == null? "null" : "not null") + " and ignore node is " + 
+    			  (this.ignoreNode == null? "null" : "not null"));
+    	  
+      }
+      else{
+    	  AMtoReduce.setAMtoTaskInfo(this.ignoreNode.getHostName());
+      }
 //      AMtoReduce.monitor();
 //      att.getInfo();
       LOG.info("@huanke piggyback info : "+att.getID()+this.lastAttemptId.getTaskId().getTaskType()+AMtoReduce.getAMtaskInfo());

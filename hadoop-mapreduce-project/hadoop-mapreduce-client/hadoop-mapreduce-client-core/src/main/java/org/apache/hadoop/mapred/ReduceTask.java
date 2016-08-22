@@ -87,7 +87,7 @@ public class ReduceTask extends Task{
 
   //huanke
   private ArrayList<String> strArray = new ArrayList<String>();
-//  private DatanodeInfo[] PathInfo = new HashMap<TaskAttemptID, ArrayList<String>>();
+  //  private DatanodeInfo[] PathInfo = new HashMap<TaskAttemptID, ArrayList<String>>();
 
   { 
     getProgress().setStatus("reduce"); 

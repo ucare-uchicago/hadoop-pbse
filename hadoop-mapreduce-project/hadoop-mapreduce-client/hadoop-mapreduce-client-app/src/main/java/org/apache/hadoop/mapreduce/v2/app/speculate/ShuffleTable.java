@@ -104,6 +104,8 @@ public class ShuffleTable {
 			// @Cesar: Clear if empty
 			if(attemptsSucceededPerHost.get(host) != null && attemptsSucceededPerHost.get(host).size() == 0)
 				attemptsSucceededPerHost.remove(host);
+			// @Cesar: Also clean shuffle table
+			shuffleReports.get(shuffleHost).clear();
 		}
 	}
 	
@@ -184,11 +186,23 @@ public class ShuffleTable {
 		}
 	}
 	
-	// @Cesar: Can a host be speculated on, given the number of reports
+	// @Cesar: Can a host be speculated on, given the number of reports. 
+	// @Cesar: TODO --> Do we have reports from all attempts succeeded at this host?
 	public synchronized boolean canSpeculate(String host){
-		if(attemptsSucceededPerHost.get(host) != null && shuffleReports.get(new ShuffleHost(host)) != null)
-			return attemptsSucceededPerHost.get(host).size() <= shuffleReports.get(new ShuffleHost(host)).size(); 
-		return false;
+		if(attemptsSucceededPerHost.get(host) != null && shuffleReports.get(new ShuffleHost(host)) != null){
+			boolean result = attemptsSucceededPerHost.get(host).size() <= shuffleReports.get(new ShuffleHost(host)).size();
+			if(LOG.isDebugEnabled()){
+				LOG.debug("@Cesar: Should we speculate? is attemptsSucceededPerHost.get(host).size()=" +
+							attemptsSucceededPerHost.get(host).size() + " <= shuffleReports.get(new ShuffleHost(host)).size()=" + 
+							shuffleReports.get(new ShuffleHost(host)).size() + "? " + result);
+			}
+		}
+		if(LOG.isDebugEnabled()) 
+			LOG.debug("@Cesar: attemptsSucceededPerHost.get(host)= " + (attemptsSucceededPerHost.get(host) == null? "NULL" : "NOT NULL") + 
+						" and shuffleReports.get(new ShuffleHost(host))=" + (shuffleReports.get(new ShuffleHost(host)) == null? "NULL" : "NOT NULL"));
+		
+		// @Cesar: TODO --> This should do something 
+		return true;
 	}
 	
 	
