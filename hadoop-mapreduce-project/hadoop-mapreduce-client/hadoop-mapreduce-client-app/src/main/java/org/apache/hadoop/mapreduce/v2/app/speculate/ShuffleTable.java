@@ -30,8 +30,6 @@ public class ShuffleTable {
 	private Set<TaskId> alreadySpeculated = new TreeSet<>();
 	// @Cesar: This map task attempts were killed
 	private Set<TaskAttemptId> alreadyRelaunched = new TreeSet<>();
-	// @Cesar: Do not receive more reports from this guys
-	private Set<ShuffleRateInfo> bannedReports = new TreeSet<>();
 	// @Cesar: Store all attempts for a given host
 	private Map<String, Set<MapAttemptInfo>> attemptsSucceededPerHost = new TreeMap<>();
 	// @Cesar: Store all tasks started for a given host
@@ -84,10 +82,6 @@ public class ShuffleTable {
 	
 	public boolean wasRelaunched(TaskAttemptId mapTaskAttempt){
 		return alreadyRelaunched.contains(mapTaskAttempt);
-	}
-	
-	public boolean isReportBanned(ShuffleRateInfo info){
-		return bannedReports.contains(info);
 	}
 	
 	// @Cesar: Remove all reports for a host
@@ -208,22 +202,6 @@ public class ShuffleTable {
 		// @Cesar: TODO --> This should do something 
 		return true;
 	}
-	
-	
-
-
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("ShuffleTable [shuffleReports=").append(shuffleReports).append(", shuffleReportCount=")
-				.append(shuffleReportCount).append(", alreadySpeculated=").append(alreadySpeculated)
-				.append(", bannedReports=").append(bannedReports).append(", attemptsSucceededPerHost=")
-				.append(attemptsSucceededPerHost).append(", tasksStartedPerHost=").append(tasksStartedPerHost)
-				.append(", tasksSuccessfulPerHost=").append(tasksSuccessfulPerHost).append("]");
-		return builder.toString();
-	}
-
-
 
 
 	// @Cesar: Utility class

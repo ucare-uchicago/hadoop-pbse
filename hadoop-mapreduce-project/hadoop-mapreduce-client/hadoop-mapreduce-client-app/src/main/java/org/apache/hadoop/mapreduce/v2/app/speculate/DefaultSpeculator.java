@@ -46,6 +46,7 @@ import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TypeConverter;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
+import org.apache.hadoop.mapreduce.task.reduce.PBSEShuffleMessage;
 import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 import org.apache.hadoop.mapreduce.v2.api.records.JobId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
@@ -862,18 +863,6 @@ public class DefaultSpeculator extends AbstractService implements
     mayHaveSpeculated.add(taskID);
   }
 
-  // @Cesar: Create a message to be logged for pbse statistic purposes
-  private String createPBSESlowShuffleLogMessage(String mapperHost){
-	  StringBuilder bld = new StringBuilder();
-	  bld.append("PBSE-Slow-Shuffle-1:")
-	  	 .append("{")
-	     .append("\"host\":")
-	     .append("\"").append(mapperHost).append("\"")
-	  	 .append("}");
-	  return bld.toString();
-	     
-  }
-  
   // @Cesar: I will use this to send my map speculative attempt for now
   // It can change if at the end of the day i discover that is the same
   // using addSpeculativeAttempt
@@ -882,7 +871,7 @@ public class DefaultSpeculator extends AbstractService implements
         ("DefaultSpeculator.relaunchTask.@cesar -- we are speculating a map task of id " + taskID);
     eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ATTEMPT_KILLED, mapperHost, mapId));
     // @Cesar: Log
-    LOG.info(createPBSESlowShuffleLogMessage(mapperHost));
+    LOG.info(PBSEShuffleMessage.createPBSESlowShuffleLogMessage(mapperHost));
     // @Cesar: Add this as speculated
 	mayHaveSpeculated.add(taskID);
 	
