@@ -58,7 +58,8 @@ def main():
   
   # printing
   for res in results:
-    print res
+    st = ", ".join([str(r) for r in res])
+    print st
 
 
 if __name__ == '__main__':  
