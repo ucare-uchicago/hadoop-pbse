@@ -10,7 +10,11 @@ from collections import defaultdict
 import numpy as np
 
 import table
+
 import query
+
+ORDERBY = lambda x: x
+from query import ORDERBY
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -54,8 +58,8 @@ def main():
   data = loadExpStats(sys.argv[1])
 
   # querying
-  results = [query.SELECT(row) for row in query.FROM(data['apps']) if query.WHERE(row)]
-  
+  results = [query.SELECT(row) for row in sorted(query.FROM(data['apps']),key=ORDERBY) if query.WHERE(row)]
+
   # printing
   for res in results:
     st = ", ".join([str(r) for r in res])
