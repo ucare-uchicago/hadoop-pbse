@@ -434,58 +434,101 @@ public class ReduceTask extends Task{
                      Class<INKEY> keyClass,
                      Class<INVALUE> valueClass) throws IOException {
     LOG.info("@huanke runOldReducer");
-    Reducer<INKEY,INVALUE,OUTKEY,OUTVALUE> reducer = 
-      ReflectionUtils.newInstance(job.getReducerClass(), job);
+    Reducer<INKEY, INVALUE, OUTKEY, OUTVALUE> reducer =
+            ReflectionUtils.newInstance(job.getReducerClass(), job);
     // make output collector
     String finalName = getOutputName(getPartition());
 
     RecordWriter<OUTKEY, OUTVALUE> out = new OldTrackingRecordWriter<OUTKEY, OUTVALUE>(
-        this, job, reporter, finalName);
+            this, job, reporter, finalName);
     final RecordWriter<OUTKEY, OUTVALUE> finalOut = out;
-    
-    OutputCollector<OUTKEY,OUTVALUE> collector = 
-      new OutputCollector<OUTKEY,OUTVALUE>() {
-        public void collect(OUTKEY key, OUTVALUE value)
-          throws IOException {
-          finalOut.write(key, value);
-          // indicate that progress update needs to be sent
-          reporter.progress();
-        }
-      };
-    
-    // apply reduce function
+
+    OutputCollector<OUTKEY, OUTVALUE> collector =
+            new OutputCollector<OUTKEY, OUTVALUE>() {
+              public void collect(OUTKEY key, OUTVALUE value)
+                      throws IOException {
+                finalOut.write(key, value);
+                // indicate that progress update needs to be sent
+                reporter.progress();
+              }
+            };
+
+    //huanke
     try {
-      //increment processed counter only if skipping feature is enabled
-      boolean incrProcCount = SkipBadRecords.getReducerMaxSkipGroups(job)>0 &&
-        SkipBadRecords.getAutoIncrReducerProcCount(job);
-      
-      ReduceValuesIterator<INKEY,INVALUE> values = isSkipping() ? 
-          new SkippingReduceValuesIterator<INKEY,INVALUE>(rIter, 
-              comparator, keyClass, valueClass, 
-              job, reporter, umbilical) :
-          new ReduceValuesIterator<INKEY,INVALUE>(rIter, 
-          job.getOutputValueGroupingComparator(), keyClass, valueClass, 
-          job, reporter);
-      values.informReduceProgress();
-      while (values.more()) {
-        reduceInputKeyCounter.increment(1);
-        reducer.reduce(values.getKey(), values, collector, reporter);
-        if(incrProcCount) {
-          reporter.incrCounter(SkipBadRecords.COUNTER_GROUP, 
-              SkipBadRecords.COUNTER_REDUCE_PROCESSED_GROUPS, 1);
+      if (out instanceof OutputStreamOwner) {
+        LOG.info("@huanke trackRW instanceof ");
+        OutputStream output = ((OutputStreamOwner) out).getOutputStream();
+        LOG.info("@huanke output HK " + ((output != null) ? 1 : 0));
+        if (output != null) {
+          LOG.info("@huanke output!=null " + output.getClass() + output.toString());
+          //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
+          if (output instanceof HdfsDataOutputStream) {
+            switchPipeline((HdfsDataOutputStream) output);
+          } else {
+            LOG.info("@huanke output is not HdfsDataOutputStream" + output.toString());
+          }
+        } else {
+          LOG.info("@huanke output is null");
         }
-        values.nextKey();
-        values.informReduceProgress();
+        boolean flag = job.getBoolean("reduce.get.pipenodes.flag", false);
+        //huanke .. it seems not work here.
+
+        // apply reduce function
+        try {
+          //increment processed counter only if skipping feature is enabled
+          boolean incrProcCount = SkipBadRecords.getReducerMaxSkipGroups(job) > 0 &&
+                  SkipBadRecords.getAutoIncrReducerProcCount(job);
+
+          ReduceValuesIterator<INKEY, INVALUE> values = isSkipping() ?
+                  new SkippingReduceValuesIterator<INKEY, INVALUE>(rIter,
+                          comparator, keyClass, valueClass,
+                          job, reporter, umbilical) :
+                  new ReduceValuesIterator<INKEY, INVALUE>(rIter,
+                          job.getOutputValueGroupingComparator(), keyClass, valueClass,
+                          job, reporter);
+          values.informReduceProgress();
+          while (values.more()) {
+            reduceInputKeyCounter.increment(1);
+            reducer.reduce(values.getKey(), values, collector, reporter);
+            LOG.info("@huanke flagR :" + flag);
+            if (flag && out != null) {
+              LOG.info("@huanke output!=null runReducer" + out.getClass() + out.toString());
+              //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
+              if (out instanceof HdfsDataOutputStream) {
+                LOG.info("@huanke yes, it is!" + out.getClass());
+                if (((HdfsDataOutputStream) out).getPipeNodes() != null) {
+                  LOG.info("@huanke Myfirst time to get pipeNodes from stream" + ((HdfsDataOutputStream) out).getPipeNodes()[0] + ((HdfsDataOutputStream) out).getPipeNodes()[1]);
+                  reporter.setOutputStream(output);
+                  flag = false;
+                } else {
+                  LOG.info("@huanke I haven't get the pipeNods from stream yet ");
+                }
+              }
+            }
+            if (incrProcCount) {
+              reporter.incrCounter(SkipBadRecords.COUNTER_GROUP,
+                      SkipBadRecords.COUNTER_REDUCE_PROCESSED_GROUPS, 1);
+            }
+            values.nextKey();
+            values.informReduceProgress();
+          }
+
+          reducer.close();
+          reducer = null;
+
+          out.close(reporter);
+          out = null;
+
+        } finally {
+          IOUtils.cleanup(LOG, reducer);
+          closeQuietly(out, reporter);
+        }
+
       }
 
-      reducer.close();
-      reducer = null;
-      
-      out.close(reporter);
-      out = null;
-    } finally {
-      IOUtils.cleanup(LOG, reducer);
-      closeQuietly(out, reporter);
+    }catch(Exception e){
+      e.printStackTrace();
+
     }
   }
 

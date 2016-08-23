@@ -199,7 +199,7 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
           if (out instanceof HdfsDataOutputStream) {
             LOG.info("@huanke yes, it is!"+out.getClass());
             if(((HdfsDataOutputStream) out).getPipeNodes()!=null){
-              LOG.info("@huanke Myfirst time to get pipeNodes from steream"+((HdfsDataOutputStream) out).getPipeNodes()[0]+((HdfsDataOutputStream) out).getPipeNodes()[1]);
+              LOG.info("@huanke Myfirst time to get pipeNodes from stream"+((HdfsDataOutputStream) out).getPipeNodes()[0]+((HdfsDataOutputStream) out).getPipeNodes()[1]);
               taskReport.setOutputStream(out);
               flag=false;
             }else{
