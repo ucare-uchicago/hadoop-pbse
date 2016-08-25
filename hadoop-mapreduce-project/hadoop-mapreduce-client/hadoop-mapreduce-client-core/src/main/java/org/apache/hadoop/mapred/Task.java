@@ -830,9 +830,11 @@ abstract public class Task implements Writable, Configurable{
               sendProgress = sendProgress || resetProgressFlag();
               continue;
             } else {
-            	sendReduceProgress = 0;
-            	if(LOG.isDebugEnabled()){
-            		LOG.debug("@Cesar: Time to send progress for reduce task!");
+            	if(!isMapTask()){
+	            	sendReduceProgress = 0;
+	            	if(LOG.isDebugEnabled()){
+	            		LOG.debug("@Cesar: Time to send progress for reduce task!");
+	            	}
             	}
             	
             }
