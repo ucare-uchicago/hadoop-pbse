@@ -214,8 +214,8 @@ class Fetcher<K,V> extends Thread {
           metrics.threadBusy();
 
           // @Cesar: Get all maps from that host
-          myMaps.clear();
-          myMaps.addAll(scheduler.getMapsForHost(host));
+          // myMaps.clear();
+          // myMaps.addAll(scheduler.getMapsForHost(host));
           
           // Shuffle
           copyFromHost(host);
