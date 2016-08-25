@@ -96,6 +96,7 @@ import org.apache.htrace.Span;
 import org.apache.htrace.Trace;
 import org.apache.htrace.TraceInfo;
 import org.apache.htrace.TraceScope;
+import org.mortbay.log.Log;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
@@ -104,6 +105,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
+import com.google.common.collect.Lists;
 
 
 /****************************************************************
@@ -1611,6 +1613,28 @@ public class DFSOutputStream extends FSOutputSummer
     }
   }
 
+  // @Cesar: Get nodes as list
+  public synchronized List<String> getAllPipeNodes(){
+    if(streamer.getNodes() != null){
+    	List<String> output = Lists.newArrayList();
+    	for(DatanodeInfo dtaNode : streamer.getNodes()){
+    		// @Cesar: Should never happen, but lets see
+    		if(DFSClient.LOG.isDebugEnabled() && dtaNode == null){
+        		DFSClient.LOG.error("@Cesar: One of the pipe nodes is null, we are going to return null");
+        		// @Cesar: I prefer to return null in this case, this is a problem
+        		return null;
+        	}
+    		output.add(dtaNode.getHostName());
+    	}
+    	if(DFSClient.LOG.isDebugEnabled()){
+    		DFSClient.LOG.debug("@Cesar: Got pipe nodes: " + output);
+    	}
+    	// @Cesar: Done, return
+    	return output;
+    }
+    return null;
+  }
+  
   /** 
    * @return the object for computing checksum.
    *         The type is NULL if checksum is not computed.

@@ -51,6 +51,8 @@ import org.apache.hadoop.mapreduce.task.reduce.MapHost.State;
 import org.apache.hadoop.util.Progress;
 import org.apache.hadoop.util.Time;
 
+import com.google.common.collect.Sets;
+
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
 public class ShuffleSchedulerImpl<K,V> implements ShuffleScheduler<K,V> {
@@ -107,6 +109,15 @@ public class ShuffleSchedulerImpl<K,V> implements ShuffleScheduler<K,V> {
   private long maxDelay = MRJobConfig.DEFAULT_MAX_SHUFFLE_FETCH_RETRY_DELAY;
   private int maxHostFailures;
 
+  // @Cesar: Get the obsolete maps
+  public Set<TaskAttemptID> getObsoleteMaps(){
+	  synchronized(obsoleteMaps){
+		  Set<TaskAttemptID> output = new HashSet<>();
+		  output.addAll(obsoleteMaps);
+		  return output;
+	  }
+  }
+  
   public ShuffleSchedulerImpl(JobConf job, TaskStatus status,
                           TaskAttemptID reduceId,
                           ExceptionReporter reporter,

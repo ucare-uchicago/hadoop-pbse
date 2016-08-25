@@ -1259,7 +1259,6 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 				   TaskAttemptCompletionEventStatus.KILLED);
 	  // @Cesar: Increment the counters for this task
       task.eventHandler.handle(new JobMapTaskRescheduledEvent(task.taskId));
-      
       // typically we are here because this map task was run on a bad node and
       // we want to reschedule it on a different node.
       // Depending on whether there are previous failed attempts or not this

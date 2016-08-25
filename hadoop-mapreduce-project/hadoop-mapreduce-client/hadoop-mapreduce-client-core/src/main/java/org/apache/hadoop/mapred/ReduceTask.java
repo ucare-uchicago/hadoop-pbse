@@ -337,6 +337,7 @@ public class ReduceTask extends Task{
       sortPhase  = getProgress().addPhase("sort");
       reducePhase = getProgress().addPhase("reduce");
     }
+    
     // start thread that will handle communication with parent
     TaskReporter reporter = startReporter(umbilical);
     
@@ -396,6 +397,7 @@ public class ReduceTask extends Task{
     long StartTime = System.currentTimeMillis();
     LOG.info("@huanke StartTime: "+StartTime);
     statusUpdate(umbilical); //I don't want statusUpdate(umbilical) here, because I need to get datanodes from reduce phase . move it to reduce phase
+    // @Cesar: Moved to top
     Class keyClass = job.getMapOutputKeyClass();
     Class valueClass = job.getMapOutputValueClass();
     RawComparator comparator = job.getOutputValueGroupingComparator();

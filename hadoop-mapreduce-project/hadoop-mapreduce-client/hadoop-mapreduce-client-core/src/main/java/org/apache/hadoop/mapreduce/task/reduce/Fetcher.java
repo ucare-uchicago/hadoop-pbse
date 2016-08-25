@@ -51,6 +51,7 @@ import org.apache.hadoop.util.Time;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 
 class Fetcher<K,V> extends Thread {
   	
@@ -113,6 +114,28 @@ class Fetcher<K,V> extends Thread {
     
   }
 
+  // @Cesar: Added to support id
+  public Fetcher(JobConf job, TaskAttemptID reduceId, 
+          ShuffleSchedulerImpl<K,V> scheduler, MergeManager<K,V> merger,
+          Reporter reporter, ShuffleClientMetrics metrics,
+          ExceptionReporter exceptionReporter, SecretKey shuffleKey, int id, boolean setId) {
+	this(job, reduceId, scheduler, merger, reporter, metrics,
+	 exceptionReporter, shuffleKey, id);
+	
+	}
+  
+  // @Cesar: Set the assigned map tasks
+  private Set<TaskAttemptID> myMaps = new HashSet<TaskAttemptID>();
+  
+  // @Cesar: Get my maps
+  public Set<TaskAttemptID> getFetcherAssignedMaps(){
+	  synchronized(myMaps){
+		  Set<TaskAttemptID> output = new HashSet<>();
+		  output.addAll(myMaps);
+		  return output;
+	  }
+  }
+  
   @VisibleForTesting
   Fetcher(JobConf job, TaskAttemptID reduceId, 
          ShuffleSchedulerImpl<K,V> scheduler, MergeManager<K,V> merger,
@@ -190,6 +213,10 @@ class Fetcher<K,V> extends Thread {
           host = scheduler.getHost();
           metrics.threadBusy();
 
+          // @Cesar: Get all maps from that host
+          myMaps.clear();
+          myMaps.addAll(scheduler.getMapsForHost(host));
+          
           // Shuffle
           copyFromHost(host);
           // @Cesar: Add some logging
@@ -307,6 +334,7 @@ class Fetcher<K,V> extends Thread {
     retryStartTime = 0;
     // Get completed maps on 'host'
     List<TaskAttemptID> maps = scheduler.getMapsForHost(host);
+
     
     // Sanity check to catch hosts with only 'OBSOLETE' maps, 
     // especially at the tail of large jobs

@@ -19,6 +19,7 @@ package org.apache.hadoop.mapreduce.task.reduce;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -63,6 +64,10 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
   private Task reduceTask; //Used for status updates
   private Map<TaskAttemptID, MapOutputFile> localMapFiles;
 
+  // @Cesar: Some params
+  private boolean isFetchRateSpeculationEnabled = false;
+  private boolean isFetcherShutDownEnabled = false;
+  
   @Override
   public void init(ShuffleConsumerPlugin.Context context) {
     this.context = context;
@@ -80,6 +85,9 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
         this, copyPhase, context.getShuffledMapsCounter(),
         context.getReduceShuffleBytes(), context.getFailedShuffleCounter());
     merger = createMergeManager(context);
+    // @Cesar: Assign values in order to kill fetchers if possible
+    isFetchRateSpeculationEnabled = jobConf.getBoolean("mapreduce.experiment.enable_fetch_rate_speculation", false);
+    isFetcherShutDownEnabled = jobConf.getBoolean("mapreduce.experiment.enable_fetcher_shutdown", false);
   }
 
   protected MergeManager<K, V> createMergeManager(
@@ -140,6 +148,29 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
                                  throwable);
         }
       }
+      // @Cesar: First check params
+      if(!(this.isFetcherShutDownEnabled && this.isFetchRateSpeculationEnabled)) continue;
+      // @Cesar: Check the obsolete map outputs
+      Set<TaskAttemptID> obsoletes = scheduler.getObsoleteMaps();
+      for(int fetcherId = 0; fetcherId < fetchers.length; ++fetcherId){
+    	  for(TaskAttemptID obsolete : obsoletes){
+	    	  // @Cesar: Is map output marked as obsolete?
+	    	  if(fetchers[fetcherId] != null && fetchers[fetcherId].isAlive() 
+	    	     && fetchers[fetcherId].getFetcherAssignedMaps().contains(obsolete)){
+	    		  // @Cesar: Yes? Well, then we interrupt this fetcher thread
+	    		  LOG.info("@Cesar: Map output from " + obsolete + " declared as OBSOLETE, interrupting " + 
+	    				   "fetcher #" + fetcherId);
+	    		  fetchers[fetcherId].shutDown();
+	    		  // @Cesar: Replace by new fetcher
+	    		  fetchers[fetcherId] = new Fetcher<K,V>(jobConf, reduceId, scheduler, merger, 
+								                         reporter, metrics, this, 
+								                         reduceTask.getShuffleSecret(), fetcherId, true);
+	    		  LOG.info("@Cesar: New fetcher thread created with id " + fetcherId);
+	    	  }
+    	  }
+    	  
+      }
+      
     }
 
     // Stop the event-fetcher thread
@@ -155,7 +186,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
 
     // @Cesar: Log shuffle finish time
     long shuffleTimeStop = System.nanoTime();
-    LOG.info(PBSEShuffleMessage.createPBSESlowShuffleLogMessage(shuffleTimeStop));
+    LOG.info(PBSEShuffleMessage.createPBSESlowShuffleLogMessage(shuffleTimeStop - shuffleTimeStart));
     
     copyPhase.complete(); // copy is already complete
     taskStatus.setPhase(TaskStatus.Phase.SORT);
