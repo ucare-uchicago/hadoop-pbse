@@ -1,0 +1,177 @@
+2016-08-25 10:58:26,228 DEBUG [main] org.apache.hadoop.mapred.YarnChild: Child starting
+2016-08-25 10:58:26,989 DEBUG [main] org.apache.hadoop.metrics2.lib.MutableMetricsFactory: field org.apache.hadoop.metrics2.lib.MutableRate org.apache.hadoop.security.UserGroupInformation$UgiMetrics.loginSuccess with annotation @org.apache.hadoop.metrics2.annotation.Metric(value=[Rate of successful kerberos logins and latency (milliseconds)], about=, valueName=Time, type=DEFAULT, always=false, sampleName=Ops)
+2016-08-25 10:58:26,995 DEBUG [main] org.apache.hadoop.metrics2.lib.MutableMetricsFactory: field org.apache.hadoop.metrics2.lib.MutableRate org.apache.hadoop.security.UserGroupInformation$UgiMetrics.loginFailure with annotation @org.apache.hadoop.metrics2.annotation.Metric(value=[Rate of failed kerberos logins and latency (milliseconds)], about=, valueName=Time, type=DEFAULT, always=false, sampleName=Ops)
+2016-08-25 10:58:26,995 DEBUG [main] org.apache.hadoop.metrics2.lib.MutableMetricsFactory: field org.apache.hadoop.metrics2.lib.MutableRate org.apache.hadoop.security.UserGroupInformation$UgiMetrics.getGroups with annotation @org.apache.hadoop.metrics2.annotation.Metric(value=[GetGroups], about=, valueName=Time, type=DEFAULT, always=false, sampleName=Ops)
+2016-08-25 10:58:26,997 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSystemImpl: UgiMetrics, User and group related metrics
+2016-08-25 10:58:27,110 DEBUG [main] org.apache.hadoop.util.Shell: setsid exited with exit code 0
+2016-08-25 10:58:27,125 DEBUG [main] org.apache.hadoop.security.authentication.util.KerberosName: Kerberos krb5 configuration not found, setting default realm to empty
+2016-08-25 10:58:27,130 DEBUG [main] org.apache.hadoop.security.Groups:  Creating new Groups object
+2016-08-25 10:58:27,132 DEBUG [main] org.apache.hadoop.util.NativeCodeLoader: Trying to load the custom-built native-hadoop library...
+2016-08-25 10:58:27,133 DEBUG [main] org.apache.hadoop.util.NativeCodeLoader: Failed to load native-hadoop with error: java.lang.UnsatisfiedLinkError: no hadoop in java.library.path
+2016-08-25 10:58:27,133 DEBUG [main] org.apache.hadoop.util.NativeCodeLoader: java.library.path=/mnt/extra/dfs-cesar/nm-local-dir/usercache/cesars/appcache/application_1472144169378_0011/container_1472144169378_0011_01_000012:/proj/ucare/cesar/hadoop-2.7.1.faread/lib/native:/usr/java/packages/lib/amd64:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib
+2016-08-25 10:58:27,133 WARN [main] org.apache.hadoop.util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+2016-08-25 10:58:27,133 DEBUG [main] org.apache.hadoop.util.PerformanceAdvisory: Falling back to shell based
+2016-08-25 10:58:27,133 DEBUG [main] org.apache.hadoop.security.JniBasedUnixGroupsMappingWithFallback: Group mapping impl=org.apache.hadoop.security.ShellBasedUnixGroupsMapping
+2016-08-25 10:58:27,178 DEBUG [main] org.apache.hadoop.security.Groups: Group mapping impl=org.apache.hadoop.security.JniBasedUnixGroupsMappingWithFallback; cacheTimeout=300000; warningDeltaMs=5000
+2016-08-25 10:58:27,202 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSystemImpl: from system property: null
+2016-08-25 10:58:27,202 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSystemImpl: from environment variable: null
+2016-08-25 10:58:27,244 DEBUG [main] org.apache.commons.configuration.ConfigurationUtils: ConfigurationUtils.locate(): base is null, name is hadoop-metrics2-maptask.properties
+2016-08-25 10:58:27,246 DEBUG [main] org.apache.commons.configuration.ConfigurationUtils: ConfigurationUtils.locate(): base is null, name is hadoop-metrics2.properties
+2016-08-25 10:58:27,246 DEBUG [main] org.apache.commons.configuration.ConfigurationUtils: Loading configuration from the context classpath (hadoop-metrics2.properties)
+2016-08-25 10:58:27,269 INFO [main] org.apache.hadoop.metrics2.impl.MetricsConfig: loaded properties from hadoop-metrics2.properties
+2016-08-25 10:58:27,271 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsConfig: *.sink.file.class = org.apache.hadoop.metrics2.sink.FileSink
+*.period = 10
+
+2016-08-25 10:58:27,271 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsConfig: 
+2016-08-25 10:58:27,274 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsConfig: poking parent 'PropertiesConfiguration' for key: period
+2016-08-25 10:58:27,284 DEBUG [main] org.apache.hadoop.metrics2.lib.MutableMetricsFactory: field org.apache.hadoop.metrics2.lib.MutableStat org.apache.hadoop.metrics2.impl.MetricsSystemImpl.snapshotStat with annotation @org.apache.hadoop.metrics2.annotation.Metric(value=[Snapshot, Snapshot stats], about=, valueName=Time, type=DEFAULT, always=false, sampleName=Ops)
+2016-08-25 10:58:27,284 DEBUG [main] org.apache.hadoop.metrics2.lib.MutableMetricsFactory: field org.apache.hadoop.metrics2.lib.MutableStat org.apache.hadoop.metrics2.impl.MetricsSystemImpl.publishStat with annotation @org.apache.hadoop.metrics2.annotation.Metric(value=[Publish, Publishing stats], about=, valueName=Time, type=DEFAULT, always=false, sampleName=Ops)
+2016-08-25 10:58:27,285 DEBUG [main] org.apache.hadoop.metrics2.lib.MutableMetricsFactory: field org.apache.hadoop.metrics2.lib.MutableCounterLong org.apache.hadoop.metrics2.impl.MetricsSystemImpl.droppedPubAll with annotation @org.apache.hadoop.metrics2.annotation.Metric(value=[Dropped updates by all sinks], about=, valueName=Time, type=DEFAULT, always=false, sampleName=Ops)
+2016-08-25 10:58:27,288 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsConfig: poking parent 'PropertiesConfiguration' for key: source.source.start_mbeans
+2016-08-25 10:58:27,288 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsConfig: poking parent 'MetricsConfig' for key: source.start_mbeans
+2016-08-25 10:58:27,289 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsConfig: poking parent 'PropertiesConfiguration' for key: *.source.start_mbeans
+2016-08-25 10:58:27,344 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: Updating attr cache...
+2016-08-25 10:58:27,344 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: Done. # tags & metrics=10
+2016-08-25 10:58:27,344 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: Updating info cache...
+2016-08-25 10:58:27,344 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSystemImpl: [javax.management.MBeanAttributeInfo[description=Metrics context, name=tag.Context, type=java.lang.String, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Number of active metrics sources, name=NumActiveSources, type=java.lang.Integer, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Number of all registered metrics sources, name=NumAllSources, type=java.lang.Integer, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Number of active metrics sinks, name=NumActiveSinks, type=java.lang.Integer, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Number of all registered metrics sinks, name=NumAllSinks, type=java.lang.Integer, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Number of ops for snapshot stats, name=SnapshotNumOps, type=java.lang.Long, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Average time for snapshot stats, name=SnapshotAvgTime, type=java.lang.Double, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Number of ops for publishing stats, name=PublishNumOps, type=java.lang.Long, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Average time for publishing stats, name=PublishAvgTime, type=java.lang.Double, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Dropped updates by all sinks, name=DroppedPubAll, type=java.lang.Long, read-only, descriptor={}]]
+2016-08-25 10:58:27,345 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: Done
+2016-08-25 10:58:27,345 DEBUG [main] org.apache.hadoop.metrics2.util.MBeans: Registered Hadoop:service=MapTask,name=MetricsSystem,sub=Stats
+2016-08-25 10:58:27,345 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source MetricsSystem,sub=Stats registered.
+2016-08-25 10:58:27,355 INFO [main] org.apache.hadoop.metrics2.impl.MetricsSystemImpl: Scheduled snapshot period at 10 second(s).
+2016-08-25 10:58:27,355 INFO [main] org.apache.hadoop.metrics2.impl.MetricsSystemImpl: MapTask metrics system started
+2016-08-25 10:58:27,356 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsConfig: poking parent 'PropertiesConfiguration' for key: source.source.start_mbeans
+2016-08-25 10:58:27,356 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsConfig: poking parent 'MetricsConfig' for key: source.start_mbeans
+2016-08-25 10:58:27,356 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsConfig: poking parent 'PropertiesConfiguration' for key: *.source.start_mbeans
+2016-08-25 10:58:27,356 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: Updating attr cache...
+2016-08-25 10:58:27,356 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: Done. # tags & metrics=8
+2016-08-25 10:58:27,356 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: Updating info cache...
+2016-08-25 10:58:27,356 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSystemImpl: [javax.management.MBeanAttributeInfo[description=Metrics context, name=tag.Context, type=java.lang.String, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Local hostname, name=tag.Hostname, type=java.lang.String, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Number of ops for rate of successful kerberos logins and latency (milliseconds), name=LoginSuccessNumOps, type=java.lang.Long, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Average time for rate of successful kerberos logins and latency (milliseconds), name=LoginSuccessAvgTime, type=java.lang.Double, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Number of ops for rate of failed kerberos logins and latency (milliseconds), name=LoginFailureNumOps, type=java.lang.Long, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Average time for rate of failed kerberos logins and latency (milliseconds), name=LoginFailureAvgTime, type=java.lang.Double, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Number of ops for getGroups, name=GetGroupsNumOps, type=java.lang.Long, read-only, descriptor={}], javax.management.MBeanAttributeInfo[description=Average time for getGroups, name=GetGroupsAvgTime, type=java.lang.Double, read-only, descriptor={}]]
+2016-08-25 10:58:27,356 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: Done
+2016-08-25 10:58:27,356 DEBUG [main] org.apache.hadoop.metrics2.util.MBeans: Registered Hadoop:service=MapTask,name=UgiMetrics
+2016-08-25 10:58:27,356 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source UgiMetrics registered.
+2016-08-25 10:58:27,356 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSystemImpl: Registered source UgiMetrics
+2016-08-25 10:58:27,358 DEBUG [main] org.apache.hadoop.metrics2.util.MBeans: Registered Hadoop:service=MapTask,name=MetricsSystem,sub=Control
+2016-08-25 10:58:27,361 DEBUG [main] org.apache.hadoop.security.UserGroupInformation: hadoop login
+2016-08-25 10:58:27,362 DEBUG [main] org.apache.hadoop.security.UserGroupInformation: hadoop login commit
+2016-08-25 10:58:27,366 DEBUG [main] org.apache.hadoop.security.UserGroupInformation: using local user:UnixPrincipal: cesars
+2016-08-25 10:58:27,366 DEBUG [main] org.apache.hadoop.security.UserGroupInformation: Using user: "UnixPrincipal: cesars" with name cesars
+2016-08-25 10:58:27,366 DEBUG [main] org.apache.hadoop.security.UserGroupInformation: User entry: "cesars"
+2016-08-25 10:58:27,370 DEBUG [main] org.apache.hadoop.security.UserGroupInformation: UGI loginUser:cesars (auth:SIMPLE)
+2016-08-25 10:58:27,370 INFO [main] org.apache.hadoop.mapred.YarnChild: Executing with tokens:
+2016-08-25 10:58:27,370 INFO [main] org.apache.hadoop.mapred.YarnChild: Kind: mapreduce.job, Service: job_1472144169378_0011, Ident: (org.apache.hadoop.mapreduce.security.token.JobTokenIdentifier@171ba877)
+2016-08-25 10:58:27,425 DEBUG [main] org.apache.hadoop.security.SecurityUtil: Acquired token Kind: mapreduce.job, Service: 155.98.38.97:57540, Ident: (org.apache.hadoop.mapreduce.security.token.JobTokenIdentifier@61e54ad)
+2016-08-25 10:58:27,425 DEBUG [main] org.apache.hadoop.security.UserGroupInformation: PrivilegedAction as:job_1472144169378_0011 (auth:SIMPLE) from:org.apache.hadoop.mapred.YarnChild.main(YarnChild.java:108)
+2016-08-25 10:58:27,436 DEBUG [main] org.apache.hadoop.ipc.Server: rpcKind=RPC_WRITABLE, rpcRequestWrapperClass=class org.apache.hadoop.ipc.WritableRpcEngine$Invocation, rpcInvoker=org.apache.hadoop.ipc.WritableRpcEngine$Server$WritableRpcInvoker@34539066
+2016-08-25 10:58:27,455 DEBUG [main] org.apache.hadoop.ipc.Client: getting client out of cache: org.apache.hadoop.ipc.Client@4388fa1d
+2016-08-25 10:58:27,466 DEBUG [main] org.apache.hadoop.mapred.YarnChild: PID: 11264
+2016-08-25 10:58:27,466 INFO [main] org.apache.hadoop.mapred.YarnChild: Sleeping for 0ms before retrying again. Got null now.
+2016-08-25 10:58:27,503 DEBUG [main] org.apache.hadoop.ipc.Client: The ping interval is 60000 ms.
+2016-08-25 10:58:27,504 DEBUG [main] org.apache.hadoop.ipc.Client: Connecting to /155.98.38.97:57540
+2016-08-25 10:58:27,516 DEBUG [main] org.apache.hadoop.security.UserGroupInformation: PrivilegedAction as:job_1472144169378_0011 (auth:SIMPLE) from:org.apache.hadoop.ipc.Client$Connection.setupIOstreams(Client.java:719)
+2016-08-25 10:58:27,583 DEBUG [main] org.apache.hadoop.security.SaslRpcClient: Sending sasl message state: NEGOTIATE
+
+2016-08-25 10:58:27,593 DEBUG [main] org.apache.hadoop.security.SaslRpcClient: Received SASL message state: NEGOTIATE
+auths {
+  method: "TOKEN"
+  mechanism: "DIGEST-MD5"
+  protocol: ""
+  serverId: "default"
+  challenge: "realm=\"default\",nonce=\"weY4Y3bVaEVdXDaVlwwOzAKxTLRoLOHTwBEHncal\",qop=\"auth\",charset=utf-8,algorithm=md5-sess"
+}
+auths {
+  method: "SIMPLE"
+  mechanism: ""
+}
+
+2016-08-25 10:58:27,594 DEBUG [main] org.apache.hadoop.security.SaslRpcClient: Get token info proto:interface org.apache.hadoop.mapred.TaskUmbilicalProtocol info:@org.apache.hadoop.security.token.TokenInfo(value=class org.apache.hadoop.mapreduce.security.token.JobTokenSelector)
+2016-08-25 10:58:27,600 DEBUG [main] org.apache.hadoop.security.SaslRpcClient: Creating SASL DIGEST-MD5(TOKEN)  client to authenticate to service at default
+2016-08-25 10:58:27,635 DEBUG [main] org.apache.hadoop.security.SaslRpcClient: Use TOKEN authentication for protocol TaskUmbilicalProtocol
+2016-08-25 10:58:27,636 DEBUG [main] org.apache.hadoop.security.SaslRpcClient: SASL client callback: setting username: FmpvYl8xNDcyMTQ0MTY5Mzc4XzAwMTE=
+2016-08-25 10:58:27,636 DEBUG [main] org.apache.hadoop.security.SaslRpcClient: SASL client callback: setting userPassword
+2016-08-25 10:58:27,636 DEBUG [main] org.apache.hadoop.security.SaslRpcClient: SASL client callback: setting realm: default
+2016-08-25 10:58:27,637 DEBUG [main] org.apache.hadoop.security.SaslRpcClient: Sending sasl message state: INITIATE
+token: "charset=utf-8,username=\"FmpvYl8xNDcyMTQ0MTY5Mzc4XzAwMTE=\",realm=\"default\",nonce=\"weY4Y3bVaEVdXDaVlwwOzAKxTLRoLOHTwBEHncal\",nc=00000001,cnonce=\"zS3mLfcQMgBsVJzLJdMF3E5uVAsZvdbl6xEdXpCB\",digest-uri=\"/default\",maxbuf=65536,response=adf1543bc83ae5481a8f6bcab2973483,qop=auth"
+auths {
+  method: "TOKEN"
+  mechanism: "DIGEST-MD5"
+  protocol: ""
+  serverId: "default"
+}
+
+2016-08-25 10:58:27,639 DEBUG [main] org.apache.hadoop.security.SaslRpcClient: Received SASL message state: SUCCESS
+token: "rspauth=97a783591c31f92a690efedc2d3d8df7"
+
+2016-08-25 10:58:27,640 DEBUG [main] org.apache.hadoop.ipc.Client: Negotiated QOP is :auth
+2016-08-25 10:58:27,647 DEBUG [IPC Client (1193451229) connection to /155.98.38.97:57540 from job_1472144169378_0011] org.apache.hadoop.ipc.Client: IPC Client (1193451229) connection to /155.98.38.97:57540 from job_1472144169378_0011: starting, having connections 1
+2016-08-25 10:58:27,653 DEBUG [IPC Parameter Sending Thread #0] org.apache.hadoop.ipc.Client: IPC Client (1193451229) connection to /155.98.38.97:57540 from job_1472144169378_0011 sending #0
+2016-08-25 10:58:27,656 DEBUG [IPC Client (1193451229) connection to /155.98.38.97:57540 from job_1472144169378_0011] org.apache.hadoop.ipc.Client: IPC Client (1193451229) connection to /155.98.38.97:57540 from job_1472144169378_0011 got value #0
+2016-08-25 10:58:27,675 DEBUG [IPC Client (1193451229) connection to /155.98.38.97:57540 from job_1472144169378_0011] org.apache.hadoop.mapred.SortedRanges: currentIndex 0   0:0
+2016-08-25 10:58:27,693 WARN [IPC Client (1193451229) connection to /155.98.38.97:57540 from job_1472144169378_0011] org.apache.hadoop.ipc.Client: Unexpected error reading responses on connection Thread[IPC Client (1193451229) connection to /155.98.38.97:57540 from job_1472144169378_0011,5,main]
+java.lang.IllegalArgumentException: No enum constant org.apache.hadoop.mapreduce.TaskType.78MAP                 
+1472144169378MAP       
+	at java.lang.Enum.valueOf(Enum.java:236)
+	at org.apache.hadoop.io.WritableUtils.readEnum(WritableUtils.java:415)
+	at org.apache.hadoop.mapreduce.TaskID.readFields(TaskID.java:192)
+	at org.apache.hadoop.mapreduce.TaskAttemptID.readFields(TaskAttemptID.java:139)
+	at org.apache.hadoop.mapred.TaskAttemptID.read(TaskAttemptID.java:119)
+	at org.apache.hadoop.mapred.Task.readFields(Task.java:525)
+	at org.apache.hadoop.mapred.MapTask.readFields(MapTask.java:137)
+	at org.apache.hadoop.mapred.JvmTask.readFields(JvmTask.java:68)
+	at org.apache.hadoop.io.ObjectWritable.readObject(ObjectWritable.java:285)
+	at org.apache.hadoop.io.ObjectWritable.readFields(ObjectWritable.java:77)
+	at org.apache.hadoop.ipc.Client$Connection.receiveRpcResponse(Client.java:1095)
+	at org.apache.hadoop.ipc.Client$Connection.run(Client.java:974)
+2016-08-25 10:58:27,695 DEBUG [IPC Client (1193451229) connection to /155.98.38.97:57540 from job_1472144169378_0011] org.apache.hadoop.ipc.Client: closing ipc connection to /155.98.38.97:57540: Error reading responses
+java.io.IOException: Error reading responses
+	at org.apache.hadoop.ipc.Client$Connection.run(Client.java:981)
+Caused by: java.lang.IllegalArgumentException: No enum constant org.apache.hadoop.mapreduce.TaskType.78MAP                 
+1472144169378MAP       
+	at java.lang.Enum.valueOf(Enum.java:236)
+	at org.apache.hadoop.io.WritableUtils.readEnum(WritableUtils.java:415)
+	at org.apache.hadoop.mapreduce.TaskID.readFields(TaskID.java:192)
+	at org.apache.hadoop.mapreduce.TaskAttemptID.readFields(TaskAttemptID.java:139)
+	at org.apache.hadoop.mapred.TaskAttemptID.read(TaskAttemptID.java:119)
+	at org.apache.hadoop.mapred.Task.readFields(Task.java:525)
+	at org.apache.hadoop.mapred.MapTask.readFields(MapTask.java:137)
+	at org.apache.hadoop.mapred.JvmTask.readFields(JvmTask.java:68)
+	at org.apache.hadoop.io.ObjectWritable.readObject(ObjectWritable.java:285)
+	at org.apache.hadoop.io.ObjectWritable.readFields(ObjectWritable.java:77)
+	at org.apache.hadoop.ipc.Client$Connection.receiveRpcResponse(Client.java:1095)
+	at org.apache.hadoop.ipc.Client$Connection.run(Client.java:974)
+2016-08-25 10:58:27,695 DEBUG [IPC Client (1193451229) connection to /155.98.38.97:57540 from job_1472144169378_0011] org.apache.hadoop.ipc.Client: IPC Client (1193451229) connection to /155.98.38.97:57540 from job_1472144169378_0011: closed
+2016-08-25 10:58:27,695 DEBUG [IPC Client (1193451229) connection to /155.98.38.97:57540 from job_1472144169378_0011] org.apache.hadoop.ipc.Client: IPC Client (1193451229) connection to /155.98.38.97:57540 from job_1472144169378_0011: stopped, remaining connections 0
+2016-08-25 10:58:27,699 WARN [main] org.apache.hadoop.mapred.YarnChild: Exception running child : java.io.IOException: Failed on local exception: java.io.IOException: Error reading responses; Host Details : local host is: "node-6.pbse-cesar.ucare.emulab.net/155.98.38.119"; destination host is: "pc497.emulab.net":57540; 
+	at org.apache.hadoop.net.NetUtils.wrapException(NetUtils.java:773)
+	at org.apache.hadoop.ipc.Client.call(Client.java:1480)
+	at org.apache.hadoop.ipc.Client.call(Client.java:1407)
+	at org.apache.hadoop.ipc.WritableRpcEngine$Invoker.invoke(WritableRpcEngine.java:242)
+	at com.sun.proxy.$Proxy7.getTask(Unknown Source)
+	at org.apache.hadoop.mapred.YarnChild.main(YarnChild.java:132)
+Caused by: java.io.IOException: Error reading responses
+	at org.apache.hadoop.ipc.Client$Connection.run(Client.java:981)
+Caused by: java.lang.IllegalArgumentException: No enum constant org.apache.hadoop.mapreduce.TaskType.78MAP                 1472144169378MAP       
+	at java.lang.Enum.valueOf(Enum.java:236)
+	at org.apache.hadoop.io.WritableUtils.readEnum(WritableUtils.java:415)
+	at org.apache.hadoop.mapreduce.TaskID.readFields(TaskID.java:192)
+	at org.apache.hadoop.mapreduce.TaskAttemptID.readFields(TaskAttemptID.java:139)
+	at org.apache.hadoop.mapred.TaskAttemptID.read(TaskAttemptID.java:119)
+	at org.apache.hadoop.mapred.Task.readFields(Task.java:525)
+	at org.apache.hadoop.mapred.MapTask.readFields(MapTask.java:137)
+	at org.apache.hadoop.mapred.JvmTask.readFields(JvmTask.java:68)
+	at org.apache.hadoop.io.ObjectWritable.readObject(ObjectWritable.java:285)
+	at org.apache.hadoop.io.ObjectWritable.readFields(ObjectWritable.java:77)
+	at org.apache.hadoop.ipc.Client$Connection.receiveRpcResponse(Client.java:1095)
+	at org.apache.hadoop.ipc.Client$Connection.run(Client.java:974)
+
+2016-08-25 10:58:27,699 DEBUG [main] org.apache.hadoop.ipc.Client: stopping client from cache: org.apache.hadoop.ipc.Client@4388fa1d
+2016-08-25 10:58:27,699 DEBUG [main] org.apache.hadoop.ipc.Client: removing client from cache: org.apache.hadoop.ipc.Client@4388fa1d
+2016-08-25 10:58:27,699 DEBUG [main] org.apache.hadoop.ipc.Client: stopping actual client because no more references remain: org.apache.hadoop.ipc.Client@4388fa1d
+2016-08-25 10:58:27,699 DEBUG [main] org.apache.hadoop.ipc.Client: Stopping client
+2016-08-25 10:58:27,700 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSystemImpl: refCount=1
+2016-08-25 10:58:27,700 INFO [main] org.apache.hadoop.metrics2.impl.MetricsSystemImpl: Stopping MapTask metrics system...
+2016-08-25 10:58:27,700 DEBUG [main] org.apache.hadoop.metrics2.impl.MetricsSystemImpl: Stopping metrics source UgiMetrics: class=class org.apache.hadoop.metrics2.lib.MetricsSourceBuilder$1
+2016-08-25 10:58:27,700 DEBUG [main] org.apache.hadoop.metrics2.util.MBeans: Unregistering Hadoop:service=MapTask,name=UgiMetrics
+2016-08-25 10:58:27,701 DEBUG [main] org.apache.hadoop.metrics2.util.MBeans: Unregistering Hadoop:service=MapTask,name=MetricsSystem,sub=Stats
+2016-08-25 10:58:27,701 INFO [main] org.apache.hadoop.metrics2.impl.MetricsSystemImpl: MapTask metrics system stopped.
+2016-08-25 10:58:27,701 DEBUG [main] org.apache.hadoop.metrics2.util.MBeans: Unregistering Hadoop:service=MapTask,name=MetricsSystem,sub=Control
+2016-08-25 10:58:27,701 INFO [main] org.apache.hadoop.metrics2.impl.MetricsSystemImpl: MapTask metrics system shutdown complete.
