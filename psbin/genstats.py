@@ -5,6 +5,7 @@ import pprint
 import datetime
 import json
 from collections import defaultdict
+from collections import Counter
 
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
@@ -111,6 +112,7 @@ def getMasterStats(app):
         # killed container
         print "killed: "+appname+"/"+ct
         container = {
+          "isKilled" = True,
           "appid": app["appid"],
           "containerid": ct,
           "attempt": att,
@@ -121,7 +123,7 @@ def getMasterStats(app):
 		  "shuffleTime": 0.0,
           "isSuccessful": False,
           "isSlowMapnode": False,
-          "isSlowDatanode": False 
+          "isSlowDatanode": False
         }
         app["containers"][ct] = container
 
@@ -168,6 +170,7 @@ def getContainerStats(app):
   appname = app["appid"]
   master = app["master"]
   # set flags to know if slow node is involded
+  master["slowNodeInvolvedInDataread"] = False
   master["slowNodeInvolvedInMap"] = False
   master["slowNodeInvolvedInReduce"] = False
   for ctname,ct in app["containers"].items():
@@ -191,6 +194,7 @@ def getContainerStats(app):
         ct["lastDatanode"] = datanode
         if datanode.startswith(SLOWHOST):
             ct["isSlowDatanode"] = True
+            master["slowNodeInvolvedInDataread"] = True
             master["isInvolveSlownode"] = True
 
       if re_hb.match(line):
@@ -485,6 +489,29 @@ def printGraphs(apps):
       #fig.savefig("fig-%d.png" % ct)
       ct += 1
 
+def addTopoStats(apps):
+  for appname,app in apps.items():
+    tasks = []
+    d = {}
+
+    for ctname,container in app["containers"].items():
+      if container["ismap"]:
+        container["topo"] = getPlacementCode(container)
+        tasks.append(container)
+
+    for task in tasks:
+      tid = getTaskId(task)
+      if tid in d:
+        d[tid].append(task)
+      else:
+        d[tid] = [task]
+
+    mapsTopo = []
+    for k,v in d.items():
+      tcode = getTaskCode(v)
+      mapsTopo.append(tcode)
+    app["master"]["mapsTopo"] = Counter(mapsTopo)
+
 
 def printTopoStats(apps):
   tasks = []
@@ -532,6 +559,7 @@ def saveAppsStats(apps):
 
 def main():
   apps = getTopology()
+  addTopoStats(apps)
   saveAppsStats(apps)
   printTopoStats(apps)
   printGraphs(apps)
