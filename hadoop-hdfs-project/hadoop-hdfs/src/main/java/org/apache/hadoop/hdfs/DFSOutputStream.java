@@ -1600,15 +1600,9 @@ public class DFSOutputStream extends FSOutputSummer
     return value;
   }
 
-  //huanke --> forward this to task report
-  public synchronized DatanodeInfo[] getPipeNodes(){
-    if(streamer.getNodes()!=null){
-            DFSClient.LOG.debug("@huanke DFSOutput1 PipeNodes: "+streamer.getNodes()[0].getHostName()+streamer.getNodes()[1].getHostName()+" stream.getNodes: "+streamer.getNodes());
-            return streamer.getNodes();
-    }else{
-            DFSClient.LOG.debug("@huanke DFSOutput1 PipeNodes: is null");
-            return streamer.getNodes();
-    }
+  // huanke --> forward this to task report
+  public synchronized DatanodeInfo[] getPipeNodes() {
+    return streamer.getNodes();
   }
 
   /** 

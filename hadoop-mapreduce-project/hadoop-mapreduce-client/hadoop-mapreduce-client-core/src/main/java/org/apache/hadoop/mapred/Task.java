@@ -23,6 +23,7 @@ import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -777,6 +778,8 @@ abstract public class Task implements Writable, Configurable{
       // riza: shall we query for switch instruction?
       boolean askForSwitch = isMapTask() && conf.getBoolean("mapreduce.policy.faread.avoid_single_readpath",
               false);
+      // riza: if datanode or DNPath switched, then immediately report back
+      boolean switchHappened = false;
 
       // get current flag value and reset it as well
       boolean sendProgress = resetProgressFlag();
@@ -791,7 +794,8 @@ abstract public class Task implements Writable, Configurable{
             if (taskDone.get()) {
               break;
             }
-            lock.wait(proginterval);
+            lock.wait(switchHappened ? 0 : proginterval);
+            switchHappened = false;
           }
           if (taskDone.get()) {
             break;
@@ -860,11 +864,9 @@ abstract public class Task implements Writable, Configurable{
               LOG.info("riza: reporting datanode " + lastDatanodeId.getHostName());
               taskStatus.setLastDatanodeID(lastDatanodeId);
             } else {
-              LOG.info("@huanke reporting pipeline info" + DNPath + " Pipeline1: " + DNPath[0].getHostName() + " Pipeline2: " + DNPath[1].getHostName());
-              //@huanke reporting pipeline info[Lorg.apache.hadoop.hdfs.protocol.DatanodeInfo;@85168c6 Pipeline1: fake-localhost Pipeline2: fake-localhost
-              //
-              taskStatus.setDNpath(DNPath);
               // riza: piggyback PBSE reduce information
+              LOG.info("@huanke reporting pipeline info " + Arrays.toString(DNPath));
+              taskStatus.setDNpath(DNPath);
             }
 
             taskFound = umbilical.statusUpdate(taskId, taskStatus);
@@ -907,16 +909,21 @@ abstract public class Task implements Writable, Configurable{
               lastDatanodeId = in.getCurrentDatanode();
               taskStatus.setLastDatanodeID(lastDatanodeId);
               setProgressFlag();
+              switchHappened = true;
             }
           }
 
           //huanke
           if (this.out != null) {
-            LOG.info("@huanke this.DNPath is not null" + DNPath+" pipe1: "+DNPath[0].getHostName()+" pipe1: "+DNPath[1].getHostName());
-            taskStatus.setDNpath(DNPath);
-            setProgressFlag();
-          } else {
-            LOG.info("@huanke this.DNPath is null");
+            if (!DNPath.equals(this.out.getPipeNodes())) {
+              LOG.info("@huanke switching DNPath " + Arrays.toString(DNPath)
+                  + " to new DNPath "
+                  + Arrays.toString(this.out.getPipeNodes()));
+              DNPath = this.out.getPipeNodes();
+              taskStatus.setDNpath(DNPath);
+              setProgressFlag();
+              switchHappened = true;
+            }
           }
 
           sendProgress = resetProgressFlag();
@@ -1001,20 +1008,12 @@ abstract public class Task implements Writable, Configurable{
     //huanke
     public void setOutputStream(OutputStream out) {
       synchronized (DNPath) {
-        LOG.info("@huanke setOutputStream from taskreporter ");
         if (out instanceof HdfsDataOutputStream) {
-          LOG.info("@huanke setOuputStream---true");
           this.out = (HdfsDataOutputStream) out;
-//          if (!DNPath.equals(this.out.getPipeNodes())) {
-          LOG.info("@huanke getPipeNodes: " + this.out.getPipeNodes() + this.out.getPipeNodes()[0] + this.out.getPipeNodes()[1]);
-          LOG.info("@huanke node0: " + this.out.getPipeNodes()[0].getHostName() + " node1: " + this.out.getPipeNodes()[1].getHostName());
+          LOG.info("@huanke first DNPath is " + Arrays.toString(this.out.getPipeNodes()));
           DNPath = this.out.getPipeNodes();
           taskStatus.setDNpath(DNPath);
           setProgressFlag();
-//          }
-//        }else{
-//          LOG.info("@huanke setOuputStream---false");
-//        }
         }
       }
     }

@@ -97,30 +97,11 @@ public class HdfsDataOutputStream extends FSDataOutputStream {
     return ((DFSOutputStream) wrappedStream).getCurrentBlockReplication();
   }
 
-    //huanke
-    public DatanodeInfo[] getPipeNodes() {
-      DatanodeInfo[] PipeNodes = getDFSOutputStream().getPipeNodes();
-      if(PipeNodes==null){
-        DFSClient.LOG.info("@huanke HDFS getPipeNodes : is null");
-      }else{
-        DFSClient.LOG.info("@huanke HDFS getPipeNodes : " + "-----and-----" + PipeNodes[0].getHostName() + PipeNodes[1].getHostName());
-      }
-//      int count = 5;
-//      while (count-- > 0 && PipeNodes == null) {
-//        try {
-//          DFSClient.LOG.info("@huanke waiting for pipeline to be created");
-//          Thread.sleep(1000);
-//        } catch (InterruptedException e) {
-//          DFSClient.LOG.error(e.getMessage());
-//          DFSClient.LOG.error(e.getStackTrace());
-//        }
-//        PipeNodes=getDFSOutputStream().getPipeNodes();
-
-//      }
-      return PipeNodes;
-    }
-
-//    public DatanodeInfo[] getPipeline() { return getDFSOutputStream().getPipeline(); }
+  // huanke
+  public DatanodeInfo[] getPipeNodes() {
+    DatanodeInfo[] PipeNodes = getDFSOutputStream().getPipeNodes();
+    return PipeNodes;
+  }
 
 
 
