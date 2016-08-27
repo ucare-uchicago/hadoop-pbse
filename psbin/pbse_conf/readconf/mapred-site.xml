@@ -115,6 +115,56 @@
     <value>pc001</value> <!-- node-4 -->
     <description>UCARE: slow node host in emulab experiment</description>
   </property>
+
+  <property>
+    <name>slow.fix.datanode</name>
+    <value></value>
+    <description>UCARE: Huan's hack</description>
+  </property>
+
+  <property>
+    <name>mapreduce.experiment.fixed_mappers</name>
+    <value></value>
+    <description>UCARE: host names (comma sep) for the nodes assigned as mappers</description>
+  </property>
+
+  <property>
+    <name>mapreduce.experiment.fixed_reducers</name>
+    <value></value>
+    <description>UCARE: host names (comma sep) for the nodes assigned as reducers</description>
+  </property>
+
+  <property>
+    <name>mapreduce.experiment.fix_nodes</name>
+    <value>false</value>
+    <description>UCARE: set to true if you want to assign mappers only from the fixed_mappers list and reducers
+    from the fixed_reducers list</description>
+  </property>
+
+  <property>
+    <name>mapreduce.experiment.enable_fetch_rate_speculation</name>
+    <value>true</value>
+    <description>UCARE: enable or disable fetch rate speculation for map tasks</description>
+  </property>
+
+  <property>
+    <name>mapreduce.experiment.fetch_rate_slow_script</name>
+    <value>/proj/ucare/cesar/hadoop-pbse/scripts/slow_hadoop_shuffle.sh</value>
+    <description>UCARE: </description>
+  </property>
+
+  <property>
+    <name>mapreduce.experiment.fetch_rate_experiment_mode</name>
+    <value>true</value>
+    <description>UCARE: </description>
+  </property>
+
+  <property>
+    <name>mapreduce.experiment.fetch_rate_speculation_slow_thresshold</name>
+    <value>5</value>
+    <description>UCARE: in megabit</description>
+  </property>
+
   <!-- CUSTOM CONF END -->
 
 </configuration>
