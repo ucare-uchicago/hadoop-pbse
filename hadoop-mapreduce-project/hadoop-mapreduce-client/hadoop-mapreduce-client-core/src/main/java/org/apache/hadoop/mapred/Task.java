@@ -522,8 +522,8 @@ abstract public class Task implements Writable, Configurable{
   }
 
   public void readFields(DataInput in) throws IOException {
-	jobFile = Text.readString(in);
-	taskId = TaskAttemptID.read(in);
+    jobFile = StringInterner.weakIntern(Text.readString(in));
+    taskId = TaskAttemptID.read(in);
     partition = in.readInt();
     numSlotsRequired = in.readInt();
     taskStatus.readFields(in);
