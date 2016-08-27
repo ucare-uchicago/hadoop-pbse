@@ -98,7 +98,7 @@
 
   <property>
     <name>pbse.enable.for.reduce.pipeline</name>
-    <value>true</value>
+    <value>false</value>
   </property>
   <!-- @huanke: custom end -->
 

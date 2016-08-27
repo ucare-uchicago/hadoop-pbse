@@ -51,28 +51,29 @@ MEMORY TUNING END -->
   </property>
 
   <property>
-      <name>yarn.nodemanager.disk-health-checker.max-disk-utilization-per-disk-percentage</name>
-      <value>100</value>
+    <name>yarn.nodemanager.disk-health-checker.max-disk-utilization-per-disk-percentage</name>
+    <value>100</value>
   </property>
 
   <property>
-      <name>yarn.resourcemanager.recovery.enabled</name>
-      <value>false</value>
+    <name>yarn.resourcemanager.recovery.enabled</name>
+    <value>false</value>
   </property>
 
   <property>
-      <name>yarn.nodemanager.log.retain-seconds</name>
-      <value>86400</value>
+    <name>yarn.nodemanager.log.retain-seconds</name>
+    <value>86400</value>
   </property>
 
   <!-- @Cesar: Added by cesar to control location of app master -->
   <property>
-      <name>yarn.pbse.experiment.blAppMaster</name>
-      <value></value>
+    <name>yarn.pbse.experiment.blAppMaster</name>
+    <value></value>
   </property>
+
   <property>
-      <name>yarn.pbse.experiment.fixAppMaster</name>
-      <value>false</value>
+    <name>yarn.pbse.experiment.fixAppMaster</name>
+    <value>false</value>
   </property>
   <!-- @Cesar: End cesar custom configuration -->
 

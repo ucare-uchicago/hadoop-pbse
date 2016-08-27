@@ -16,10 +16,14 @@ clcleanlogs
 sleep 5
 
 cp pbse_conf/readconf/* $HADOOP_CONF_DIR/
+
+# change slow down node
+sed -i "s/pc001/$2/" $HADOOP_CONF_DIR/hdfs-site.xml
 sed -i "s/pc001/$2/" $HADOOP_CONF_DIR/mapred-site.xml
 
+
 # change default heartbeat interval
-sed -i "s/3000/375/" $HADOOP_CONF_DIR/mapred-site.xml
+# sed -i "s/3000/375/" $HADOOP_CONF_DIR/mapred-site.xml
 
 ssh -t node-17 "clstart;"
 sleep 10

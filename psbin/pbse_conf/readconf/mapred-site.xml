@@ -112,62 +112,73 @@
 
   <property>
     <name>mapreduce.experiment.slownode</name>
-    <value>pc001</value> <!-- node-4 -->
+    <value>pc001</value> <!-- to be replaced by sed -->
     <description>UCARE: slow node host in emulab experiment</description>
   </property>
   <!-- CUSTOM CONF END -->
+
   <!-- @Cesar: start -->
   <property>
     <name>mapreduce.experiment.enable_fetch_rate_speculation</name>
     <value>true</value>
     <description>UCARE: enable or disable fetch rate speculation for map tasks</description>
   </property>
+
   <property>
     <name>mapreduce.experiment.fetch_rate_speculation_slow_thresshold</name>
     <value>1</value>
     <description>UCARE: when average of transfer rates on a node is bellow this (mbit),speculate</description>
   </property>
+
   <property>
     <name>mapreduce.experiment.fetch_rate_speculation_progress_thresshold</name>
     <value>0.7</value>
     <description>UCARE: Dont speculate if the transfer progress is greater or equal than this</description>
   </property>
+
   <property>
     <name>mapreduce.experiment.enable_fetcher_shutdown</name>
     <value>false</value>
     <description>UCARE: Shutdown fetcher thread after map relaunch?</description>
   </property>
   <!-- @Cesar: end -->
+
   <!-- @huanke: custom begin -->
   <property>
     <name>slow.fix.datanode</name>
     <value></value>
     <description>UCARE: </description>
   </property>
+
   <property>
     <name>task.fix.node</name>
     <value>false</value>
     <description>UCARE: should fix the nodes for tasks in JobImpl</description>
   </property>
+
   <property>
     <name>map.task.locations.scope</name>
     <value></value>
     <description>UCARE: the scope for map tasks</description>
   </property>
+
   <property>
     <name>reduce.task.locations.scope</name>
     <value></value>
     <description>UCARE: the scope for reduce tasks</description>
   </property>
+
   <property>
     <name>pbse.enable.for.reduce.pipeline</name>
     <value>true</value>
     <description>UCARE: the scope for reduce tasks</description>
   </property>
+
   <property>
     <name>reduce.get.pipenodes.flag</name>
     <value>true</value>
     <description>UCARE: the scope for reduce tasks</description>
   </property>
   <!-- @huanke: custom end -->
+
 </configuration>
