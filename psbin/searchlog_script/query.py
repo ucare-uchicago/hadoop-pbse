@@ -8,7 +8,7 @@ import table
 # Search job latency of job that involve slow node
 print "appid, duration(s), #maps, #reduce, slowDN, slowMap, slowReduce, mapsTopo"
 FROM = table.JOBS
-WHERE = lambda job: job["isInvolveSlownode"] #and float(job["job_duration"]) > 180
+WHERE = lambda job: job["isInvolveSlownode"] and float(job["job_duration"]) > 180
 SELECT = lambda job: [job["appid"][-3:], job["job_duration"], job["ct_CompletedMaps"], job["ct_CompletedReds"],\
                       job["slowNodeInvolvedInDataread"], job["slowNodeInvolvedInMap"], job["slowNodeInvolvedInReduce"],\
                       " ".join(['%s:%s' % (key, value) for (key, value) in job["mapsTopo"].items()])]

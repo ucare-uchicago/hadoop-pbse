@@ -99,3 +99,7 @@ MAKING GRAPH FROM ONE/MULTIPLE EXPERIMENT RUN
    Run combinestats.py from that directory.
 
    ./combinestats.py
+
+5. Line style of series from specific json file can be directly edited
+   from the json file. Inside the json file, search "conf". Inside
+   conf, edit the "line_style" and "linewidth" as desired.

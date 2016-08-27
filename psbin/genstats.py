@@ -8,6 +8,8 @@ from collections import defaultdict
 from collections import Counter
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 
@@ -112,7 +114,7 @@ def getMasterStats(app):
         # killed container
         print "killed: "+appname+"/"+ct
         container = {
-          "isKilled" = True,
+          "isKilled": True,
           "appid": app["appid"],
           "containerid": ct,
           "attempt": att,
@@ -553,7 +555,7 @@ def printTopoStats(apps):
 def saveAppsStats(apps):
   with open('data.json', 'w') as fp:
     toprint = {}
-    toprint["conf"] = {"style_line":"r--"}
+    toprint["conf"] = {"style_line":"r--", "linewidth":2}
     toprint["apps"] = apps
     json.dump(toprint, fp, indent=2, sort_keys=True)
 

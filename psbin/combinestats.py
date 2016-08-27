@@ -7,6 +7,8 @@ import json
 from collections import defaultdict
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 
@@ -139,7 +141,8 @@ def combineGraphs(runs,selector,iscdf, xlim = -1):
     X,Y = makeCDFPoints(dat)
     if (NORMALIZE):
       X = X.astype(float) / X.max()
-    plt.plot(X, Y, data["conf"]["style_line"], label=runid, color=color[cont])
+#    plt.plot(X, Y, data["conf"]["style_line"], label=runid, color=color[cont])
+    plt.plot(X, Y, data["conf"]["style_line"], label=runid, linewidth=int(data["conf"]["linewidth"]))
     cont = cont + 1
     if maxval < X.max():
       maxval = X.max()
@@ -210,7 +213,7 @@ def printCombinedGraphs(runs):
   # Job Running Time for jobs where the slow node is involved in map
   dat = lambda apps: \
          [(strToDate(a["master"]["time_stop"])-strToDate(a["master"]["time_start"])).total_seconds() \
-         for a in ALL_JOBS(apps) if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (a["slowNodeInvolvedInMap"]) and (not a["slowNodeInvolvedInReduce"])]
+          for a in ALL_JOBS(apps) if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (a["master"]["slowNodeInvolvedInMap"]) and (not a["master"]["slowNodeInvolvedInReduce"])]
 
   fig = combineGraphs(runs,dat,True,-1)
   setFigureLabel(fig,"Job Running Time (by AM, slow node involved as map only)","",\
@@ -221,7 +224,7 @@ def printCombinedGraphs(runs):
   # Job Running Time for jobs where the slow node is involved in reduce
   dat = lambda apps: \
          [(strToDate(a["master"]["time_stop"])-strToDate(a["master"]["time_start"])).total_seconds() \
-         for a in ALL_JOBS(apps) if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (not a["slowNodeInvolvedInMap"]) and (a["slowNodeInvolvedInReduce"])]
+          for a in ALL_JOBS(apps) if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (not a["master"]["slowNodeInvolvedInMap"]) and (a["master"]["slowNodeInvolvedInReduce"])]
 
   fig = combineGraphs(runs,dat,True,-1)
   setFigureLabel(fig,"Job Running Time (by AM, slow node involved as reduce only)","",\
@@ -232,7 +235,7 @@ def printCombinedGraphs(runs):
   # Job Running Time for jobs where the slow node is involved in reduce and map
   dat = lambda apps: \
          [(strToDate(a["master"]["time_stop"])-strToDate(a["master"]["time_start"])).total_seconds() \
-         for a in ALL_JOBS(apps) if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (a["slowNodeInvolvedInMap"]) and (a["slowNodeInvolvedInReduce"])]
+          for a in ALL_JOBS(apps) if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (a["master"]["slowNodeInvolvedInMap"]) and (a["master"]["slowNodeInvolvedInReduce"])]
 
   fig = combineGraphs(runs,dat,True,-1)
   setFigureLabel(fig,"Job Running Time (by AM, slow node involved as reduce and map)","",\
