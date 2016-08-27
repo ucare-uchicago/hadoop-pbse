@@ -16,6 +16,8 @@ SLOWNODE=20
 SLOWHOST="VOID"
 SLOWIP="10.1.1."+str(SLOWNODE+2)
 
+VERSION="2.0"
+
 pp = pprint.PrettyPrinter(indent=2)
 
 cassign = re.compile('.+ Assigned container (.+) to (.+)')
@@ -334,7 +336,12 @@ def loadExpStats():
     for fname in filenames:
       if fname.endswith(".json"):
         with open(fname) as data_file:
-          runs[fname.replace(".json","")] = json.load(data_file)
+          json_data = json.load(data_file)
+          fileversion = json_data["conf"]["version"]
+          if VERSION != fileversion:
+            print "WARNING: %s has different version (%s) than combinestats version (%s), things might broken" \
+              % (fname, fileversion, VERSION)
+          runs[fname.replace(".json","")] = json_data
     break
   return runs
 

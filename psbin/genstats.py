@@ -17,6 +17,8 @@ SLOWNODE=100
 SLOWHOST="VOID"
 SLOWIP="10.1.1."+str(SLOWNODE+2)
 
+VERSION="2.0"
+
 pp = pprint.PrettyPrinter(indent=2)
 
 cassign = re.compile('.+ Assigned container (.+) to (.+)')
@@ -555,7 +557,11 @@ def printTopoStats(apps):
 def saveAppsStats(apps):
   with open('data.json', 'w') as fp:
     toprint = {}
-    toprint["conf"] = {"style_line":"r--", "linewidth":2}
+    toprint["conf"] = {
+      "version": VERSION,
+      "style_line":"r--",
+      "linewidth": 2
+    }
     toprint["apps"] = apps
     json.dump(toprint, fp, indent=2, sort_keys=True)
 
