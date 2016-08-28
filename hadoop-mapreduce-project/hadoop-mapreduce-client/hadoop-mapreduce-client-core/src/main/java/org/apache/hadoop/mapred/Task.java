@@ -797,7 +797,7 @@ abstract public class Task implements Writable, Configurable{
             if (taskDone.get()) {
               break;
             }
-            lock.wait(switchHappened ? 0 : proginterval);
+            lock.wait(switchHappened ? 1 : proginterval);
             switchHappened = false;
           }
           if (taskDone.get()) {
@@ -903,33 +903,35 @@ abstract public class Task implements Writable, Configurable{
             System.exit(66);
           }
 
-          sendProgress = resetProgressFlag();
-          remainingRetries = MAX_RETRIES;
-
           //riza: set progress flag again if there is a datasource change
           if (this.in != null) {
             if (!lastDatanodeId.equals(this.in.getCurrentDatanode())) {
-              LOG.info("riza: switching datanode " + lastDatanodeId + " to "
-                      + in.getCurrentDatanode());
+              //LOG.info("riza: switching datanode " + lastDatanodeId + " to "
+              //        + in.getCurrentDatanode());
               lastDatanodeId = in.getCurrentDatanode();
-              taskStatus.setLastDatanodeID(lastDatanodeId);
+              //taskStatus.setLastDatanodeID(lastDatanodeId);
               setProgressFlag();
               switchHappened = true;
+              LOG.info("riza: datanode switched on TaskReporter");
             }
           }
 
           //huanke
           if (this.out != null) {
             if (!DNPath.equals(this.out.getPipeNodes())) {
-              LOG.info("@huanke switching DNPath " + Arrays.toString(DNPath)
-                  + " to new DNPath "
-                  + Arrays.toString(this.out.getPipeNodes()));
+              //LOG.info("@huanke switching DNPath " + Arrays.toString(DNPath)
+              //    + " to new DNPath "
+              //    + Arrays.toString(this.out.getPipeNodes()));
               DNPath = this.out.getPipeNodes();
-              taskStatus.setDNpath(DNPath);
+              //taskStatus.setDNpath(DNPath);
               setProgressFlag();
               switchHappened = true;
+              LOG.info("riza: DNPath switched on TaskReporter");
             }
           }
+
+          sendProgress = resetProgressFlag();
+          remainingRetries = MAX_RETRIES;
         } catch (Throwable t) {
           LOG.info("Communication exception: " + StringUtils.stringifyException(t));
           remainingRetries -= 1;
