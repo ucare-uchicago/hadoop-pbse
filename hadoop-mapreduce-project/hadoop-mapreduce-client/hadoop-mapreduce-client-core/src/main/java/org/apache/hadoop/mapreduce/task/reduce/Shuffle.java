@@ -138,6 +138,8 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
     // @Cesar: Start measuring suffle time
     long shuffleTimeStart = System.nanoTime();
     
+    LOG.info("@Cesar: Fetch reate speculation is enabled?: " + isFetchRateSpeculationEnabled);
+    LOG.info("@Cesar: Fetcher shutdown is enabled?: " + isFetcherShutDownEnabled);
     // Wait for shuffle to complete successfully
     while (!scheduler.waitUntilDone(PROGRESS_FREQUENCY)) {
       reporter.progress();
@@ -154,6 +156,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
       Set<TaskAttemptID> obsoletes = scheduler.getObsoleteMaps();
       for(int fetcherId = 0; fetcherId < fetchers.length; ++fetcherId){
     	  for(TaskAttemptID obsolete : obsoletes){
+    		  LOG.info("@Cesar: Checking obsolete map output  " + obsolete);
 	    	  // @Cesar: Is map output marked as obsolete?
 	    	  if(fetchers[fetcherId] != null && fetchers[fetcherId].isAlive() 
 	    	     && fetchers[fetcherId].getFetcherAssignedMaps().contains(obsolete)){

@@ -320,10 +320,11 @@ public class DefaultSpeculator extends AbstractService implements
     					// @Cesar: Log some info
     					LOG.debug("@Cesar: Starting fetch rate speculation check");
     					int numSpeculations = checkFetchRateTable();
-    	    			// @Cesar: Same methodolody as default thread
-    	    			long mininumRecomp
-    	                		= numSpeculations > 0 ? soonestRetryAfterSpeculate
-    	                                   			    : soonestRetryAfterNoSpeculate;
+    	    			// @Cesar: So, after speculation we are going to
+    					// sleep only for soonestRetryAfterNoSpeculate seconds, the same when
+    					// we do not speculate. Why? Well, i have seen cases where we relaunch task x
+    					// and then task x + 1 is slow, so we would have to wait to detect that slow shuffle
+    	    			long mininumRecomp = soonestRetryAfterNoSpeculate;
     	                long wait = Math.max(mininumRecomp,
     	                        clock.getTime() - backgroundRunStartTime);
     	                if (numSpeculations > 0) {

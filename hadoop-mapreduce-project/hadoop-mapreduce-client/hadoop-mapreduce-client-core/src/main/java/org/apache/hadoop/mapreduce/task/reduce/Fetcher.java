@@ -212,10 +212,6 @@ class Fetcher<K,V> extends Thread {
           // Get a host to shuffle from
           host = scheduler.getHost();
           metrics.threadBusy();
-
-          // @Cesar: Get all maps from that host
-          // myMaps.clear();
-          // myMaps.addAll(scheduler.getMapsForHost(host));
           
           // Shuffle
           copyFromHost(host);
@@ -335,6 +331,9 @@ class Fetcher<K,V> extends Thread {
     // Get completed maps on 'host'
     List<TaskAttemptID> maps = scheduler.getMapsForHost(host);
 
+    // @Cesar: Also input into my list
+    myMaps.clear();
+    myMaps.addAll(maps);
     
     // Sanity check to catch hosts with only 'OBSOLETE' maps, 
     // especially at the tail of large jobs

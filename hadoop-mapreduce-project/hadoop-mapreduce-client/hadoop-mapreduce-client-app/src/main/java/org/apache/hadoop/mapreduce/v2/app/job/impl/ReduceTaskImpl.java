@@ -72,6 +72,12 @@ public class ReduceTaskImpl extends TaskImpl {
         jobToken, credentials, clock, appContext, AMtoReduce);
   }
 
+  // @Cesar: Same as default
+  @Override
+  protected TaskAttemptImpl createAttempt(String slowMapHost) {
+    return this.createAttempt();
+  }
+  
   @Override
   public TaskType getType() {
     return TaskType.REDUCE;

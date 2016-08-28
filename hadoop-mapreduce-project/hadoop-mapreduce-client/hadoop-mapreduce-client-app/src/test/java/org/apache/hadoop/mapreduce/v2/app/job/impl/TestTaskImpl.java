@@ -124,6 +124,12 @@ public class TestTaskImpl {
       return attempt;
     }
 
+    // @Cesar: Same as default
+    @Override
+    protected TaskAttemptImpl createAttempt(String slowMapHost) {
+      return this.createAttempt();
+    }
+    
     @Override
     protected int getMaxAttempts() {
       return 100;

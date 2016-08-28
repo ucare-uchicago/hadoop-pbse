@@ -585,6 +585,10 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 
   protected abstract TaskAttemptImpl createAttempt();
 
+  // @Cesar: Provide implementation for this method and override in 
+  // MapTaskIMpl
+  protected abstract TaskAttemptImpl createAttempt(String slowMapHost);
+  
   // No override of this method may require that the subclass be initialized.
   protected abstract int getMaxAttempts();
 
@@ -628,6 +632,34 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     }
   }
 
+ //@Cesar: Add the slow mapper
+ private void addAndScheduleAttempt(Avataar avataar, String slowMapHost) {
+   // riza: if map, check lastDatanodeID
+   if (this instanceof MapTaskImpl) {
+     LOG.debug("Updating MapTaskImpl.taskSplitMetaInfo");
+     ((MapTaskImpl) this).updateTaskSplitMetaInfo();
+   }else{
+     //huanke
+     LOG.info("@huanke lauch1 a backup reduce task"+this.getID().getId());
+     ((ReduceTaskImpl) this).updateTaskOutputDN();
+   }
+
+   TaskAttempt attempt = addAttempt(avataar, slowMapHost);
+   inProgressAttempts.add(attempt.getID());
+   //schedule the nextAttemptNumber
+   if (failedAttempts.size() > 0) {
+     // huanke
+     LOG.info("@huanke TA_RESCHEDULE"+attempt.getID());
+     eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
+         TaskAttemptEventType.TA_RESCHEDULE));
+   } else {
+     // huanke	
+     LOG.info("@huanke TA_SCHEDULE"+attempt.getID());
+     eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
+         TaskAttemptEventType.TA_SCHEDULE));
+   }
+ }
+  
   //huanke add ignore node here
   private void addAndScheduleAttempt(Avataar avataar, DatanodeInfo ignoreNode) {
     // riza: if map, check lastDatanodeID
@@ -698,6 +730,42 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     return attempt;
   }
 
+  // @Cesar: Add the slow mapper
+  private TaskAttemptImpl addAttempt(Avataar avataar, String slowMapHost) {
+	    TaskAttemptImpl attempt = createAttempt(slowMapHost);
+	    attempt.setAvataar(avataar);
+	    if (LOG.isDebugEnabled()) {
+	      LOG.debug("Created attempt " + attempt.getID());
+	    }
+	    switch (attempts.size()) {
+	      case 0:
+	        attempts = Collections.singletonMap(attempt.getID(),
+	            (TaskAttempt) attempt);
+	        break;
+	        
+	      case 1:
+	        Map<TaskAttemptId, TaskAttempt> newAttempts
+	            = new LinkedHashMap<TaskAttemptId, TaskAttempt>(maxAttempts);
+	        newAttempts.putAll(attempts);
+	        attempts = newAttempts;
+	        attempts.put(attempt.getID(), attempt);
+	        break;
+
+	      default:
+	        attempts.put(attempt.getID(), attempt);
+	        break;
+	    }
+
+	    ++nextAttemptNumber;
+
+	    // riza: note the first attempt
+	    if (this.firstAttemptId == null)
+	      this.firstAttemptId = attempt.getID();
+	    this.lastAttemptId = attempt.getID();
+
+	    return attempt;
+	  }
+  
   @Override
   public void handle(TaskEvent event) {
     if (LOG.isDebugEnabled()) {
@@ -1267,10 +1335,14 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
       // from the map splitInfo. So the bad node might be sent as a location
       // to the RM. But the RM would ignore that just like it would ignore
       // currently pending container requests affinitized to bad nodes.
-      task.addAndScheduleAttempt(Avataar.VIRGIN);
-      // @Cesar: We also blacklist the bad mappers
+      // @Cesar: Save the slow host name
       if(event.getSlowMapper() != null){
+    	  task.addAndScheduleAttempt(Avataar.VIRGIN, event.getSlowMapper());
+    	  // blacklist
     	  task.appContext.getBlacklistedNodes().add(event.getSlowMapper());
+      }
+      else{
+    	  task.addAndScheduleAttempt(Avataar.VIRGIN);
       }
       return TaskStateInternal.SCHEDULED;
     }

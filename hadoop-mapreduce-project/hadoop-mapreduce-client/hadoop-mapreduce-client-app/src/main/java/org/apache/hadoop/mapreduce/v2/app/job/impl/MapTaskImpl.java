@@ -69,6 +69,16 @@ public class MapTaskImpl extends TaskImpl {
         jobToken, credentials, clock, appContext);
   }
 
+  // @Cesar: Added here to include slowMap
+  @Override
+  protected TaskAttemptImpl createAttempt(String slowMapHost) {
+	conf.set("mapreduce.experiment.detected_slow_host", slowMapHost);
+    return new MapTaskAttemptImpl(getID(), nextAttemptNumber,
+        eventHandler, jobFile,
+        partition, taskSplitMetaInfo, conf, taskAttemptListener,
+        jobToken, credentials, clock, appContext);
+  }
+  
   @Override
   public TaskType getType() {
     return TaskType.MAP;
