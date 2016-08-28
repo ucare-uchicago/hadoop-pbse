@@ -797,16 +797,19 @@ abstract public class Task implements Writable, Configurable{
             if (taskDone.get()) {
               break;
             }
-            if (switchHappened)
+            if (switchHappened) {
               LOG.info("riza: skip HB waiting, sendProgress: " + sendProgress);
-            lock.wait(switchHappened ? 1 : proginterval);
-            switchHappened = false;
+              switchHappened = false;
+            } else {
+              lock.wait(proginterval);
+            }
           }
           if (taskDone.get()) {
             break;
           }
 
-          if ((datanodeRetries > 0) && (this.in == null)) {
+          if ((datanodeRetries > 0) &&
+              ((this.in == null && isMapTask()) || (this.out == null && !isMapTask()))) {
             datanodeRetries -= 1;
             LOG.info("riza: datastream still null, wait for next " + datanodeRetries
                     + " retry");
