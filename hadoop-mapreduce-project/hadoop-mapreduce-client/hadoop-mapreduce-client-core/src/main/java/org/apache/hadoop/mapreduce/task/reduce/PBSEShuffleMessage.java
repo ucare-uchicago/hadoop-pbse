@@ -13,7 +13,7 @@ public class PBSEShuffleMessage {
 	  // @Cesar: Create a message to be logged for pbse statistic purposes
 	  public static String createPBSESlowShuffleLogMessage(String mapperHost){
 		  StringBuilder bld = new StringBuilder();
-		  bld.append(PBSE_VERSION).append(":")
+		  bld.append(PBSE_VERSION).append(": ")
 		 .append("{")
 		 .append("\"type\":")
 		 .append("\"").append(MESSAGE_TYPE_SPECULATION).append("\"")
