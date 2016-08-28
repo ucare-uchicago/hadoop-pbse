@@ -816,7 +816,7 @@ abstract public class Task implements Writable, Configurable{
             datanodeRetries = 0;
           }
       
-       // @Cesar: Send progress every 60000 / proginterval seconds for reduce phase
+          // @Cesar: Send progress every 60000 / proginterval seconds for reduce phase
           // or until we have fetch rate reports or reduce pipeline
           int sendReduceProgress = !isMapTask() ? 60000 / proginterval : 0;
           boolean shouldSendShuffleProgress = (taskStatus == null ||
