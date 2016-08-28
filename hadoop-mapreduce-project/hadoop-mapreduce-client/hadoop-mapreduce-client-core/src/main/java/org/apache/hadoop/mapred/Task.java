@@ -903,7 +903,10 @@ abstract public class Task implements Writable, Configurable{
             System.exit(66);
           }
 
-          //riza: set progress flag if there is a datasource change
+          sendProgress = resetProgressFlag();
+          remainingRetries = MAX_RETRIES;
+
+          //riza: set progress flag again if there is a datasource change
           if (this.in != null) {
             if (!lastDatanodeId.equals(this.in.getCurrentDatanode())) {
               LOG.info("riza: switching datanode " + lastDatanodeId + " to "
@@ -927,9 +930,6 @@ abstract public class Task implements Writable, Configurable{
               switchHappened = true;
             }
           }
-
-          sendProgress = resetProgressFlag();
-          remainingRetries = MAX_RETRIES;
         } catch (Throwable t) {
           LOG.info("Communication exception: " + StringUtils.stringifyException(t));
           remainingRetries -= 1;
