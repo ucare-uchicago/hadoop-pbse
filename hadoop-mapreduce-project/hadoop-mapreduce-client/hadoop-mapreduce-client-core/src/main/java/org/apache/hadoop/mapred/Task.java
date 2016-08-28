@@ -797,6 +797,8 @@ abstract public class Task implements Writable, Configurable{
             if (taskDone.get()) {
               break;
             }
+            if (switchHappened)
+              LOG.info("riza: skip HB waiting, sendProgress: " + sendProgress);
             lock.wait(switchHappened ? 1 : proginterval);
             switchHappened = false;
           }
