@@ -17,7 +17,7 @@ SLOWNODE=100
 SLOWHOST="VOID"
 SLOWIP="10.1.1."+str(SLOWNODE+2)
 
-VERSION="2.0"
+VERSION="2.1"
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -26,6 +26,7 @@ tasknode = re.compile('.+ TaskAttempt: \[(.+)\].+ on NM: \[(.+):.+\]')
 dataread = re.compile('.+ reporting datanode (.+)')
 re_date = re.compile("..+[-/]..[-/].. ..:..:..(,...)*")
 re_hb = re.compile(".*statusUpdate.*")
+re_tags_pbse = re.compile(".+ (PBSE-[^ :]+).*")
 re_am_finalct = re.compile(".+Final Stats: PendingReds:(.+) ScheduledMaps:(.+) ScheduledReds:(.+) AssignedMaps:(.+) AssignedReds:(.+) CompletedMaps:(.+) CompletedReds:(.+) ContAlloc:(.+) ContRel:(.+) HostLocal:(.+) RackLocal:(.+)")
 re_am_specadd = re.compile(".+addSpeculativeAttempt.+")
 re_jc_appid = re.compile(".+Submitted application (.+)")
@@ -97,6 +98,7 @@ def getMasterStats(app):
   master["ct_SpecMap"] = 0
   master["ct_SpecRed"] = 0
   master["isInvolveSlownode"] = False
+  master["tags_PBSE"] = []
 
   linect = 0
   for line in f:
@@ -164,6 +166,11 @@ def getMasterStats(app):
       else:
         master["ct_SpecRed"] += 1
 
+    match = re_tags_pbse.match(line)
+    if match:
+      if match.group(1) not in master["tags_PBSE"]:
+        master["tags_PBSE"].append(match.group(1))
+
     linect += 1
 
   master["time_stop"] = getLogTime(line)
@@ -210,6 +217,11 @@ def getContainerStats(app):
             master["slowNodeInvolvedInMap"] = True
          if not ct["ismap"] and SLOWHOST in ct["mapnode"]:
             master["slowNodeInvolvedInReduce"] = True
+
+      match = re_tags_pbse.match(line)
+      if match:
+        if match.group(1) not in master["tags_PBSE"]:
+          master["tags_PBSE"].append(match.group(1))
 
       linect += 1
 
