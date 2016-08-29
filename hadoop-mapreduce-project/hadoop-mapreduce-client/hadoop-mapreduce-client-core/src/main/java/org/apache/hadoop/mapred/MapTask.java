@@ -45,7 +45,6 @@ import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RawLocalFileSystem;
 import org.apache.hadoop.hdfs.client.HdfsDataInputStream;
-import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.SequenceFile;
@@ -2120,13 +2119,24 @@ public class MapTask extends Task {
     }
   }
 
-  // riza: switch datanode with one obtained from splitMetaInfo
+  /**
+   * riza: switch datanode with one obtained from splitMetaInfo.
+   * {@code TaskSplitIndex#getSlowShufflingMap()} from PBSE-Slow-Shuffle-1 is
+   * prioritized over {@code TaskSplitIndex#getLastDatanodeID()}, means that if
+   * both is not empty, it will ignore slow shuffling map rather than
+   * lastDatanodeID, <b>EXCEPT</b> if this task is the first attempt.
+   * 
+   * @param hdis
+   */
   private void switchDatanode(HdfsDataInputStream hdis){
     try{
-      DatanodeID dnId = splitMetaInfo.getLastDatanodeID();
-      LOG.info("was read from " + hdis.getCurrentDatanode().getXferAddr()
+      LOG.info("riza: was read from " + hdis.getCurrentDatanode().getXferAddr()
           + " probing new datanode for pos=" + hdis.getPos());
-      hdis.switchDatanode(dnId);
+
+      if (this.getTaskID().getId() > 0 && !splitMetaInfo.getSlowShufflingMap().isEmpty())
+        hdis.switchDatanode(splitMetaInfo.getSlowShufflingMap());
+      else
+        hdis.switchDatanode(splitMetaInfo.getLastDatanodeID());
     } catch (Exception e){
       LOG.error(e);
     }

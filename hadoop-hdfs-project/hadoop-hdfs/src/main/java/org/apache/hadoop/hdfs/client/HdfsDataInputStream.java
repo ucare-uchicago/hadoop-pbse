@@ -127,21 +127,50 @@ public class HdfsDataInputStream extends FSDataInputStream {
     return ignoredDatanode;
   }
 
+  /**
+   * Ignore datanode by DatanodeID
+   * @param lastDatanodeID
+   */
   private void ignoreDatanode(DatanodeID lastDatanodeID) {
     this.ignoredDatanode = lastDatanodeID;
     getDFSInputStream().ignodeDatanode(lastDatanodeID);
   }
 
   /**
-   * Set datanode to ignore by PBSE0 algorithm and switch datanode if current
+   * Ignore datanode by hostname
+   * @param lastDatanodeID
+   */
+  private void ignoreDatanode(String hostname) {
+    this.ignoredDatanode = getDFSInputStream().ignodeDatanode(hostname);
+  }
+
+  /**
+   * Set datanode to ignore by PBSE-Read-1 algorithm and switch datanode if current
    * datanode is equal {@code ignoredDatanode}
    *
    * @param ignoredDatanode
-   *          datanode to ignore, by PBSE0 algorithm.
+   *          datanode to ignore, by PBSE-Read-1 algorithm.
    * @throws IOException
    */
   public void switchDatanode(DatanodeID ignoredDatanode) throws IOException{
     this.ignoreDatanode(ignoredDatanode);
+    if (ignoredDatanode.equals(this.getCurrentDatanode())) {
+      synchronized(in){
+        this.seekToNewSource(this.getPos());
+      }
+    }
+  }
+
+  /**
+   * Set datanode to ignore by PBSE-Read-1 algorithm and switch datanode if current
+   * datanode is equal {@code hostname}
+   *
+   * @param hostname
+   *          hostname of datanode to ignore, by PBSE-Read-1 algorithm.
+   * @throws IOException
+   */
+  public void switchDatanode(String hostname) throws IOException{
+    this.ignoreDatanode(hostname);
     if (ignoredDatanode.equals(this.getCurrentDatanode())) {
       synchronized(in){
         this.seekToNewSource(this.getPos());

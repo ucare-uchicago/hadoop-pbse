@@ -199,6 +199,7 @@ public class JobSplit {
 
     // riza: get/set for lastDatanodeID
     private DatanodeID lastDatanodeID = DatanodeID.createNullDatanodeID();
+    private String slowShufflingMap = "";
     private String tag = "";
 
     public TaskSplitIndex(){
@@ -218,16 +219,23 @@ public class JobSplit {
       splitLocation = Text.readString(in);
       startOffset = WritableUtils.readVLong(in);
       lastDatanodeID.readFields(in);
+      slowShufflingMap = Text.readString(in);
       tag = Text.readString(in);
     }
     public void write(DataOutput out) throws IOException {
       Text.writeString(out, splitLocation);
       WritableUtils.writeVLong(out, startOffset);
       lastDatanodeID.write(out);
+      Text.writeString(out, slowShufflingMap);
       Text.writeString(out, tag);
     }
 
-    // riza: datanode piggyback
+    /**
+     * riza: set DatanodeID of datanode being read by previous attempt. This
+     * DatanodeID will be ignored by the next task attempt.
+     * 
+     * @param lastDatanodeID
+     */
     public void setLastDatanodeID(DatanodeID lastDatanodeID) {
       if (lastDatanodeID != null)
         this.lastDatanodeID = lastDatanodeID;
@@ -236,6 +244,22 @@ public class JobSplit {
     public DatanodeID getLastDatanodeID() {
       return this.lastDatanodeID;
     }
+
+    /**
+     * riza: set hostname of worker node that detected as slownode by
+     * PBSE-Slow-Shuffle-1. The next attempt will avoid to read from this host.
+     * 
+     * @param hostname
+     */
+    public void setSlowShufflingMap(String hostname) {
+      if (hostname != null)
+        this.slowShufflingMap = hostname;
+    }
+
+    public String getSlowShufflingMap() {
+      return this.slowShufflingMap;
+    }
+
     public void setTag(String tag) {
       if (tag != null)
         this.tag = tag;

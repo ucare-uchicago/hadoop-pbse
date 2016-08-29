@@ -133,6 +133,8 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
 
   // riza: allow memoryfull datanode selection
   private ArrayList<DatanodeInfo> ignoredDatanodes = new ArrayList<DatanodeInfo>();
+  private ArrayList<String> ignoredHost = new ArrayList<String>();
+  private ArrayList<DatanodeInfo> availableNodes = new ArrayList<DatanodeInfo>();
 
   private String datanodesToString(List<DatanodeInfo> list){
     String st = "";
@@ -1007,11 +1009,14 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
   private DNAddrPair getBestNodeDNAddrPair(LocatedBlock block,
       Collection<DatanodeInfo> ignoredNodes) throws IOException {
     DatanodeInfo[] nodes = block.getLocations();
+    availableNodes = new ArrayList<DatanodeInfo>(Arrays.asList(nodes));
+    syncHostToIgnore();
 
     // riza: sort datanode
     if (dfsClient.getConf().isSortDatanode()) {
       Arrays.sort(nodes);
       block.updateCachedStorageInfo();
+      DFSClient.LOG.info("HACK-Datanode-Sorted: datanode choices is sorted");
     }
 
     StorageType[] storageTypes = block.getStorageTypes();
@@ -1869,13 +1874,69 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
     closeCurrentBlockReader();
   }
 
-  // riza: get last accessed datanode
+  /**
+   * riza: get last accessed datanode
+   * @return last known datanode being read
+   */
   public DatanodeID getLastDatanodeID() {
     return currentNode == null? DatanodeID.createNullDatanodeID() : currentNode;
   }
 
+  /**
+   * Ignore reading from datanode by DatanodeID
+   * @param nodeID id of datanode to be ignored
+   */
   public void ignodeDatanode(DatanodeID nodeID) {
-    DFSClient.LOG.info("Ignoring datanode "+nodeID.toString());
+    DFSClient.LOG.info("riza: ignoring datanode "+nodeID.toString());
     ignoredDatanodes.add(new DatanodeInfo(nodeID));
   }
+
+  /**
+   * Ignore reading from datanode by hostname
+   * @param hostname hostname to ignore
+   * @return DatanodeInfo of hostname or null if hostname is not
+   *         found
+   */
+  public DatanodeID ignodeDatanode(String hostname) {
+    ignoredHost.add(hostname);
+    syncHostToIgnore();
+    return getAvailDatanodeInfoByHostname(hostname);
+  }
+  
+  /**
+   * Get available DatanodeInfo by hostname
+   * 
+   * @param hostname
+   * @return DatanodeInfo of hostname or null if hostname is not
+   *         found
+   */
+  private DatanodeInfo getAvailDatanodeInfoByHostname(String hostname) {
+    for (DatanodeInfo node : availableNodes) {
+      if (node.getHostName().equals(hostname)) {
+        return node;
+      }
+    }
+    return null;
+  }
+  
+  /**
+   * Translate {@code ignoredHost} to {@code ignoredDatanodes}. Hostname will be
+   * translated into {@code DatanodeInfo} to ignore <b>ONLY IF</b>
+   * {@code availableNodes} has been discovered and the hostname is within it.
+   */
+  private void syncHostToIgnore() {
+    if (availableNodes.size() > 0) {
+      for (String hostname : ignoredHost) {
+        DatanodeInfo toIgnore = getAvailDatanodeInfoByHostname(hostname);
+        if (toIgnore != null && !ignoredDatanodes.contains(toIgnore)) {
+          ignoredDatanodes.add(toIgnore);
+          DFSClient.LOG.debug("riza: ignoring host " + hostname
+              + " with DatanodeInfo " + toIgnore);
+        }
+      }
+    } else {
+      DFSClient.LOG.debug("riza: availableNodes is empty, not syncing ignored host");
+    }
+  }
+
 }
