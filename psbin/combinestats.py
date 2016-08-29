@@ -144,7 +144,7 @@ def combineGraphs(runs,selector,iscdf, xlim = -1):
     if (NORMALIZE):
       X = X.astype(float) / X.max()
 #    plt.plot(X, Y, data["conf"]["style_line"], label=runid, color=color[cont])
-    plt.plot(X, Y, data["conf"]["style_line"], label=runid, linewidth=int(data["conf"]["linewidth"]))
+    plt.plot(X, Y, data["conf"]["style_line"], label=runid, linewidth=float(data["conf"]["linewidth"]))
     cont = cont + 1
     if maxval < X.max():
       maxval = X.max()

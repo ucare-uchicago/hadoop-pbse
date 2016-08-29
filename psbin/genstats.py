@@ -571,7 +571,7 @@ def saveAppsStats(apps):
     toprint = {}
     toprint["conf"] = {
       "version": VERSION,
-      "style_line":"r--",
+      "style_line":"g-",
       "linewidth": 2
     }
     toprint["apps"] = apps
