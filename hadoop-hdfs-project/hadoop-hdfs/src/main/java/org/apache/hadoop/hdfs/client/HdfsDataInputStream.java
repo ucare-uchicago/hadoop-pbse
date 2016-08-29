@@ -171,9 +171,11 @@ public class HdfsDataInputStream extends FSDataInputStream {
    */
   public void switchDatanode(String hostname) throws IOException{
     this.ignoreDatanode(hostname);
-    if (ignoredDatanode.equals(this.getCurrentDatanode())) {
-      synchronized(in){
-        this.seekToNewSource(this.getPos());
+    if (this.ignoredDatanode != null) {
+      if (this.ignoredDatanode.equals(this.getCurrentDatanode())) {
+        synchronized (in) {
+          this.seekToNewSource(this.getPos());
+        }
       }
     }
   }

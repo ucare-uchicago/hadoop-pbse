@@ -2133,12 +2133,15 @@ public class MapTask extends Task {
       LOG.info("riza: was read from " + hdis.getCurrentDatanode().getXferAddr()
           + " probing new datanode for pos=" + hdis.getPos());
 
-      if (this.getTaskID().getId() > 0 && !splitMetaInfo.getSlowShufflingMap().isEmpty())
+      if (this.getTaskID().getId() > 0 && !splitMetaInfo.getSlowShufflingMap().isEmpty()) {
+        LOG.debug("riza: ignoring datanode by hostname");
         hdis.switchDatanode(splitMetaInfo.getSlowShufflingMap());
-      else
+      } else {
+        LOG.debug("riza: ignoring datanode by DatanodeID");
         hdis.switchDatanode(splitMetaInfo.getLastDatanodeID());
+      }
     } catch (Exception e){
-      LOG.error(e);
+      LOG.error(e.getStackTrace());
     }
   }
 }
