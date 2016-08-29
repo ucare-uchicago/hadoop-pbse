@@ -23,6 +23,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -103,6 +104,8 @@ public class DefaultSpeculator extends AbstractService implements
   private boolean fetchRateSpeculationEnabled = false;
   private double fetchRateSpeculationSlowNodeThresshold = 0.0;
   private double fetchRateSpeculationSlowProgressThresshold = 0.0;
+  // @Cesar: I will keep events in here
+  private Map<ShuffleHost, List<ShuffleRateInfo>> fetchRateUpdateEvents = new HashMap<>();
   
   // Regular heartbeat from tasks is every 3 secs. So if we don't get a
   // heartbeat in 9 secs (3 heartbeats), we simulate a heartbeat with no change
@@ -448,72 +451,87 @@ public class DefaultSpeculator extends AbstractService implements
   
   // @Cesar: Check the table, return num speculations
   private int checkFetchRateTable(){
-	  // @Cesar: This will be the return value
-	  int numSpeculatedMapTasks = 0;
-	  // @Cesar: This is the class that selects wich nodes
-	  // are slow
-	  HarmonicAverageSlowShuffleEstimator estimator = new HarmonicAverageSlowShuffleEstimator();
-	  // @Cesar: In here, we have to check the shuffle rate for
-	  // one mapper, and choose if we are going to speculate 
-	  // or not
-	  // @Cesar: So, iterate the fetch rate table
-	  LOG.info("@Cesar: Starting fetch rate speculation check");
-	  Map<ShuffleHost, Set<ShuffleRateInfo>> allReports = shuffleTable.getReports();
-	  // @Cesar: Done released object, now go
-	  // Lets iterate
-	  if(allReports != null){
-		  // @Cesar: Mark this hosts to be checked to delete if no entries
-		  LOG.info("@Cesar: We have " + allReports.size() + " map hosts to check");
-		  Iterator<Entry<ShuffleHost, Set<ShuffleRateInfo>>> fetchRateTableIterator = allReports.entrySet().iterator();
-		  while(fetchRateTableIterator.hasNext()){
-			  Entry<ShuffleHost, Set<ShuffleRateInfo>> nextEntry = fetchRateTableIterator.next();
-			  // @Cesar: Do we have enough reports to speculate something??
-			  if(!shuffleTable.canSpeculate(nextEntry.getKey().getMapHost())){
-				  // @Cesar: Continue loop
-				  LOG.info("@Cesar: No speculation possible for host " + nextEntry.getKey().getMapHost() + 
-						  	" since it does not have enough reports");
-				  continue;
-			  }
-			  // @Cesar: So, in this row we have one map host.
-			  // This map host can have multiple map task associated, so if we detect
-			  // that this node is slow, then we will relaunch all tasks in here
-			  if(estimator.isSlow(nextEntry.getKey().getMapHost(), 
-					  			  nextEntry.getValue(), 
-					  			  fetchRateSpeculationSlowNodeThresshold, 
-					  			  fetchRateSpeculationSlowProgressThresshold)){
-				  // @Cesar: So, this node is slow. Get all its map tasks
-				  Set<TaskAttemptId> allMapTasksInHost = shuffleTable.getAllSuccessfullMapTaskAttemptsFromHost(nextEntry.getKey().getMapHost());
-				  LOG.info("@Cesar: " + allMapTasksInHost.size() + " map tasks will be speculated at " + nextEntry.getKey());
-				  Iterator<TaskAttemptId> mapIterator = allMapTasksInHost.iterator();
-				  while(mapIterator.hasNext()){
-					  TaskAttemptId next = mapIterator.next(); 
-					  if(!shuffleTable.wasSpeculated(next.getTaskId())){
-						  // @Cesar: Only speculate if i havent done it already
-						  LOG.info("@Cesar: Relaunching attempt " + next + " of task " + next.getTaskId() + 
-								  	" at host " + nextEntry.getKey().getMapHost());
-						  relaunchTask(next.getTaskId(), nextEntry.getKey().getMapHost(), next);
-						  // @Cesar: also, add to the list of tasks that may have been speculated already
-						  shuffleTable.bannMapTask(next.getTaskId());
-						  // @Cesar: Mark this attempt as relaunched (killed)
-						  shuffleTable.unsucceedTaskAtHost(nextEntry.getKey().getMapHost(), next.getTaskId());
-						  shuffleTable.bannMapTaskAttempt(next);
-						  // @Cesar: This is the real number of speculated map tasks
-						  ++numSpeculatedMapTasks;
-					  }
-					  else{
-						  LOG.info("@Cesar: Not going to relaunch " + next + " since task " + next.getTaskId() + " was speculated already");
-					  }
-					  // @Cesar: Clean host
-					  shuffleTable.cleanHost(nextEntry.getKey().getMapHost());
+	  try{
+		  // @Cesar: Start by pulling all reports
+		  synchronized(fetchRateUpdateEvents){ 
+			  for(Entry<ShuffleHost, List<ShuffleRateInfo>> events : fetchRateUpdateEvents.entrySet()){
+				  for(ShuffleRateInfo rate : events.getValue()){
+					  shuffleTable.reportRate(events.getKey(), rate);
 				  }
 			  }
-			  else{
-				  LOG.info("Estimator established that " + nextEntry.getKey().getMapHost() + " is not slow, so no speculations for this host");
+			  fetchRateUpdateEvents.clear();
+		  }
+		  // @Cesar: This will be the return value
+		  int numSpeculatedMapTasks = 0;
+		  // @Cesar: This is the class that selects wich nodes
+		  // are slow
+		  HarmonicAverageSlowShuffleEstimator estimator = new HarmonicAverageSlowShuffleEstimator();
+		  // @Cesar: In here, we have to check the shuffle rate for
+		  // one mapper, and choose if we are going to speculate 
+		  // or not
+		  // @Cesar: So, iterate the fetch rate table
+		  LOG.info("@Cesar: Starting fetch rate speculation check");
+		  Map<ShuffleHost, Set<ShuffleRateInfo>> allReports = shuffleTable.getReports();
+		  // @Cesar: Done released object, now go
+		  // Lets iterate
+		  if(allReports != null){
+			  // @Cesar: Mark this hosts to be checked to delete if no entries
+			  LOG.info("@Cesar: We have " + allReports.size() + " map hosts to check");
+			  Iterator<Entry<ShuffleHost, Set<ShuffleRateInfo>>> fetchRateTableIterator = allReports.entrySet().iterator();
+			  while(fetchRateTableIterator.hasNext()){
+				  Entry<ShuffleHost, Set<ShuffleRateInfo>> nextEntry = fetchRateTableIterator.next();
+				  // @Cesar: Do we have enough reports to speculate something??
+				  if(!shuffleTable.canSpeculate(nextEntry.getKey().getMapHost())){
+					  // @Cesar: Continue loop
+					  LOG.info("@Cesar: No speculation possible for host " + nextEntry.getKey().getMapHost() + 
+							  	" since it does not have enough reports");
+					  continue;
+				  }
+				  // @Cesar: So, in this row we have one map host.
+				  // This map host can have multiple map task associated, so if we detect
+				  // that this node is slow, then we will relaunch all tasks in here
+				  if(estimator.isSlow(nextEntry.getKey().getMapHost(), 
+						  			  nextEntry.getValue(), 
+						  			  fetchRateSpeculationSlowNodeThresshold, 
+						  			  fetchRateSpeculationSlowProgressThresshold)){
+					  // @Cesar: So, this node is slow. Get all its map tasks
+					  Set<TaskAttemptId> allMapTasksInHost = shuffleTable.getAllSuccessfullMapTaskAttemptsFromHost(nextEntry.getKey().getMapHost());
+					  LOG.info("@Cesar: " + allMapTasksInHost.size() + " map tasks will be speculated at " + nextEntry.getKey());
+					  Iterator<TaskAttemptId> mapIterator = allMapTasksInHost.iterator();
+					  while(mapIterator.hasNext()){
+						  TaskAttemptId next = mapIterator.next(); 
+						  if(!shuffleTable.wasSpeculated(next.getTaskId())){
+							  // @Cesar: Only speculate if i havent done it already
+							  LOG.info("@Cesar: Relaunching attempt " + next + " of task " + next.getTaskId() + 
+									  	" at host " + nextEntry.getKey().getMapHost());
+							  relaunchTask(next.getTaskId(), nextEntry.getKey().getMapHost(), next);
+							  // @Cesar: also, add to the list of tasks that may have been speculated already
+							  shuffleTable.bannMapTask(next.getTaskId());
+							  // @Cesar: Mark this attempt as relaunched (killed)
+							  shuffleTable.unsucceedTaskAtHost(nextEntry.getKey().getMapHost(), next.getTaskId());
+							  shuffleTable.bannMapTaskAttempt(next);
+							  // @Cesar: This is the real number of speculated map tasks
+							  ++numSpeculatedMapTasks;
+						  }
+						  else{
+							  LOG.info("@Cesar: Not going to relaunch " + next + " since task " + next.getTaskId() + " was speculated already");
+						  }
+						  // @Cesar: Clean host
+						  shuffleTable.cleanHost(nextEntry.getKey().getMapHost());
+					  }
+				  }
+				  else{
+					  LOG.info("Estimator established that " + nextEntry.getKey().getMapHost() + " is not slow, so no speculations for this host");
+				  }
 			  }
 		  }
+		  LOG.info("@Cesar: Finished fetch rate speculation check");
+		  return numSpeculatedMapTasks;
 	  }
-	  LOG.info("@Cesar: Finished fetch rate speculation check");
-	  return numSpeculatedMapTasks;
+	  catch(Exception exc){
+		  LOG.error("@Cesar: Catching dangerous exception: " + exc.getMessage() + " : " + exc.getCause());
+		  return 0;
+	  }
   }
   
   @Override
@@ -621,9 +639,20 @@ public class DefaultSpeculator extends AbstractService implements
     			info.setTotalBytes(reportEntry.getValue().getTotalBytes());
     			info.setShuffledBytes(reportEntry.getValue().getBytes());
     			info.setUnit(reportEntry.getValue().getTransferRateUnit().toString());
-    			shuffleTable.reportRate(new ShuffleHost(mapHost), info);
+    			// @Cesar: Lets save this report in queue
+    			synchronized(fetchRateUpdateEvents){
+    				if(fetchRateUpdateEvents.containsKey(new ShuffleHost(mapHost))){
+    					fetchRateUpdateEvents.get(new ShuffleHost(mapHost)).add(info);
+    				}
+    				else{
+    					List<ShuffleRateInfo> rates = new ArrayList<>();
+    					rates.add(info);
+    					fetchRateUpdateEvents.put(new ShuffleHost(mapHost), rates);
+    				}
+    				
+    			}
     			// @Cesar: Done
-    			LOG.info("@Cesar: Added report with " + info);
+    			LOG.info("@Cesar: Stored report with " + info);
     		}
     	}
     	else{

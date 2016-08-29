@@ -110,7 +110,7 @@ public class ShuffleTable {
 		// @Cesar: Is the map task banned?
 		if(info.getMapTaskAttempId() != null && wasRelaunched(info.getMapTaskAttempId()) == true){
 			if(LOG.isDebugEnabled()){
-				LOG.debug("@Cesar: Report for reduce task attempt " + info.getReduceTaskAttempId() + " and map task attempt " + 
+				LOG.info("@Cesar: Report for reduce task attempt " + info.getReduceTaskAttempId() + " and map task attempt " + 
 						 info.getMapTaskAttempId() + " [maphost=" + info.getMapHost() + ", reducehost=" + info.getReduceHost() + 
 						 "] wont be added since map task attempt was already relaunched");
 			}
