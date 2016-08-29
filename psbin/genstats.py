@@ -17,7 +17,7 @@ SLOWNODE=100
 SLOWHOST="VOID"
 SLOWIP="10.1.1."+str(SLOWNODE+2)
 
-VERSION="2.1"
+VERSION="2.2"
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -33,8 +33,11 @@ re_jc_appid = re.compile(".+Submitted application (.+)")
 re_jc_startrun = re.compile(".+Job .+ running in uber mode.+")
 re_jc_stoprun = re.compile(".+Job .+ completed successfully")
 re_jc_duration = re.compile("The job took (.+) seconds.")
-re_shffle_duration = re.compile("(.+): Shuffle time for this reducer is (.+) nanoseconds")
+re_shffle_duration = re.compile(".+ PBSE_SHUFFLE:\{(.+)\:(.+),(.+)\:(.+)\}")
+lookForShuffleTime = "\"SHUFFLE_TIME\""
 re_container_finished = re.compile(".+Task \'(.+)\' done\.")
+re_app_master_node = re.compile(".+Instantiated MRClientService at (.+)/(.+)")
+re_relauch_attempt = re.compile(".+Relaunching attempt (.+) of task (.+) at host (.+)")
 
 def getTaskId(ct):
   att = ct["attempt"]
@@ -99,12 +102,22 @@ def getMasterStats(app):
   master["ct_SpecRed"] = 0
   master["isInvolveSlownode"] = False
   master["tags_PBSE"] = []
+  # location
+  master["location"] = ""
+  # killed by slow shuffle
+  master["killedBySlowShuffle"] = []
 
   linect = 0
   for line in f:
     if linect == 0:
       master["time_start"] = getLogTime(line)
-
+    # get the master node
+    match = re_app_master_node.match(line)
+    if match:
+      master["location"] = match.group(1); 
+    match = re_relauch_attempt.match(line)
+    if match:
+      master["killedBySlowShuffle"].append(match.group(1))
     match = cassign.match(line)
     if match:
       ct = match.group(1)
@@ -239,8 +252,8 @@ def getContainerStats(app):
     fmatch = 0
     for line in f:
       match = re_shffle_duration.match(line)
-      if match:
-          shuffleTime = shuffleTime + int(match.group(2))
+      if match and match.group(2) == lookForShuffleTime:
+          shuffleTime = shuffleTime + int(match.group(4))
     ct['shuffleTime'] = (shuffleTime / 1000000000)
 
 
