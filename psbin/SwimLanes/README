@@ -1,0 +1,4 @@
+version 1.0
+
+USAGE python Swimlanes.py <path to json file> <slow node name>
+example: python Swimlanes.py data.jon pc778

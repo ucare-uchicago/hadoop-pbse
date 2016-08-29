@@ -30,6 +30,7 @@ class JsonParser:
          job.jobId = appName[-3:]
          job.jobStart = app['master']['time_start']
          job.containersKilledBySlowShuffle = app['master']['killedBySlowShuffle']
+         job.slowShuffleDetectionTime = app['master']['slowShuffleDetections']
          # get time for each container
          containers = []
          for ctName, container in app['containers'].items():

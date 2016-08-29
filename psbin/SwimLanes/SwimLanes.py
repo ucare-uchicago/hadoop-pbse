@@ -31,6 +31,7 @@ if __name__ == "__main__":
     print "Found " + str(len(allJobs)) + " jobs to analyze"
     # sort jobs by app id
     jobsSortedById = sorted(allJobs, key=lambda x: int(x.jobId))
+    jobCount = 0
     # now, iterate jobs
     for job in jobsSortedById:
       containersSortedByStartDate = sorted(job.containers, key=lambda x: datetime.datetime.strptime(x.startDate, "%Y-%m-%d %H:%M:%S.%f"))
@@ -43,6 +44,8 @@ if __name__ == "__main__":
         fig = plt.figure(figsize=(20, 16))
       else:
         fig = plt.figure(figsize=(12, 10))
+      # ids killed by slow shuffle
+      killedBySlowShuffle = []
       # so, first container is the one that starts everything
       timeZero = ''
       for container in containersSortedByStartDate:
@@ -70,6 +73,7 @@ if __name__ == "__main__":
           # maps are special, since they can be killed by slow shuffle
           if container.isMap == True and container.isSuccessful == True and (container.wholeAttemptId in job.containersKilledBySlowShuffle):
             plt.plot(allX, allY, color='green', linestyle='-', linewidth=2.0)
+            killedBySlowShuffle.append(container.attemptId)
           elif container.isMap == True and container.isSuccessful == True and (container.wholeAttemptId not in job.containersKilledBySlowShuffle):
             plt.plot(allX, allY, color='blue', linestyle='-', linewidth=2.0)
           elif container.isMap == True and container.isSuccessful == False: 
@@ -82,6 +86,19 @@ if __name__ == "__main__":
             plt.annotate(container.attemptId, xy=(allX[-1] + 1, allY[-1]), xytext=(allX[-1] + 1, allY[-1]), bbox=dict(facecolor='red', alpha=0.5))
           else:
             plt.annotate(container.attemptId, xy=(allX[-1] + 1, allY[-1]), xytext=(allX[-1] + 1, allY[-1]))
+          # in here, we add the slow shuffle detection point
+          containerId = container.attemptId.split('_')[0] + "_" + container.attemptId.split('_')[1]
+          attemptCount = int(container.attemptId.split('_')[2])
+          for killedId in killedBySlowShuffle:
+            killedContainerId = killedId.split('_')[0] + "_" + killedId.split('_')[1]
+            killedAttemptCount = int(killedId.split('_')[2])
+            if containerId == killedContainerId and  attemptCount > killedAttemptCount and container.isSuccessful == True:
+              # take zero time
+              index = killedBySlowShuffle.index(killedId)
+              killedTime = job.slowShuffleDetectionTime[index]
+              # so, we add a point at that y coordinate
+              detectionTime = (jsonParser.strToDate(killedTime) - jsonParser.strToDate(job.jobStart)).total_seconds()
+              plt.plot(int(detectionTime), allY[-1], color='green', linestyle='dotted', linewidth=1.0, marker='o')
       # create figure
       setFigureLabel(fig,"Swimlane","job = " + str(job.jobId) + "(" + str(len(containersSortedByStartDate)) + " containers, duration =" + str(job.jobDurationAM) + " secs)",\
                      "Time (seconds)","")
@@ -89,6 +106,7 @@ if __name__ == "__main__":
       figs.append(fig)
       # done
       plt.close() 
+      jobCount = jobCount + 1
     # done, now print swimlanes  
     with PdfPages('swimLanes.pdf') as pdf:
       ct = 0

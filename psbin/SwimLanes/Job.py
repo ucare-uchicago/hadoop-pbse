@@ -9,3 +9,5 @@ class Job:
    containers = []
    # killed by slowShuffle
    containersKilledBySlowShuffle = []
+   # slow shuffle detection time
+   slowShuffleDetectionTime = []
