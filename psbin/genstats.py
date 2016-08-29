@@ -106,6 +106,8 @@ def getMasterStats(app):
   master["location"] = ""
   # killed by slow shuffle
   master["killedBySlowShuffle"] = []
+  # time where the kill was issued
+  master["slowShuffleDetections"] = []
 
   linect = 0
   for line in f:
@@ -118,6 +120,7 @@ def getMasterStats(app):
     match = re_relauch_attempt.match(line)
     if match:
       master["killedBySlowShuffle"].append(match.group(1))
+      master["slowShuffleDetections"].append(getLogTime(line))
     match = cassign.match(line)
     if match:
       ct = match.group(1)
