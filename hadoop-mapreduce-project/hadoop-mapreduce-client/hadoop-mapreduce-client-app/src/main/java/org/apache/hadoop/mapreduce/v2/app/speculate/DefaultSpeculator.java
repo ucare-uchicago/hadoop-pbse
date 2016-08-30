@@ -149,6 +149,7 @@ public class DefaultSpeculator extends AbstractService implements
   
   // riza
   private int maxSpeculationDelay = 0;
+  private boolean everDelaySpeculation = false;
 
   public DefaultSpeculator(Configuration conf, AppContext context) {
     this(conf, context, context.getClock());
@@ -228,6 +229,7 @@ public class DefaultSpeculator extends AbstractService implements
     this.PBSEenabled=conf.getBoolean("pbse.enable.for.reduce.pipeline", false);
     // riza
     this.maxSpeculationDelay = conf.getInt("mapreduce.policy.faread.maximum_speculation_delay", 0);
+    this.everDelaySpeculation = false;
   }
   
 /*   *************************************************************    */
@@ -820,6 +822,9 @@ public class DefaultSpeculator extends AbstractService implements
             (MapTaskAttemptImpl) taskAttempt : null;
         if (mapTaskAttempt != null) {
           if (maxSpeculationDelay > 0 && DatanodeID.nullDatanodeID.equals(mapTaskAttempt.getLastDatanodeID())) {
+            if (!everDelaySpeculation)
+              LOG.info("PBSE-Read-2: " + runningTaskAttemptID + " speculation delayed");
+            everDelaySpeculation = true;
             maxSpeculationDelay--;
             LOG.debug(runningTaskAttemptID + " has not report its datanode, speculator return TOO_NEW, "
               + maxSpeculationDelay + " speculation delay left");
