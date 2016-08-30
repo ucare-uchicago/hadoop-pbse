@@ -601,7 +601,10 @@ def saveAppsStats(apps):
     toprint["conf"] = {
       "version": VERSION,
       "style_line":"g-",
-      "linewidth": 2
+      "linewidth": 2,
+      "slownode": SLOWNODE,
+      "slowhost": SLOWHOST,
+      "slowip": SLOWIP
     }
     toprint["apps"] = apps
     json.dump(toprint, fp, indent=2, sort_keys=True)
