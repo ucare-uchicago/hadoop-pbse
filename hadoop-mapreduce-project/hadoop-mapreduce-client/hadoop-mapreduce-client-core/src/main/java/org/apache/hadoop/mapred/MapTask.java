@@ -369,22 +369,22 @@ public class MapTask extends Task {
    FSDataInputStream inFile = fs.open(file);
 
    // riza: insert ignored datanode to HdfsDataInputStream at beginning
-   try{
-     if (conf.getBoolean("mapreduce.policy.faread", false)){
-       LOG.info("running policy: mapreduce.policy.faread");
-       if (inFile instanceof HdfsDataInputStream) {
-         switchDatanode((HdfsDataInputStream) inFile);
-       } else {
-         LOG.warn("input stream is not instance of HdfsDataInputStream: "
-             + inFile.toString());
-       }
-     } else {
-       LOG.info("no custom policy being run");
-     }
-   }catch (Exception e){
-     LOG.error(e.getMessage());
-     LOG.error(e.getStackTrace());
-   }
+//   try{
+//     if (conf.getBoolean("mapreduce.policy.faread", false)){
+//       LOG.info("running policy: mapreduce.policy.faread");
+//       if (inFile instanceof HdfsDataInputStream) {
+//         switchDatanode((HdfsDataInputStream) inFile);
+//       } else {
+//         LOG.warn("input stream is not instance of HdfsDataInputStream: "
+//             + inFile.toString());
+//       }
+//     } else {
+//       LOG.info("no custom policy being run");
+//     }
+//   }catch (Exception e){
+//     LOG.error(e.getMessage());
+//     LOG.error(e.getStackTrace());
+//   }
 
    inFile.seek(offset);
    String className = StringInterner.weakIntern(Text.readString(inFile));
@@ -478,6 +478,7 @@ public class MapTask extends Task {
 
           if ((inputS instanceof HdfsDataInputStream)
               && conf.getBoolean("mapreduce.policy.faread", false)) {
+            LOG.info("running policy: mapreduce.policy.faread");
             switchDatanode((HdfsDataInputStream) inputS);
           } else {
             LOG.warn("no faread or input stream is not instance of HdfsDataInputStream "
@@ -867,6 +868,7 @@ public class MapTask extends Task {
 
           if ((inputS instanceof HdfsDataInputStream)
               && conf.getBoolean("mapreduce.policy.faread", false)){
+            LOG.info("running policy: mapreduce.policy.faread");
             switchDatanode((HdfsDataInputStream) inputS);
           } else {
             LOG.warn("input stream is not instance of HdfsDataInputStream "
