@@ -891,7 +891,7 @@ public class DefaultSpeculator extends AbstractService implements
   protected void addSpeculativeAttempt(TaskId taskID) {
 	// @Cesar: Do not re espculate if this have been launched by slow shuffle
 	synchronized(shuffleTable){
-	 if(shuffleTable.wasSpeculated(taskID)){  
+	 if(shuffleTable.wasSpeculated(taskID) == false){  
 	    LOG.info
 	        ("DefaultSpeculator.addSpeculativeAttempt -- we are speculating " + taskID);
 	    eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ADD_SPEC_ATTEMPT));
