@@ -17,7 +17,7 @@ SLOWNODE=100
 SLOWHOST="VOID"
 SLOWIP="10.1.1."+str(SLOWNODE+2)
 
-VERSION="2.2"
+VERSION="2.3"
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -101,6 +101,9 @@ def getMasterStats(app):
   master["ct_SpecMap"] = 0
   master["ct_SpecRed"] = 0
   master["isInvolveSlownode"] = False
+  master["slowNodeInvolvedInDataread"] = False
+  master["slowNodeInvolvedInMap"] = False
+  master["slowNodeInvolvedInReduce"] = False
   master["tags_PBSE"] = []
   # location
   master["location"] = ""
@@ -139,27 +142,34 @@ def getMasterStats(app):
           "containerid": ct,
           "attempt": att,
           "mapnode": "",
+          "reducenode": "",
           "datanode": [],
           "lastDatanode": "NONE",
           "ismap" : ("_m_" in att),
-		  "shuffleTime": 0.0,
+          "shuffleTime": 0.0,
           "isSuccessful": False,
           "isSlowMapnode": False,
-          "isSlowDatanode": False
+          "isSlowDatanode": False,
+          "isSlowReducenode": False
         }
         app["containers"][ct] = container
 
     match = tasknode.match(line)
     if match:
       att = match.group(1)
-      mapnode = match.group(2)
-      #print att, mapnode
+      workernode = match.group(2)
       for cname,ctr in app["containers"].items():
         if ctr["attempt"] == att:
-          ctr["mapnode"] = mapnode
-          if mapnode.startswith(SLOWHOST):
-            ctr["isSlowMapnode"] = True
-            master["isInvolveSlownode"] = True
+          if ctr["ismap"]:
+            ctr["mapnode"] = workernode
+            if workernode.startswith(SLOWHOST):
+              ctr["isSlowMapnode"] = True
+              master["slowNodeInvolvedInMap"] = True
+          else:
+            ctr["reducenode"] = workernode
+            if workernode.startswith(SLOWHOST):
+              ctr["isSlowReducenode"] = True
+              master["slowNodeInvolvedInReduce"] = True
 
     match = re_am_finalct.match(line)
     if match:
@@ -197,9 +207,7 @@ def getContainerStats(app):
   appname = app["appid"]
   master = app["master"]
   # set flags to know if slow node is involded
-  master["slowNodeInvolvedInDataread"] = False
-  master["slowNodeInvolvedInMap"] = False
-  master["slowNodeInvolvedInReduce"] = False
+
   for ctname,ct in app["containers"].items():
     syslog = os.path.join("yarn/userlogs", \
                             appname,ctname,"syslog")
@@ -222,7 +230,6 @@ def getContainerStats(app):
         if datanode.startswith(SLOWHOST):
             ct["isSlowDatanode"] = True
             master["slowNodeInvolvedInDataread"] = True
-            master["isInvolveSlownode"] = True
 
       if re_hb.match(line):
         ct["status_update"].append(getLogTime(line))
@@ -231,7 +238,7 @@ def getContainerStats(app):
          ct["isSuccessful"] = True
          if ct["ismap"] and SLOWHOST in ct["mapnode"]:
             master["slowNodeInvolvedInMap"] = True
-         if not ct["ismap"] and SLOWHOST in ct["mapnode"]:
+         if not ct["ismap"] and SLOWHOST in ct["reducenode"]:
             master["slowNodeInvolvedInReduce"] = True
 
       match = re_tags_pbse.match(line)
@@ -307,13 +314,15 @@ def getTopology():
               "containerid": subdirname,
               "attempt": "",
               "mapnode": "",
+              "reducenode": "",
               "datanode": [],
               "lastDatanode": "NONE",
               "ismap": False,
               "shuffleTime": 0.0,
               "isSuccessful": False,
               "isSlowMapnode": False,
-              "isSlowDatanode": False
+              "isSlowDatanode": False,
+              "isSlowReducenode": False
               }
             apps[theroot]["containers"][subdirname] = container
           ctcount += 1
@@ -326,6 +335,10 @@ def getTopology():
   for appname,app in apps.items():
     try:
        getContainerStats(app)
+       master = app["master"]
+       master["isInvolveSlownode"] = master["slowNodeInvolvedInDataread"] \
+         or master["slowNodeInvolvedInMap"] \
+         or master["slowNodeInvolvedInReduce"]
     except Exception as e:
        print 'One container failed with : ' + str(e)
   getJobClientStats(apps)
@@ -359,7 +372,7 @@ def printGraphs(apps):
   MAPS = [a for a in TASKS if (a["ismap"])]
   REDUCES = [a for a in TASKS if (not a["ismap"])]
   # SLOW_MAPS = [a for a in TASKS if (a["ismap"]) and (SLOWHOST in a["mapnode"])]
-  # SLOW_REDUCES = [a for a in TASKS if (not a["ismap"]) and (SLOWHOST in a["mapnode"])]
+  # SLOW_REDUCES = [a for a in TASKS if (not a["ismap"]) and (SLOWHOST in a["reducenode"])]
   AM = [a["master"] for aname,a in apps.items()]
   JC = [a["jobclient"] for aname,a in apps.items() if ("jobclient" in a)]
   ALL_JOBS = [a for aname,a in apps.items()]
