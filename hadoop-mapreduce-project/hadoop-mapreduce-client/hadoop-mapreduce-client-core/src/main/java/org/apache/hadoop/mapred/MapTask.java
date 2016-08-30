@@ -24,6 +24,8 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
@@ -2141,7 +2143,10 @@ public class MapTask extends Task {
         hdis.switchDatanode(splitMetaInfo.getLastDatanodeID());
       }
     } catch (Exception e){
-      LOG.error(e.getStackTrace());
+      StringWriter sw = new StringWriter();
+      PrintWriter pw = new PrintWriter(sw);
+      e.printStackTrace(pw);
+      LOG.error(sw.toString());
     }
   }
 }

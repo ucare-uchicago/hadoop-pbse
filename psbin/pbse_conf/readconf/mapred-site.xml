@@ -112,8 +112,8 @@
 
   <property>
     <name>mapreduce.policy.faread.maximum_speculation_delay</name>
-    <value>20</value>
-    <description>UCARE: maximum time to delay speculation for task that has not send status update</description>
+    <value>60000</value>
+    <description>UCARE: maximum time (ms) to delay speculation for task that has not send status update</description>
   </property>
 
   <property>

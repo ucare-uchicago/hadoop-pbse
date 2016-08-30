@@ -228,7 +228,7 @@ public class DefaultSpeculator extends AbstractService implements
     // huanke
     this.PBSEenabled=conf.getBoolean("pbse.enable.for.reduce.pipeline", false);
     // riza
-    this.maxSpeculationDelay = conf.getInt("mapreduce.policy.faread.maximum_speculation_delay", 0);
+    this.maxSpeculationDelay = conf.getInt("mapreduce.policy.faread.maximum_speculation_delay", 0) / (int) this.soonestRetryAfterNoSpeculate;
     this.everDelaySpeculation = false;
   }
   
@@ -826,7 +826,7 @@ public class DefaultSpeculator extends AbstractService implements
               LOG.info("PBSE-Read-2: " + runningTaskAttemptID + " speculation delayed");
             everDelaySpeculation = true;
             maxSpeculationDelay--;
-            LOG.debug(runningTaskAttemptID + " has not report its datanode, speculator return TOO_NEW, "
+            LOG.info(runningTaskAttemptID + " has not report its datanode, speculator return TOO_NEW, "
               + maxSpeculationDelay + " speculation delay left");
             return TOO_NEW;
           }
