@@ -70,7 +70,7 @@
   <property>
     <name>mapreduce.policy.faread.sort.datanode</name>
     <value>false</value>
-    <description>UCARE: switch to always pick the least datanode</description>
+    <description>UCARE: HACK to always pick the least datanode</description>
   </property>
 
   <property>
@@ -89,6 +89,12 @@
     <name>mapreduce.policy.faread.avoid_single_assignpath</name>
     <value>false</value>
     <description>UCARE: rare single read path mechanishm detection</description>
+  </property>
+
+  <property>
+    <name>mapreduce.policy.faread.maximum_speculation_delay</name>
+    <value>0</value>
+    <description>UCARE: maximum time to delay speculation for task that has not send status update</description>
   </property>
 
   <property>

@@ -2106,6 +2106,7 @@ public abstract class TaskAttemptImpl implements
     result.taskState = TaskAttemptState.NEW;
     Counters counters = EMPTY_COUNTERS;
     result.counters = counters;
+    result.lastDatanodeID = DatanodeID.createNullDatanodeID();
   }
 
   // riza: check if node is in slow list

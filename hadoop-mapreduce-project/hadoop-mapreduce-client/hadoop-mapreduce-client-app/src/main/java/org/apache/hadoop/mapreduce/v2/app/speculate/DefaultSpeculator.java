@@ -18,11 +18,9 @@
 
 package org.apache.hadoop.mapreduce.v2.app.speculate;
 
-import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -31,7 +29,6 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -42,10 +39,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.client.HdfsDataOutputStream;
+import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
+import org.apache.hadoop.mapred.MapTaskAttemptImpl;
 import org.apache.hadoop.mapreduce.MRJobConfig;
-import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TypeConverter;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
 import org.apache.hadoop.mapreduce.task.reduce.PBSEShuffleMessage;
@@ -66,6 +63,7 @@ import org.apache.hadoop.service.AbstractService;
 import org.apache.hadoop.yarn.event.EventHandler;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
 import org.apache.hadoop.yarn.util.Clock;
+
 import com.google.common.annotations.VisibleForTesting;
 
 public class DefaultSpeculator extends AbstractService implements
@@ -149,6 +147,9 @@ public class DefaultSpeculator extends AbstractService implements
   private Map<TaskId, List<DatanodeInfo>> TaskAndPipeline=new ConcurrentHashMap<>();
   private Set<TaskId> TaskSet=new HashSet<>();
   
+  // riza
+  private int maxSpeculationDelay = 0;
+
   public DefaultSpeculator(Configuration conf, AppContext context) {
     this(conf, context, context.getClock());
   }
@@ -225,7 +226,8 @@ public class DefaultSpeculator extends AbstractService implements
     this.fetchRateSpeculationSlowProgressThresshold = conf.getDouble("mapreduce.experiment.fetch_rate_speculation_progress_thresshold", Double.MAX_VALUE);
     // huanke
     this.PBSEenabled=conf.getBoolean("pbse.enable.for.reduce.pipeline", false);
-  
+    // riza
+    this.maxSpeculationDelay = conf.getInt("mapreduce.policy.faread.maximum_speculation_delay", 0);
   }
   
 /*   *************************************************************    */
@@ -759,25 +761,23 @@ public class DefaultSpeculator extends AbstractService implements
     }
   }
   
-  
-  
+   
 
-/*   *************************************************************    */
+  /* ************************************************************* */
 
-// This is the code section that runs periodically and adds speculations for
-//  those jobs that need them.
-
+  // This is the code section that runs periodically and adds speculations for
+  // those jobs that need them.
 
   // This can return a few magic values for tasks that shouldn't speculate:
-  //  returns ON_SCHEDULE if thresholdRuntime(taskID) says that we should not
-  //     considering speculating this task
-  //  returns ALREADY_SPECULATING if that is true.  This has priority.
-  //  returns TOO_NEW if our companion task hasn't gotten any information
-  //  returns PROGRESS_IS_GOOD if the task is sailing through
-  //  returns NOT_RUNNING if the task is not running
+  // returns ON_SCHEDULE if thresholdRuntime(taskID) says that we should not
+  // considering speculating this task
+  // returns ALREADY_SPECULATING if that is true. This has priority.
+  // returns TOO_NEW if our companion task hasn't gotten any information
+  // returns PROGRESS_IS_GOOD if the task is sailing through
+  // returns NOT_RUNNING if the task is not running
   //
-  // All of these values are negative.  Any value that should be allowed to
-  //  speculate is 0 or positive.
+  // All of these values are negative. Any value that should be allowed to
+  // speculate is 0 or positive.
   private long speculationValue(TaskId taskID, long now) {
     Job job = context.getJob(taskID.getJobId());
     Task task = job.getTask(taskID);
@@ -813,6 +813,18 @@ public class DefaultSpeculator extends AbstractService implements
           // This background process ran before we could process the task
           //  attempt status change that chronicles the attempt start
           return TOO_NEW;
+        }
+
+        // riza: do not speculate task that has not sent its first status update
+        MapTaskAttemptImpl mapTaskAttempt = (taskAttempt instanceof MapTaskAttemptImpl) ?
+            (MapTaskAttemptImpl) taskAttempt : null;
+        if (mapTaskAttempt != null) {
+          if (maxSpeculationDelay > 0 && DatanodeID.nullDatanodeID.equals(mapTaskAttempt.getLastDatanodeID())) {
+            maxSpeculationDelay--;
+            LOG.debug(runningTaskAttemptID + " has not report its datanode, speculator return TOO_NEW, "
+              + maxSpeculationDelay + " speculation delay left");
+            return TOO_NEW;
+          }
         }
 
         long estimatedEndTime = estimatedRunTime + taskAttemptStartTime;
