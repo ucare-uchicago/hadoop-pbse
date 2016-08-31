@@ -20,7 +20,7 @@
 
   <property>
     <name>dfs.name.dir</name>
-    <value>/mnt/extra/dfs-ucare/name</value>
+    <value>/tmp/hadoop-ucare/name</value>
   </property>
 
   <property>
