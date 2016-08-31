@@ -794,12 +794,21 @@ public class DefaultSpeculator extends AbstractService implements
       }
     }
 
+   // @Cesar: Ignore tasks relaunched by slow shuffle
+   synchronized(shuffleTable){
+	   if(shuffleTable.wasSpeculated(taskID)){
+		   // @Cesar: Return in here, this wont be speculated again
+		   LOG.info("@Cesar: Task " + taskID + " wont be speculated again.");
+		   return ON_SCHEDULE;
+	   }
+   }
+    
     TaskAttemptId runningTaskAttemptID = null;
 
     int numberRunningAttempts = 0;
     
     for (TaskAttempt taskAttempt : attempts.values()) {
-        
+    	
       if (taskAttempt.getState() == TaskAttemptState.RUNNING
           || taskAttempt.getState() == TaskAttemptState.STARTING) {
         if (++numberRunningAttempts > 1) {
@@ -907,17 +916,10 @@ public class DefaultSpeculator extends AbstractService implements
   //Add attempt to a given Task.
   protected void addSpeculativeAttempt(TaskId taskID) {
 	// @Cesar: Do not re espculate if this have been launched by slow shuffle
-	synchronized(shuffleTable){
-	 if(shuffleTable.wasSpeculated(taskID) == false){  
-	    LOG.info
-	        ("DefaultSpeculator.addSpeculativeAttempt -- we are speculating " + taskID);
-	    eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ADD_SPEC_ATTEMPT));
-	    mayHaveSpeculated.add(taskID);
-	 }
-	 else{
-		 LOG.info("@Cesar: Attempt for task id " + taskID + " wont go though default SE since it was relaunched by slow shuffle");
-	 }
-	}
+	  LOG.info
+      ("DefaultSpeculator.addSpeculativeAttempt -- we are speculating " + taskID);
+	  eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ADD_SPEC_ATTEMPT));
+	  mayHaveSpeculated.add(taskID);
    
   }
 
