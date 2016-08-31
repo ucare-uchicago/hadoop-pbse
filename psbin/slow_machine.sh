@@ -3,9 +3,9 @@
 # PARAMETERS
 # ===============================================================================================================
 # notice that all rates should include the unit, something like 512kbit or 1mbit
-SLOW_RATE=10mbit
+SLOW_RATE=1mbit
 MAX_TOTAL_RATE=1000mbit
-MAX_SUBCLASS_RATE=990mbit
+MAX_SUBCLASS_RATE=999mbit
 # prelude from remote devices, like eth0, eth1, ...
 REMOTE_DEVICE_PRELUDE="eth"
 # asume only one local device per machine

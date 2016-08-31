@@ -16,6 +16,11 @@
     <value>node-17</value>
   </property>
 
+  <property>
+    <name>yarn.resourcemanager.webapp.address</name>
+    <value>node-17:8088</value>
+  </property>
+
 <!--  <property>
     <name>yarn.nodemanager.local-dirs</name>
     <value>/mnt/extra/dfs-ucare/nm-local-dir</value>
