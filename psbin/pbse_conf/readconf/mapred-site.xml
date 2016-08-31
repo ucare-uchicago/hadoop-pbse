@@ -88,7 +88,7 @@
 
   <property>
     <name>mapreduce.policy.faread.sort.datanode</name>
-    <value>true</value>
+    <value>false</value>
     <description>UCARE: HACK to always pick the least datanode</description>
   </property>
 
