@@ -179,4 +179,8 @@ public class HdfsDataInputStream extends FSDataInputStream {
       }
     }
   }
+  
+  public DatanodeID getCurrentOrChoosenDatanode() {
+    return getDFSInputStream().getLastDatanodeID();
+  }
 }

@@ -807,16 +807,31 @@ abstract public class Task implements Writable, Configurable{
           if (taskDone.get()) {
             break;
           }
-
-          if ((datanodeRetries > 0) &&
-              ((this.in == null && isMapTask()) || (this.out == null && !isMapTask()))) {
-            datanodeRetries -= 1;
-            LOG.info("riza: datastream still null, wait for next " + datanodeRetries
-                    + " retry");
-            sendProgress = sendProgress || resetProgressFlag();
-            continue;
-          } else {
-            datanodeRetries = 0;
+          
+          // riza: heartbeat delaying here
+          if (datanodeRetries > 0) {
+            if (isMapTask()) {
+              // riza: MapTask delaying
+              if (this.in == null) {
+                datanodeRetries -= 1;
+                sendProgress = sendProgress || resetProgressFlag();
+                LOG.info("riza: datainputstream still null, wait for next " + datanodeRetries
+                        + " retry");
+              } else if (DatanodeID.nullDatanodeID.equals(lastDatanodeId)) {
+                datanodeRetries -= 1;
+                sendProgress = sendProgress || resetProgressFlag();
+                LOG.info("riza: datanodeid still null, wait for next " + datanodeRetries
+                        + " retry");
+              }
+            } else {
+              // riza: ReduceTask delaying
+              if (this.out == null) {
+                datanodeRetries -= 1;
+                sendProgress = sendProgress || resetProgressFlag();
+                LOG.info("riza: dataoutputstream still null, wait for next " + datanodeRetries
+                        + " retry");
+              }
+            }
           }
       
           // @Cesar: Send progress every 60000 / proginterval seconds for reduce phase
@@ -887,7 +902,7 @@ abstract public class Task implements Writable, Configurable{
                   this.in.switchDatanode(lastDatanodeId);
                   LOG.info("PBSE-Read-Diversity-1: lastDatanode "
                       + lastDatanodeId + " newDatanode "
-                      + this.in.getCurrentDatanode());
+                      + this.in.getCurrentOrChoosenDatanode());
                 } catch (IOException ex) {
                   LOG.warn("riza: Datanode switch failed: " + ex.toString());
                 }
@@ -910,10 +925,10 @@ abstract public class Task implements Writable, Configurable{
 
           //riza: set progress flag again if there is a datasource change
           if (this.in != null) {
-            if (!lastDatanodeId.equals(this.in.getCurrentDatanode())) {
-              //LOG.info("riza: switching datanode " + lastDatanodeId + " to "
-              //        + in.getCurrentDatanode());
-              lastDatanodeId = in.getCurrentDatanode();
+            if (!lastDatanodeId.equals(this.in.getCurrentOrChoosenDatanode())) {
+              LOG.info("riza: switching datanode " + lastDatanodeId + " to "
+                      + in.getCurrentOrChoosenDatanode());
+              lastDatanodeId = in.getCurrentOrChoosenDatanode();
               //taskStatus.setLastDatanodeID(lastDatanodeId);
               setProgressFlag();
               switchHappened = true;
@@ -997,17 +1012,11 @@ abstract public class Task implements Writable, Configurable{
       synchronized (lastDatanodeId) {
         if (isMapTask() && newIn instanceof HdfsDataInputStream) {
           this.in = (HdfsDataInputStream) newIn;
-          if (!lastDatanodeId.equals(in.getCurrentDatanode())) {
-            LOG.info("riza: first datanode is " + in.getCurrentDatanode());
-            lastDatanodeId = in.getCurrentDatanode();
+          if (!lastDatanodeId.equals(in.getCurrentOrChoosenDatanode())) {
+            LOG.info("riza: first datanode is " + in.getCurrentOrChoosenDatanode());
+            lastDatanodeId = in.getCurrentOrChoosenDatanode();
             taskStatus.setLastDatanodeID(lastDatanodeId);
             setProgressFlag();
-          }
-
-          if (in.getIgnoredDatanode() != null
-              && !in.getIgnoredDatanode().equals(DatanodeID.nullDatanodeID)) {
-            LOG.info("PBSE-Read-1: ignored " + in.getIgnoredDatanode()
-                + " current " + in.getCurrentDatanode());
           }
         }
       }

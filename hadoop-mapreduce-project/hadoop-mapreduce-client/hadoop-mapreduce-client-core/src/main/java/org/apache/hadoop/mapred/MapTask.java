@@ -47,6 +47,7 @@ import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RawLocalFileSystem;
 import org.apache.hadoop.hdfs.client.HdfsDataInputStream;
+import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.SequenceFile;
@@ -368,8 +369,6 @@ public class MapTask extends Task {
    FileSystem fs = file.getFileSystem(conf);
    FSDataInputStream inFile = fs.open(file);
 
-   // riza: seek first then switch
-   inFile.seek(offset);
    // riza: insert ignored datanode to HdfsDataInputStream at beginning
    try{
      if (conf.getBoolean("mapreduce.policy.faread", false)){
@@ -388,6 +387,7 @@ public class MapTask extends Task {
      LOG.error(e.getStackTrace());
    }
 
+   inFile.seek(offset);
    String className = StringInterner.weakIntern(Text.readString(inFile));
    Class<T> cls;
    try {
@@ -472,6 +472,9 @@ public class MapTask extends Task {
       if (in instanceof InputStreamOwner) {
         InputStream inputS = ((InputStreamOwner) in).getInputStream();
 
+        // riza: pass to reporter first even though datanode selection might not happen yet
+        reporter.setInputStream(inputS);
+
         if (inputS != null) {
           // riza: insert ignored datanode to HdfsDataInputStream at beginning
           LOG.info("riza: runOldMapper: ignoring datanode "
@@ -488,8 +491,6 @@ public class MapTask extends Task {
         } else {
           LOG.warn("input stream is null, unable to set ignored datanode");
         }
-
-        reporter.setInputStream(inputS);
       } else {
         LOG.warn("riza: " + in.toString()
             + " does not implement InputStreamOwner ");
@@ -862,6 +863,9 @@ public class MapTask extends Task {
       if (input instanceof InputStreamOwner) {
         InputStream inputS = ((InputStreamOwner) input).getInputStream();
 
+        // riza: pass to reporter first even though datanode selection might not happen yet
+        reporter.setInputStream(inputS);
+
         if (inputS != null) {
           // riza: insert ignored datanode to HdfsDataInputStream at beginning
           LOG.info("riza: runNewMapper: ignoring datanode "
@@ -878,8 +882,6 @@ public class MapTask extends Task {
         } else {
           LOG.warn("input stream is null, unable to set ignored datanode");
         }
-
-        reporter.setInputStream(inputS);
       } else {
         LOG.warn("riza: "+ input.toString() +" does not implement InputStreamOwner ");
       }
@@ -2135,8 +2137,12 @@ public class MapTask extends Task {
    */
   private void switchDatanode(HdfsDataInputStream hdis){
     try{
-      LOG.info("riza: was read from " + hdis.getCurrentDatanode().getXferAddr()
-          + " probing new datanode for pos=" + hdis.getPos());
+      if ((hdis.getCurrentOrChoosenDatanode() != null) &&
+          !DatanodeID.nullDatanodeID.equals(hdis.getCurrentOrChoosenDatanode())) 
+        LOG.info("riza: was trying to read from " + hdis.getCurrentOrChoosenDatanode().getXferAddr()
+            + " probing new datanode for pos=" + hdis.getPos());
+      else
+        LOG.warn("riza: HdfsDataInputStream datanode is null or not choosen yet");
 
       if (this.getTaskID().getId() > 0 && !splitMetaInfo.getSlowShufflingMap().isEmpty()) {
         LOG.debug("riza: ignoring datanode by hostname");
@@ -2144,6 +2150,12 @@ public class MapTask extends Task {
       } else {
         LOG.debug("riza: ignoring datanode by DatanodeID");
         hdis.switchDatanode(splitMetaInfo.getLastDatanodeID());
+      }
+      
+      if (hdis.getIgnoredDatanode() != null
+          && !hdis.getIgnoredDatanode().equals(DatanodeID.nullDatanodeID)) {
+        LOG.info("PBSE-Read-1: ignored " + hdis.getIgnoredDatanode()
+            + " current " + hdis.getCurrentOrChoosenDatanode());
       }
     } catch (Exception e){
       StringWriter sw = new StringWriter();

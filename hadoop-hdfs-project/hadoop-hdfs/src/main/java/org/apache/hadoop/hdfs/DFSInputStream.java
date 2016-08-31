@@ -132,6 +132,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
   private IdentityHashStore<ByteBuffer, Object> extendedReadBuffers;
 
   // riza: allow memoryfull datanode selection
+  private DatanodeID bestChoosenNode = DatanodeID.createNullDatanodeID();
   private ArrayList<DatanodeInfo> ignoredDatanodes = new ArrayList<DatanodeInfo>();
   private ArrayList<String> ignoredHost = new ArrayList<String>();
   private ArrayList<DatanodeInfo> availableNodes = new ArrayList<DatanodeInfo>();
@@ -1041,6 +1042,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
           " after checking nodes = " + Arrays.toString(nodes) +
           ", ignoredNodes = " + ignoredNodes);
     }
+    this.bestChoosenNode = chosenNode;
     final String dnAddr =
         chosenNode.getXferAddr(dfsClient.getConf().connectToDnViaHostname);
     if (DFSClient.LOG.isDebugEnabled()) {
@@ -1879,7 +1881,10 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
    * @return last known datanode being read
    */
   public DatanodeID getLastDatanodeID() {
-    return currentNode == null? DatanodeID.createNullDatanodeID() : currentNode;
+    if (currentNode != null)
+      return currentNode;
+    else
+      return bestChoosenNode;
   }
 
   /**

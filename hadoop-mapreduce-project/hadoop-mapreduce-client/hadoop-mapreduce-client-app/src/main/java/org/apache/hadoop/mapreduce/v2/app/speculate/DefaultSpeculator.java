@@ -150,6 +150,7 @@ public class DefaultSpeculator extends AbstractService implements
   // riza
   private int maxSpeculationDelay = 0;
   private boolean everDelaySpeculation = false;
+  private boolean hasDelayThisIteration = false;
 
   public DefaultSpeculator(Configuration conf, AppContext context) {
     this(conf, context, context.getClock());
@@ -287,6 +288,7 @@ public class DefaultSpeculator extends AbstractService implements
         @Override
         public void run() {
           while (!stopped && !Thread.currentThread().isInterrupted()) {
+            hasDelayThisIteration = false;
             long backgroundRunStartTime = clock.getTime();
             try {
               int speculations = computeSpeculations();
@@ -834,7 +836,12 @@ public class DefaultSpeculator extends AbstractService implements
             if (!everDelaySpeculation)
               LOG.info("PBSE-Read-2: " + runningTaskAttemptID + " speculation delayed");
             everDelaySpeculation = true;
-            maxSpeculationDelay--;
+
+            if (!hasDelayThisIteration) {
+              maxSpeculationDelay--;
+              hasDelayThisIteration = true;
+            }
+
             LOG.info(runningTaskAttemptID + " has not report its datanode, speculator return TOO_NEW, "
               + maxSpeculationDelay + " speculation delay left");
             return TOO_NEW;
