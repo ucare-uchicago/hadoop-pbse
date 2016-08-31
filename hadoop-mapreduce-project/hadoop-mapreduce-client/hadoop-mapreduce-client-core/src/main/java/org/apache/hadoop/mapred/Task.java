@@ -817,11 +817,13 @@ abstract public class Task implements Writable, Configurable{
                 sendProgress = sendProgress || resetProgressFlag();
                 LOG.info("riza: datainputstream still null, wait for next " + datanodeRetries
                         + " retry");
+                continue;
               } else if (DatanodeID.nullDatanodeID.equals(lastDatanodeId)) {
                 datanodeRetries -= 1;
                 sendProgress = sendProgress || resetProgressFlag();
                 LOG.info("riza: datanodeid still null, wait for next " + datanodeRetries
                         + " retry");
+                continue;
               }
             } else {
               // riza: ReduceTask delaying
@@ -830,6 +832,7 @@ abstract public class Task implements Writable, Configurable{
                 sendProgress = sendProgress || resetProgressFlag();
                 LOG.info("riza: dataoutputstream still null, wait for next " + datanodeRetries
                         + " retry");
+                continue;
               }
             }
           }
@@ -1013,7 +1016,10 @@ abstract public class Task implements Writable, Configurable{
         if (isMapTask() && newIn instanceof HdfsDataInputStream) {
           this.in = (HdfsDataInputStream) newIn;
           if (!lastDatanodeId.equals(in.getCurrentOrChoosenDatanode())) {
-            LOG.info("riza: first datanode is " + in.getCurrentOrChoosenDatanode());
+            if (lastDatanodeId.equals(DatanodeID.nullDatanodeID))
+              LOG.info("riza: first datanode is " + in.getCurrentOrChoosenDatanode());
+            else
+              LOG.info("riza: reset datainputstream with datanode change to " + in.getCurrentOrChoosenDatanode());
             lastDatanodeId = in.getCurrentOrChoosenDatanode();
             taskStatus.setLastDatanodeID(lastDatanodeId);
             setProgressFlag();

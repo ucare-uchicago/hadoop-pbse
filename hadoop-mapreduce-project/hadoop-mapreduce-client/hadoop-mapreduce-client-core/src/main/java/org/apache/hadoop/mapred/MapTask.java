@@ -374,7 +374,7 @@ public class MapTask extends Task {
      if (conf.getBoolean("mapreduce.policy.faread", false)){
        LOG.info("running policy: mapreduce.policy.faread");
        if (inFile instanceof HdfsDataInputStream) {
-         switchDatanode((HdfsDataInputStream) inFile);
+         switchDatanode((HdfsDataInputStream) inFile, null);
        } else {
          LOG.warn("input stream is not instance of HdfsDataInputStream: "
              + inFile.toString());
@@ -483,7 +483,7 @@ public class MapTask extends Task {
           if ((inputS instanceof HdfsDataInputStream)
               && conf.getBoolean("mapreduce.policy.faread", false)) {
             LOG.info("running policy: mapreduce.policy.faread");
-            switchDatanode((HdfsDataInputStream) inputS);
+            switchDatanode((HdfsDataInputStream) inputS, reporter);
           } else {
             LOG.warn("no faread or input stream is not instance of HdfsDataInputStream "
                 + inputS.toString());
@@ -874,7 +874,7 @@ public class MapTask extends Task {
           if ((inputS instanceof HdfsDataInputStream)
               && conf.getBoolean("mapreduce.policy.faread", false)){
             LOG.info("running policy: mapreduce.policy.faread");
-            switchDatanode((HdfsDataInputStream) inputS);
+            switchDatanode((HdfsDataInputStream) inputS, reporter);
           } else {
             LOG.warn("input stream is not instance of HdfsDataInputStream "
                 + inputS.toString());
@@ -2135,7 +2135,7 @@ public class MapTask extends Task {
    * 
    * @param hdis
    */
-  private void switchDatanode(HdfsDataInputStream hdis){
+  private void switchDatanode(HdfsDataInputStream hdis, TaskReporter reporter){
     try{
       if ((hdis.getCurrentOrChoosenDatanode() != null) &&
           !DatanodeID.nullDatanodeID.equals(hdis.getCurrentOrChoosenDatanode())) 
@@ -2143,6 +2143,8 @@ public class MapTask extends Task {
             + " probing new datanode for pos=" + hdis.getPos());
       else
         LOG.warn("riza: HdfsDataInputStream datanode is null or not choosen yet");
+
+      DatanodeID initial = hdis.getCurrentOrChoosenDatanode();
 
       if (this.getTaskID().getId() > 0 && !splitMetaInfo.getSlowShufflingMap().isEmpty()) {
         LOG.debug("riza: ignoring datanode by hostname");
@@ -2156,6 +2158,10 @@ public class MapTask extends Task {
           && !hdis.getIgnoredDatanode().equals(DatanodeID.nullDatanodeID)) {
         LOG.info("PBSE-Read-1: ignored " + hdis.getIgnoredDatanode()
             + " current " + hdis.getCurrentOrChoosenDatanode());
+      }
+
+      if (reporter != null && !initial.equals(hdis.getCurrentOrChoosenDatanode())) {
+        reporter.setInputStream(hdis);
       }
     } catch (Exception e){
       StringWriter sw = new StringWriter();
