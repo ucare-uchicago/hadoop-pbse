@@ -1,8 +1,16 @@
 #!/bin/bash
 
-mvn package -Pdist -DskipTests
+if [[ "$#" -ne 1 ]]
+  then
+    echo "Insufficient argument"
+    exit
+fi
 
-scp target/hadoop-hdfs-2.7.1.jar riza@users.emulab.net:/proj/ucare/riza/
+OPS_NODE_SSH=$1
 
-ssh riza@users.emulab.net \
-   'mv /proj/ucare/riza/hadoop-hdfs-2.7.1.jar $HADOOP_PREFIX/share/hadoop/hdfs/;'
+mvn package install -Pdist -DskipTests
+
+scp target/hadoop-hdfs-2.7.1.jar $OPS_NODE_SSH:~/
+
+ssh $OPS_NODE_SSH \
+   'mv ~/hadoop-hdfs-2.7.1.jar $HADOOP_PREFIX/share/hadoop/hdfs/;'
