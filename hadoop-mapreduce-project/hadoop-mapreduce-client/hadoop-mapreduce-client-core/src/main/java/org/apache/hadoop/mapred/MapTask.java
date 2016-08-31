@@ -368,25 +368,26 @@ public class MapTask extends Task {
    FileSystem fs = file.getFileSystem(conf);
    FSDataInputStream inFile = fs.open(file);
 
-   // riza: insert ignored datanode to HdfsDataInputStream at beginning
-//   try{
-//     if (conf.getBoolean("mapreduce.policy.faread", false)){
-//       LOG.info("running policy: mapreduce.policy.faread");
-//       if (inFile instanceof HdfsDataInputStream) {
-//         switchDatanode((HdfsDataInputStream) inFile);
-//       } else {
-//         LOG.warn("input stream is not instance of HdfsDataInputStream: "
-//             + inFile.toString());
-//       }
-//     } else {
-//       LOG.info("no custom policy being run");
-//     }
-//   }catch (Exception e){
-//     LOG.error(e.getMessage());
-//     LOG.error(e.getStackTrace());
-//   }
-
+   // riza: seek first then switch
    inFile.seek(offset);
+   // riza: insert ignored datanode to HdfsDataInputStream at beginning
+   try{
+     if (conf.getBoolean("mapreduce.policy.faread", false)){
+       LOG.info("running policy: mapreduce.policy.faread");
+       if (inFile instanceof HdfsDataInputStream) {
+         switchDatanode((HdfsDataInputStream) inFile);
+       } else {
+         LOG.warn("input stream is not instance of HdfsDataInputStream: "
+             + inFile.toString());
+       }
+     } else {
+       LOG.info("no custom policy being run");
+     }
+   }catch (Exception e){
+     LOG.error(e.getMessage());
+     LOG.error(e.getStackTrace());
+   }
+
    String className = StringInterner.weakIntern(Text.readString(inFile));
    Class<T> cls;
    try {
