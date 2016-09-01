@@ -397,7 +397,6 @@ public class ReduceTask extends Task{
     long StartTime = System.currentTimeMillis();
     LOG.info("@huanke StartTime: "+StartTime);
     statusUpdate(umbilical); //I don't want statusUpdate(umbilical) here, because I need to get datanodes from reduce phase . move it to reduce phase
-    // @Cesar: Moved to top
     Class keyClass = job.getMapOutputKeyClass();
     Class valueClass = job.getMapOutputValueClass();
     RawComparator comparator = job.getOutputValueGroupingComparator();
@@ -492,18 +491,18 @@ public class ReduceTask extends Task{
           while (values.more()) {
             reduceInputKeyCounter.increment(1);
             reducer.reduce(values.getKey(), values, collector, reporter);
-            LOG.info("@huanke flagR :" + flag);
+            // LOG.info("@huanke flagR :" + flag);
             if (flag && out != null) {
-              LOG.info("@huanke output!=null runReducer" + out.getClass() + out.toString());
+              // LOG.info("@huanke output!=null runReducer" + out.getClass() + out.toString());
               //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
               if (out instanceof HdfsDataOutputStream) {
-                LOG.info("@huanke yes, it is!" + out.getClass());
+                // LOG.info("@huanke yes, it is!" + out.getClass());
                 if (((HdfsDataOutputStream) out).getPipeNodes() != null) {
-                  LOG.info("@huanke Myfirst time to get pipeNodes from stream" + ((HdfsDataOutputStream) out).getPipeNodes()[0] + ((HdfsDataOutputStream) out).getPipeNodes()[1]);
+                  // LOG.info("@huanke Myfirst time to get pipeNodes from stream" + ((HdfsDataOutputStream) out).getPipeNodes()[0] + ((HdfsDataOutputStream) out).getPipeNodes()[1]);
                   reporter.setOutputStream(output);
                   flag = false;
                 } else {
-                  LOG.info("@huanke I haven't get the pipeNods from stream yet ");
+                  // LOG.info("@huanke I haven't get the pipeNods from stream yet ");
                 }
               }
             }

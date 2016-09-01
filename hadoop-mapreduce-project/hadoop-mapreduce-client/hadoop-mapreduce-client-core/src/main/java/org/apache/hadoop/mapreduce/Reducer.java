@@ -192,18 +192,18 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
     try {
       while (context.nextKey()) {
         reduce(context.getCurrentKey(), context.getValues(), context);
-        LOG.info("@huanke flagR :"+flag);
+        // LOG.info("@huanke flagR :"+flag);
         if(flag && out!=null){
-          LOG.info("@huanke output!=null runReducer" + out.getClass() + out.toString());
+          // LOG.info("@huanke output!=null runReducer" + out.getClass() + out.toString());
           //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
           if (out instanceof HdfsDataOutputStream) {
-            LOG.info("@huanke yes, it is!"+out.getClass());
+            // LOG.info("@huanke yes, it is!"+out.getClass());
             if(((HdfsDataOutputStream) out).getPipeNodes()!=null){
-              LOG.info("@huanke Myfirst time to get pipeNodes from stream"+((HdfsDataOutputStream) out).getPipeNodes()[0]+((HdfsDataOutputStream) out).getPipeNodes()[1]);
+              // LOG.info("@huanke Myfirst time to get pipeNodes from stream"+((HdfsDataOutputStream) out).getPipeNodes()[0]+((HdfsDataOutputStream) out).getPipeNodes()[1]);
               taskReport.setOutputStream(out);
               flag=false;
             }else{
-              LOG.info("@huanke I haven't get the pipeNods from stream yet ");
+              // LOG.info("@huanke I haven't get the pipeNods from stream yet ");
             }
           }
         }
