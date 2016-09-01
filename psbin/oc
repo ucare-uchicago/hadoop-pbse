@@ -38,6 +38,7 @@ class JobCount:
     self.filename = filename
     self.jobct = defaultdict(int)
     self.verdct = defaultdict(int)
+    self.time_stop = 0
 
     self.jobcountfound = False
 
@@ -80,8 +81,10 @@ def getJobs():
       if inf.startswith("job-"):
         fct += 1
         jc = JobCount(inf)
-        if (jc.jobcountfound):
+        if (jc.time_stop):
           jobs.append(jc)
+        else:
+          print "%s has not finish yet..." % inf
   print "%d/%d job output read" % (len(jobs),fct)
   return jobs
 
@@ -101,18 +104,22 @@ def getVerdCount(jobs):
 
 def getLongestJob(jobs):
   maxrun = 0
+  filename = ""
   for job in jobs:
-    maxrun = maxrun if maxrun > job.job_duration \
-             else job.job_duration
-  return datetime.timedelta(seconds=maxrun)
+    if maxrun < job.job_duration: 
+      maxrun = job.job_duration
+      filename = job.filename
+  return (datetime.timedelta(seconds=maxrun), filename)
 
 def getLongestWait(jobs):
   maxwait = 0
+  filename = ""
   for job in jobs:
     wait = job.time_start - job.time_submit
     if (not maxwait) or (maxwait < wait):
       maxwait = wait
-  return maxwait
+      filename = job.filename
+  return (maxwait, filename)
 
 def getExperimentTime(jobs):
   start = 0
@@ -156,8 +163,8 @@ def main():
   print "Total : ", total
   print ""
 
-  print "Longest_job : ", getLongestJob(jobs)
-  print "Longest_wait : ", getLongestWait(jobs)
+  print "Longest_job : %s (%s)" % getLongestJob(jobs)
+  print "Longest_wait : %s (%s)" % getLongestWait(jobs)
   print ""
 
 

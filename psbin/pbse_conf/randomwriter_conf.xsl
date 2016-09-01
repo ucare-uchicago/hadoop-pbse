@@ -19,14 +19,13 @@
    </property>
    <property>
      <name>test.randomwrite.total_bytes</name>
-     <!--<value>189101550000</value>-->
      <!--<value>189097920000</value> scriptTest-8MB-->
      <!--<value>189100560000</value> scriptTest-16MB-->
-     <value>189101550000</value> <!--scriptTest-64MB-->
+     <!--<value>189101550000</value> scriptTest-64MB-->
+     <value>378203100000</value> <!-- Facebook 2010, 6600 partitions-->
    </property>
    <property>
      <name>test.randomwrite.bytes_per_map</name>
-     <!--<value>7162800</value>-->
      <!--<value>7162800</value> scriptTest-8MB-->
      <!--<value>14325800</value> scriptTest-16MB-->
      <value>57303500</value> <!--scriptTest-64MB-->

@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/python
 import sys
 import Job
 import Container
@@ -7,6 +7,8 @@ import datetime
 import itertools
 import math
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from pprint import pprint
