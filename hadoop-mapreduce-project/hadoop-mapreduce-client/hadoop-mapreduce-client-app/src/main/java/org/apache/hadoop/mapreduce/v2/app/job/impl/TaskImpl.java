@@ -138,6 +138,9 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
   //huanke
   protected DatanodeInfo ignoreNode;
   
+  // @Cesar: Ignore this tasks
+  private Set<TaskId> ignoreTasks = new HashSet<>();
+  
   private final Set<TaskAttemptId> failedAttempts;
   // Track the finished attempts - successful, failed and killed
   private final Set<TaskAttemptId> finishedAttempts;
@@ -606,7 +609,13 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 
   // This is always called in the Write Lock
   private void addAndScheduleAttempt(Avataar avataar) {
-    // riza: if map, check lastDatanodeID
+    synchronized(ignoreTasks){
+	   if(ignoreTasks.contains(this.getID())){
+		   LOG.debug("@Cesar: Task " + this.getID() + " was ignored!");
+		   return;
+	   }
+    }	
+	// riza: if map, check lastDatanodeID
     if (this instanceof MapTaskImpl) {
       LOG.debug("Updating MapTaskImpl.taskSplitMetaInfo");
       ((MapTaskImpl) this).updateTaskSplitMetaInfo();
@@ -621,19 +630,29 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     //schedule the nextAttemptNumber
     if (failedAttempts.size() > 0) {
       // huanke
-      LOG.info("@huanke TA_RESCHEDULE"+attempt.getID());
+      LOG.info("@huanke addAndScheduleAttempt[1] TA_RESCHEDULE"+attempt.getID());
       eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
           TaskAttemptEventType.TA_RESCHEDULE));
     } else {
       // huanke	
-      LOG.info("@huanke TA_SCHEDULE"+attempt.getID());
+      LOG.info("@huanke addAndScheduleAttempt[1] TA_SCHEDULE"+attempt.getID());
       eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
           TaskAttemptEventType.TA_SCHEDULE));
     }
   }
 
  //@Cesar: Add the slow mapper
- private void addAndScheduleAttempt(Avataar avataar, String slowMapHost) {
+ private void addAndScheduleAttempt(Avataar avataar, String slowMapHost, TaskId ignored) {
+   // @Cesar: First of all, we are going to prevent speculations for this
+   // task also at this level!
+   synchronized(ignoreTasks){
+	   if(ignoreTasks.contains(ignored)){
+		   LOG.debug("@Cesar: Task " + ignored + " was ignored!");
+		   return;
+	   }
+	   LOG.debug("@Cesar: Task " + ignored + " will be marked to ignore");
+	   ignoreTasks.add(ignored);
+   }	 
    // riza: if map, check lastDatanodeID
    if (this instanceof MapTaskImpl) {
      LOG.debug("Updating MapTaskImpl.taskSplitMetaInfo");
@@ -649,12 +668,12 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
    //schedule the nextAttemptNumber
    if (failedAttempts.size() > 0) {
      // huanke
-     LOG.info("@huanke TA_RESCHEDULE"+attempt.getID());
+     LOG.info("@Cesar addAndScheduleAttempt[2] TA_RESCHEDULE"+attempt.getID());
      eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
          TaskAttemptEventType.TA_RESCHEDULE));
    } else {
      // huanke	
-     LOG.info("@huanke TA_SCHEDULE"+attempt.getID());
+     LOG.info("@Cesar addAndScheduleAttempt[2] TA_SCHEDULE"+attempt.getID());
      eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
          TaskAttemptEventType.TA_SCHEDULE));
    }
@@ -662,7 +681,14 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
   
   //huanke add ignore node here
   private void addAndScheduleAttempt(Avataar avataar, DatanodeInfo ignoreNode) {
-    // riza: if map, check lastDatanodeID
+    // @Cesar: Ignore!
+	synchronized(ignoreTasks){
+	   if(ignoreTasks.contains(this.getID())){
+		   LOG.debug("@Cesar: Task " + this.getID() + " was ignored!");
+		   return;
+	   }
+    }	
+	// riza: if map, check lastDatanodeID
     if (this instanceof MapTaskImpl) {
       LOG.debug("Updating MapTaskImpl.taskSplitMetaInfo");
       ((MapTaskImpl) this).updateTaskSplitMetaInfo();
@@ -1314,15 +1340,12 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
       // tell the job about the rescheduling
       unSucceed(task);
       // @Cesar: Also, add diagnostic info to the job
-	  // @Cesar: TODO -> this should be a constant
-      task.eventHandler.handle(new JobDiagnosticsUpdateEvent(
-    	        		  		task.getID().getJobId(), 
-    	        		  		"An attempt was killed due to slow shuffle. It ran at host " + event.getSlowMapper()
-    	        		  		+ " and now is going to be speculated in another node."));
-      
-      task.eventHandler.handle(new TaskAttemptKillEvent(attemptId,
-              				   "Task attempt " + attemptId + " killed due to slow shuffle at host " + event.getSlowMapper(),
-              				   true));
+      if(event.getSlowMapper() != null){
+	      task.eventHandler.handle(new JobDiagnosticsUpdateEvent(
+	    	        		  		task.getID().getJobId(), 
+	    	        		  		"Attempt " + attemptId + " was killed due to slow shuffle. It ran at host " + event.getSlowMapper()
+	    	        		  		+ " and now is going to be speculated in another node."));
+      }
 	  task.handleTaskAttemptCompletion(attemptId,
 				   TaskAttemptCompletionEventStatus.KILLED);
 	  // @Cesar: Increment the counters for this task
@@ -1337,9 +1360,12 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
       // currently pending container requests affinitized to bad nodes.
       // @Cesar: Save the slow host name
       if(event.getSlowMapper() != null){
-    	  task.addAndScheduleAttempt(Avataar.VIRGIN, event.getSlowMapper());
+    	  task.addAndScheduleAttempt(Avataar.VIRGIN, event.getSlowMapper(), task.taskId);
     	  // blacklist
     	  task.appContext.getBlacklistedNodes().add(event.getSlowMapper());
+    	  if(LOG.isDebugEnabled()){
+    		  LOG.debug("@Cesar: Blacklisted host " + event.getSlowMapper());
+    	  }
       }
       else{
     	  task.addAndScheduleAttempt(Avataar.VIRGIN);

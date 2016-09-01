@@ -456,7 +456,7 @@ public class ReduceTask extends Task{
             };
 
     //huanke
-    try {
+    try {	
       if (out instanceof OutputStreamOwner) {
         LOG.info("@huanke trackRW instanceof ");
         OutputStream output = ((OutputStreamOwner) out).getOutputStream();
@@ -534,7 +534,7 @@ public class ReduceTask extends Task{
     }
   }
 
-  static class OldTrackingRecordWriter<K, V> implements RecordWriter<K, V> {
+  static class OldTrackingRecordWriter<K, V> implements RecordWriter<K, V>, OutputStreamOwner{
 
     private final RecordWriter<K, V> real;
     private final org.apache.hadoop.mapred.Counters.Counter reduceOutputCounter;
@@ -584,6 +584,13 @@ public class ReduceTask extends Task{
         bytesWritten = bytesWritten + stat.getBytesWritten();
       }
       return bytesWritten;
+    }
+
+	@Override
+    public OutputStream getOutputStream() {
+      System.out.print("@huanke real instanceof OutputStreamOwner"+real.getClass()+(real instanceof OutputStreamOwner));
+      return (real instanceof OutputStreamOwner) ? ((OutputStreamOwner) real)
+              .getOutputStream() : null;
     }
   }
 
@@ -644,6 +651,7 @@ public class ReduceTask extends Task{
     }
 
     //huanke
+    @Override
     public OutputStream getOutputStream() {
       System.out.print("@huanke real instanceof OutputStreamOwner"+real.getClass()+(real instanceof OutputStreamOwner));
       return (real instanceof OutputStreamOwner) ? ((OutputStreamOwner) real)
