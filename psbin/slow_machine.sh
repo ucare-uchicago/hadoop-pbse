@@ -54,5 +54,5 @@ do
 	slowDevice ${REMOTE_DEVICE_PRELUDE}${deviceId} $MAX_TOTAL_RATE $MAX_SUBCLASS_RATE $SLOW_RATE
 done
 # also limp the local interface, dont want local communication to be fast
-slowDevice  $LOCAL_DEVICE_PRELUDE $MAX_TOTAL_RATE $MAX_SUBCLASS_RATE $SLOW_RATE
+# slowDevice  $LOCAL_DEVICE_PRELUDE $MAX_TOTAL_RATE $MAX_SUBCLASS_RATE $SLOW_RATE
 # done

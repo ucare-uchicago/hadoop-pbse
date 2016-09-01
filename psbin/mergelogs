@@ -13,6 +13,7 @@ do
   ssh node-$i 'cd /tmp/hadoop-ucare ; tarit logs ;'
   scp node-$i:/tmp/hadoop-ucare/logs.tgz /tmp/
   untarit logs.tgz
+  rm logs.tgz
 done
 
 cd /tmp/logs/
@@ -20,6 +21,6 @@ cp -r $TESTDIR/workGenLogs ./
 mv workGenLogs/genstats.py ./
 
 #cd yarn/userlogs/
-#cp $PR/expLogs/genstats.py ./
+#cp $PSBIN/genstats.py ./
 #sed -i "s/^SLOWNODE=.*/SLOWNODE=8/" genstats.py
 #sed -i "s/^SLOWHOST=.*/SLOWHOST=\"pc812\"/" genstats.py
