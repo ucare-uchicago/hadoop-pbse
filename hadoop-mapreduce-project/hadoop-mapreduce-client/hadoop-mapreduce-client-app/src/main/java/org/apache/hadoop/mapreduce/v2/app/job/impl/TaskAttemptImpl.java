@@ -1918,14 +1918,16 @@ public abstract class TaskAttemptImpl implements
       if(event instanceof TaskAttemptKillEvent) {
         TaskAttemptKillEvent msgEvent = (TaskAttemptKillEvent) event;
         //add to diagnostic
-        taskAttempt.addDiagnosticInfo(msgEvent.getMessage());
-        if(LOG.isDebugEnabled()){
-        	LOG.debug("@Cesar: Added diagnostic for killed task due to slow shuffle");
-        }
-        taskAttempt.eventHandler
-        	.handle(createJobCounterUpdateEventTAKilledBySlowShuffle(taskAttempt));
-        if(LOG.isDebugEnabled()){
-        	LOG.debug("@Cesar: Counter for attempt incremented");
+        if(msgEvent.isJustLogging()){
+	        taskAttempt.addDiagnosticInfo(msgEvent.getMessage());
+	        if(LOG.isDebugEnabled()){
+	        	LOG.debug("@Cesar: Added diagnostic for killed task due to slow shuffle");
+	        }
+	        taskAttempt.eventHandler
+	        	.handle(createJobCounterUpdateEventTAKilledBySlowShuffle(taskAttempt));
+	        if(LOG.isDebugEnabled()){
+	        	LOG.debug("@Cesar: Counter for attempt incremented");
+	        }
         }
       }
 

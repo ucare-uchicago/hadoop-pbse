@@ -1345,6 +1345,9 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 	    	        		  		task.getID().getJobId(), 
 	    	        		  		"Attempt " + attemptId + " was killed due to slow shuffle. It ran at host " + event.getSlowMapper()
 	    	        		  		+ " and now is going to be speculated in another node."));
+	      task.eventHandler.handle(new TaskAttemptKillEvent(attemptId,
+ 				   "Task attempt " + attemptId + " killed due to slow shuffle at host " + event.getSlowMapper(),
+ 				   true));
       }
 	  task.handleTaskAttemptCompletion(attemptId,
 				   TaskAttemptCompletionEventStatus.KILLED);
