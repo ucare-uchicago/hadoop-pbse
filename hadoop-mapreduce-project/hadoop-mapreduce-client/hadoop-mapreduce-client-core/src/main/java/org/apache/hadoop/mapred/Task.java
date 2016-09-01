@@ -783,7 +783,10 @@ abstract public class Task implements Writable, Configurable{
               false);
       // riza: if datanode or DNPath switched, then immediately report back
       boolean switchHappened = false;
-
+      
+      // retry for reduce progress
+      int sendReduceProgress = !isMapTask() ? 60000 / proginterval : 0;
+      
       // get current flag value and reset it as well
       boolean sendProgress = resetProgressFlag();
       while (!taskDone.get()) {
@@ -809,74 +812,39 @@ abstract public class Task implements Writable, Configurable{
           }
           
           // riza: heartbeat delaying here
-          if (datanodeRetries > 0) {
-            if (isMapTask()) {
-              // riza: MapTask delaying
-              if (this.in == null) {
-                datanodeRetries -= 1;
+          if (datanodeRetries > 0 && isMapTask()) {
+        	// riza: MapTask delaying
+            if (this.in == null) {
+              datanodeRetries -= 1;
+              sendProgress = sendProgress || resetProgressFlag();
+              LOG.info("riza: datainputstream still null, wait for next " + datanodeRetries
+                    + " retry");
+              continue;
+            } else if (DatanodeID.nullDatanodeID.equals(lastDatanodeId)) {
+              datanodeRetries -= 1;
+              sendProgress = sendProgress || resetProgressFlag();
+              LOG.info("riza: datanodeid still null, wait for next " + datanodeRetries
+                    + " retry");
+              continue;
+           }  
+          }
+          else if(sendReduceProgress > 0 && !isMapTask()){
+        	// riza: ReduceTask delaying
+		    boolean shouldNotSendShuffleProgress = (taskStatus == null ||
+										   	        taskStatus.getReportedFetchRates() == null || 
+										            taskStatus.getReportedFetchRates().getFetchRateReport() == null || 
+										            taskStatus.getReportedFetchRates().getFetchRateReport().size() == 0);
+		    boolean shouldNotSendHdfsWRiteProgress = (this.out == null);
+            if (shouldNotSendHdfsWRiteProgress && shouldNotSendShuffleProgress) {
+            	sendReduceProgress -= 1;
                 sendProgress = sendProgress || resetProgressFlag();
-                LOG.info("riza: datainputstream still null, wait for next " + datanodeRetries
-                        + " retry");
+                LOG.info("riza: dataoutputstream still null and no shuffle reports to send, wait for next " + sendReduceProgress
+                         + " retry. [shouldNotSendShuffleProgress=" + shouldNotSendShuffleProgress + ", shouldNotSendHdfsWRiteProgress=" + 
+                         shouldNotSendHdfsWRiteProgress + "]");
                 continue;
-              } else if (DatanodeID.nullDatanodeID.equals(lastDatanodeId)) {
-                datanodeRetries -= 1;
-                sendProgress = sendProgress || resetProgressFlag();
-                LOG.info("riza: datanodeid still null, wait for next " + datanodeRetries
-                        + " retry");
-                continue;
-              }
-            } else {
-              // riza: ReduceTask delaying
-              if (this.out == null) {
-                datanodeRetries -= 1;
-                sendProgress = sendProgress || resetProgressFlag();
-                LOG.info("riza: dataoutputstream still null, wait for next " + datanodeRetries
-                        + " retry");
-                continue;
-              }
             }
           }
-      
-          // @Cesar: Send progress every 60000 / proginterval seconds for reduce phase
-          // or until we have fetch rate reports or reduce pipeline
-          int sendReduceProgress = !isMapTask() ? 60000 / proginterval : 0;
-          boolean shouldSendShuffleProgress = (taskStatus == null ||
-        		  							   taskStatus.getReportedFetchRates() == null || 
-					 						   taskStatus.getReportedFetchRates().getFetchRateReport() == null || 
-					 						   taskStatus.getReportedFetchRates().getFetchRateReport().size() == 0);
-          boolean shouldSendHdfsWRiteProgress = (this.out == null);
           
-          if (sendReduceProgress > 0 && (shouldSendHdfsWRiteProgress? shouldSendShuffleProgress : false)) {
-        	  sendReduceProgress -= 1;
-        	  if(LOG.isDebugEnabled()){
-	              LOG.debug("@Cesar: Not sending progress since flag is " + sendReduceProgress + " and " + 
-	            		  	"(shouldSendHdfsWRiteProgress=" + shouldSendHdfsWRiteProgress + ", " + 
-	            		  	"shouldSendShuffleProgress=" + shouldSendShuffleProgress + ")");
-        	  }
-              sendProgress = sendProgress || resetProgressFlag();
-              continue;
-            } else {
-            	sendReduceProgress = 0;
-            	if(LOG.isDebugEnabled() && !isMapTask()){
-            		LOG.debug("@Cesar: Time to send progress for reduce task!");
-            	}
-            }
-          
-          
-          //huanke
-          // @Cesar: Ill comment this out, since this blocks the progress of shuffle phase
-          //int pathRetries = !isMapTask() ? 60000 / proginterval : 0;
-          //if ((pathRetries > 0) && (this.out == null)) {
-          //  pathRetries -= 1;
-          //  LOG.info("@huanke: DNPath still null, wait for next " + pathRetries
-          //          + " retry");
-          //  sendProgress = sendProgress || resetProgressFlag();
-          //  continue;
-          //} else {
-          //  pathRetries = 0;
-          //}
-
-
           if (sendProgress) {
             // we need to send progress update
             updateCounters();
