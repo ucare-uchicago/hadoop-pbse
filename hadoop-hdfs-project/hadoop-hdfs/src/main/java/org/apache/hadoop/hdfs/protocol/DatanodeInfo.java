@@ -521,9 +521,10 @@ public class DatanodeInfo extends DatanodeID implements Node {
 
   //huanke create a empty DatanodeInfo instance at the beginning
   public static DatanodeInfo[] createDatanodeInfo(){
-    DatanodeInfo[] DNpath =new DatanodeInfo[2];
+    DatanodeInfo[] DNpath =new DatanodeInfo[3];
     DNpath[0]=new DatanodeInfo("0.0.0.0","fake-localhost","null-uuid",0,0,0,0,0,0,0,0,0,0,0,0,0,"/default-rack", AdminStates.NORMAL);
     DNpath[1]=new DatanodeInfo("0.0.0.0","fake-localhost","null-uuid",0,0,0,0,0,0,0,0,0,0,0,0,0,"/default-rack", AdminStates.NORMAL);
+    DNpath[2]=new DatanodeInfo("0.0.0.0","fake-localhost","null-uuid",0,0,0,0,0,0,0,0,0,0,0,0,0,"/default-rack", AdminStates.NORMAL);
     return DNpath;
   }
 

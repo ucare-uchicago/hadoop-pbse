@@ -656,7 +656,7 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
       for(String slow: IgnoreInfo){
         LOG.info("@huanke continue slow1: "+slow);
         LOG.info("@huanke continue getHostname: "+chosenNode.getHostName());
-        if(chosenNode.getHostName().equals(slow)){
+        if(chosenNode.getHostName().contains(slow)){
           LOG.info("@huanke chooseLocalStorageHK: "+chosenNode.getHostName()+chosenNode.getIpAddr());
           flag=true;
           continue;
