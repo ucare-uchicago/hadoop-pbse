@@ -96,4 +96,16 @@
    <description>The name of the group of super-users</description>
  </property>
 
+ <!-- @huanke: custom begin -->
+  <property>
+        <name>slow.pipeline.datanode</name>
+        <value></value>
+  </property>
+
+  <property>
+        <name>pbse.enable.for.reduce.pipeline</name>
+        <value>false</value>
+  </property>
+  <!-- @huanke: custom end -->
+
 </configuration>

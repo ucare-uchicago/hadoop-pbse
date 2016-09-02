@@ -104,4 +104,67 @@
   </property>
   <!-- CUSTOM CONF END -->
 
+  <!-- CESAR BEGIN --> 
+  <property>
+    <name>mapreduce.experiment.enable_fetch_rate_speculation</name>
+    <value>false</value>
+    <description>UCARE: enable or disable fetch rate speculation for map tasks</description>
+  </property>
+
+  <property>
+    <name>mapreduce.experiment.enable_fetcher_shutdown</name>
+    <value>false</value>
+    <description>UCARE: should we shut down a fetcher when we detect slow shuffle</description>
+  </property>
+
+  <property>
+    <name>mapreduce.experiment.fetch_rate_speculation_slow_thresshold</name>
+    <value>1</value>
+    <description>UCARE: when average of transfer rates on a node is bellow this (mbit),speculate</description>
+  </property>
+
+  <property>
+    <name>mapreduce.experiment.fetch_rate_speculation_progress_thresshold</name>
+    <value>0.7</value>
+    <description>UCARE: Dont speculate if the transfer progress is greater or equal than this</description>
+  </property>
+  <!-- CESAR END -->
+
+  <!-- HUAN BEGIN -->
+  <property>
+    <name>slow.fix.datanode</name>
+    <value></value>
+    <description>UCARE: </description>
+  </property>
+
+  <property>
+    <name>task.fix.node</name>
+    <value>false</value>
+    <description>UCARE: should fix the nodes for tasks in JobImpl</description>
+  </property>
+
+  <property>
+    <name>map.task.locations.scope</name>
+    <value></value>
+    <description>UCARE: the scope for map tasks</description>
+  </property>
+
+  <property>
+    <name>reduce.task.locations.scope</name>
+    <value></value>
+    <description>UCARE: the scope for reduce tasks</description>
+  </property>
+
+  <property>
+    <name>pbse.enable.for.reduce.pipeline</name>
+    <value>false</value>
+    <description>UCARE: the scope for reduce tasks</description>
+  </property>
+
+  <property>
+    <name>reduce.get.pipenodes.flag</name>
+    <value>false</value>
+    <description>UCARE: the scope for reduce tasks</description>
+  </property>
+  <!-- HUAN END -->
 </configuration>
