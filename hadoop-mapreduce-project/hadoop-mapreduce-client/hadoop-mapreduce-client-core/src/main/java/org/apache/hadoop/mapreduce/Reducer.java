@@ -30,6 +30,7 @@ import org.apache.hadoop.mapred.*;
 import org.apache.hadoop.mapreduce.task.annotation.Checkpointable;
 
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.Iterator;
 
 /** 
@@ -199,7 +200,7 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
           if (out instanceof HdfsDataOutputStream) {
             // LOG.info("@huanke yes, it is!"+out.getClass());
             if(((HdfsDataOutputStream) out).getPipeNodes()!=null){
-              // LOG.info("@huanke Myfirst time to get pipeNodes from stream"+((HdfsDataOutputStream) out).getPipeNodes()[0]+((HdfsDataOutputStream) out).getPipeNodes()[1]);
+              LOG.info("@huanke Myfirst time to get pipeNodes from stream"+Arrays.toString(((HdfsDataOutputStream) out).getPipeNodes()));
               taskReport.setOutputStream(out);
               flag=false;
             }else{

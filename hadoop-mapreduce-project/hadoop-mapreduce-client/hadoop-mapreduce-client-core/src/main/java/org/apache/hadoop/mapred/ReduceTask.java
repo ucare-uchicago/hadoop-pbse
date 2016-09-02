@@ -26,6 +26,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -508,10 +509,10 @@ public class ReduceTask extends Task {
             if (flag && output != null) {
               // LOG.info("@huanke output!=null runReducer" + out.getClass() + out.toString());
               //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
-              if (out instanceof HdfsDataOutputStream) {
+              if (output instanceof HdfsDataOutputStream) {
                 // LOG.info("@huanke yes, it is!" + out.getClass());
-                if (((HdfsDataOutputStream) out).getPipeNodes() != null) {
-                  // LOG.info("@huanke Myfirst time to get pipeNodes from stream" + ((HdfsDataOutputStream) out).getPipeNodes()[0] + ((HdfsDataOutputStream) out).getPipeNodes()[1]);
+                if (((HdfsDataOutputStream) output).getPipeNodes() != null) {
+                  LOG.info("@huanke Myfirst time to get pipeNodes from stream" + Arrays.toString(((HdfsDataOutputStream) out).getPipeNodes()));
                   reporter.setOutputStream(output);
                   flag = false;
                 } else {

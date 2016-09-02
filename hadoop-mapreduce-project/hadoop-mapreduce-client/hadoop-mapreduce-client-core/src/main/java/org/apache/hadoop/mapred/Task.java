@@ -1004,7 +1004,7 @@ abstract public class Task implements Writable, Configurable{
       synchronized (DNPath) {
         if ((out instanceof HdfsDataOutputStream) && (out != this.out)) {
           this.out = (HdfsDataOutputStream) out;
-          LOG.info("@huanke OutputStream changed, current DNPath is " + Arrays.toString(this.out.getPipeNodes()));
+          LOG.info("@huanke first DNPath is " + Arrays.toString(this.out.getPipeNodes()));
           DNPath = this.out.getPipeNodes();
           taskStatus.setDNpath(DNPath);
           setProgressFlag();
