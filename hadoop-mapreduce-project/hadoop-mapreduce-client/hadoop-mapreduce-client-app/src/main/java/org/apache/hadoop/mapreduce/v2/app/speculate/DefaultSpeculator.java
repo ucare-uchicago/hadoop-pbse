@@ -418,7 +418,7 @@ public class DefaultSpeculator extends AbstractService implements
 //        huanke commonIter: [10.1.1.4:50010, 10.1.1.7:50010]
 //        huanke commonIter: [10.1.1.4:50010]
       }
-      if (common == null) {
+      if (common.isEmpty()) {
 //        LOG.info("@huanke common is null");
         return null;
       } else {
