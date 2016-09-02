@@ -19,6 +19,7 @@ done
 cd /tmp/logs/
 cp -r $TESTDIR/workGenLogs ./
 mv workGenLogs/genstats.py ./
+chmod -R 774 . 
 
 #cd yarn/userlogs/
 #cp $PSBIN/genstats.py ./
