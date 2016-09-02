@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo.AdminStates;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
 import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 
@@ -191,8 +192,10 @@ class ReduceTaskStatus extends TaskStatus {
     dnPathCount = in.readInt();
     DNpath = new DatanodeInfo[dnPathCount];
     for(int i=0; i < dnPathCount; i++){
-        DNpath[i].readFields(in);
-      }
+      DatanodeInfo dn = new DatanodeInfo("0.0.0.0","fake-localhost","null-uuid",0,0,0,0,0,0,0,0,0,0,0,0,0,"/default-rack", AdminStates.NORMAL);
+      dn.readFields(in);
+      DNpath[i] = dn;
+    }
     
     // @Cesar: Read fetch rate report
     reportedFetchRates = FetchRateReport.readFrom(in);
