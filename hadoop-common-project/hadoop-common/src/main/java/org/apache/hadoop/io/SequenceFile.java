@@ -822,7 +822,7 @@ public class SequenceFile {
   }
   
   /** Write key/value pairs to a sequence-format file. */
-  public static class Writer implements java.io.Closeable, Syncable{
+  public static class Writer implements java.io.Closeable, Syncable, OutputStreamOwner {
     private Configuration conf;
     FSDataOutputStream out;
     boolean ownOutputStream = true;
@@ -868,6 +868,7 @@ public class SequenceFile {
     }
 
     //huanke
+    @Override
     public OutputStream getOutputStream(){
       return out;
     }

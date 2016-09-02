@@ -28,12 +28,11 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FSDataOutputStream;
-
 import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.OutputStreamOwner;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.GzipCodec;
-import org.apache.hadoop.mapreduce.lib.output.OutputStreamOwner;
 import org.apache.hadoop.util.*;
 
 /** 

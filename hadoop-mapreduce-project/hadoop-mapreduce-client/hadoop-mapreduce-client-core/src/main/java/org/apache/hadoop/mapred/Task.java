@@ -813,35 +813,37 @@ abstract public class Task implements Writable, Configurable{
           
           // riza: heartbeat delaying here
           if (datanodeRetries > 0 && isMapTask()) {
-        	// riza: MapTask delaying
+            // riza: MapTask delaying
             if (this.in == null) {
               datanodeRetries -= 1;
               sendProgress = sendProgress || resetProgressFlag();
-              LOG.info("riza: datainputstream still null, wait for next " + datanodeRetries
-                    + " retry");
+              LOG.info("riza: datainputstream still null, wait for next "
+                  + datanodeRetries + " retry");
               continue;
             } else if (DatanodeID.nullDatanodeID.equals(lastDatanodeId)) {
               datanodeRetries -= 1;
               sendProgress = sendProgress || resetProgressFlag();
-              LOG.info("riza: datanodeid still null, wait for next " + datanodeRetries
-                    + " retry");
+              LOG.info("riza: datanodeid still null, wait for next "
+                  + datanodeRetries + " retry");
               continue;
-           }  
-          }
-          else if(sendReduceProgress > 0 && !isMapTask()){
-        	// riza: ReduceTask delaying
-		    boolean shouldNotSendShuffleProgress = (taskStatus == null ||
-										   	        taskStatus.getReportedFetchRates() == null || 
-										            taskStatus.getReportedFetchRates().getFetchRateReport() == null || 
-										            taskStatus.getReportedFetchRates().getFetchRateReport().size() == 0);
-		    boolean shouldNotSendHdfsWRiteProgress = (this.out == null);
+            }
+          } else if (sendReduceProgress > 0 && !isMapTask()) {
+            // riza: ReduceTask delaying
+            boolean shouldNotSendShuffleProgress = (taskStatus == null
+                || taskStatus.getReportedFetchRates() == null
+                || taskStatus.getReportedFetchRates().getFetchRateReport() == null || taskStatus
+                .getReportedFetchRates().getFetchRateReport().size() == 0);
+            boolean shouldNotSendHdfsWRiteProgress = (this.out == null);
             if (shouldNotSendHdfsWRiteProgress && shouldNotSendShuffleProgress) {
-            	sendReduceProgress -= 1;
-                sendProgress = sendProgress || resetProgressFlag();
-                LOG.info("riza: dataoutputstream still null and no shuffle reports to send, wait for next " + sendReduceProgress
-                         + " retry. [shouldNotSendShuffleProgress=" + shouldNotSendShuffleProgress + ", shouldNotSendHdfsWRiteProgress=" + 
-                         shouldNotSendHdfsWRiteProgress + "]");
-                continue;
+              sendReduceProgress -= 1;
+              sendProgress = sendProgress || resetProgressFlag();
+              LOG.info("riza: dataoutputstream still null and no shuffle reports to send, wait for next "
+                  + sendReduceProgress
+                  + " retry. [shouldNotSendShuffleProgress="
+                  + shouldNotSendShuffleProgress
+                  + ", shouldNotSendHdfsWRiteProgress="
+                  + shouldNotSendHdfsWRiteProgress + "]");
+              continue;
             }
           }
           
@@ -900,7 +902,7 @@ abstract public class Task implements Writable, Configurable{
               LOG.info("riza: switching datanode " + lastDatanodeId + " to "
                       + in.getCurrentOrChoosenDatanode());
               lastDatanodeId = in.getCurrentOrChoosenDatanode();
-              //taskStatus.setLastDatanodeID(lastDatanodeId);
+              taskStatus.setLastDatanodeID(lastDatanodeId);
               setProgressFlag();
               switchHappened = true;
               LOG.info("riza: datanode switched on TaskReporter");
@@ -910,11 +912,11 @@ abstract public class Task implements Writable, Configurable{
           //huanke
           if (this.out != null) {
             if (!DNPath.equals(this.out.getPipeNodes())) {
-              //LOG.info("@huanke switching DNPath " + Arrays.toString(DNPath)
-              //    + " to new DNPath "
-              //    + Arrays.toString(this.out.getPipeNodes()));
+              LOG.info("@huanke switching DNPath " + Arrays.toString(DNPath)
+                  + " to new DNPath "
+                  + Arrays.toString(this.out.getPipeNodes()));
               DNPath = this.out.getPipeNodes();
-              //taskStatus.setDNpath(DNPath);
+              taskStatus.setDNpath(DNPath);
               setProgressFlag();
               switchHappened = true;
               LOG.info("riza: DNPath switched on TaskReporter");
@@ -1000,9 +1002,9 @@ abstract public class Task implements Writable, Configurable{
     //huanke
     public void setOutputStream(OutputStream out) {
       synchronized (DNPath) {
-        if (out instanceof HdfsDataOutputStream) {
+        if ((out instanceof HdfsDataOutputStream) && (out != this.out)) {
           this.out = (HdfsDataOutputStream) out;
-          LOG.info("@huanke first DNPath is " + Arrays.toString(this.out.getPipeNodes()));
+          LOG.info("@huanke OutputStream changed, current DNPath is " + Arrays.toString(this.out.getPipeNodes()));
           DNPath = this.out.getPipeNodes();
           taskStatus.setDNpath(DNPath);
           setProgressFlag();

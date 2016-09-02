@@ -22,6 +22,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -47,7 +48,7 @@ class ReduceTaskStatus extends TaskStatus {
   @Override
   public void setDNpath(DatanodeInfo[] DNpath) {
     if(DNpath!=null){
-      LOG.info("@huanke setDNpath ReduceTaskStatus: "+DNpath[0].getHostName()+DNpath[1].getHostName());
+      //LOG.info("@huanke setDNpath ReduceTaskStatus: "+Arrays.toString(DNPath));
         this.DNpath=DNpath;
     }
   }
@@ -56,7 +57,7 @@ class ReduceTaskStatus extends TaskStatus {
 
   //huanke  if taskAttemptListenerImpl get 0000 something, it means DNPath is not set at all
   public DatanodeInfo[] getDNpath(){
-    LOG.info("@huanke getDNpath ReduceTaskStatus: "+DNpath[0].getHostName()+DNpath[1].getHostName());
+    //LOG.info("@huanke getDNpath ReduceTaskStatus: "+Arrays.toString(DNPath));
     return this.DNpath;
   }
   

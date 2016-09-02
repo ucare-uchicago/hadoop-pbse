@@ -248,13 +248,13 @@ public class DefaultSpeculator extends AbstractService implements
               = new Runnable() {
         @Override
         public void run() {
+          LOG.info("@huanke MyThread is running!" + TaskAndPipeline + "TaskSet000: " + TaskSet);
           while (!stopped && !Thread.currentThread().isInterrupted()) {
             long backgroundRunStartTime = clock.getTime();
             try {
-              LOG.info("@huanke MyThread is running!" + TaskAndPipeline + "TaskSet000: " + TaskSet);
               DatanodeInfo ignoreNode = checkIntersection();
               if (ignoreNode == null) {
-                LOG.info("@huanke checkIntersection returns null now");
+                //LOG.info("@huanke checkIntersection returns null now");
                 //just test to launch a backup reduce task
               } else {
                 LOG.info("@huanke checkIntersection returns ignoreNode :" + ignoreNode);
@@ -266,7 +266,7 @@ public class DefaultSpeculator extends AbstractService implements
                       : soonestRetryAfterNoSpeculate;
               long wait = Math.max(mininumRecomp,
                       clock.getTime() - backgroundRunStartTime);
-              LOG.info("@huanke MyThread is waiting for Pipeline info" + wait);
+              //LOG.info("@huanke MyThread is waiting for Pipeline info" + wait);
 
               Object pollResult
                       = scanControl1.poll(wait, TimeUnit.MILLISECONDS);
@@ -367,9 +367,9 @@ public class DefaultSpeculator extends AbstractService implements
   private DatanodeInfo checkIntersection() {
     //huanke--------------------------------------------------------------
     TaskType type=TaskType.REDUCE;
-    LOG.info("@huanke TaskSetSize :"+TaskSet+TaskAndPipeline);
+//    LOG.info("@huanke TaskSetSize :"+TaskSet+TaskAndPipeline);
     if(TaskSet.size()!=0) {
-      LOG.info("@huanke TaskSet1 :" + TaskSet);
+//      LOG.info("@huanke TaskSet1 :" + TaskSet);
       //huanke TaskSet1 :[task_1471318623508_0001_r_000001]
       //huanke TaskSet1 :[task_1471318623508_0001_r_000001, task_1471318623508_0001_r_000000]
       Iterator iter = TaskSet.iterator();
@@ -386,40 +386,40 @@ public class DefaultSpeculator extends AbstractService implements
           if (tmp != null) {
             lists.add((ArrayList<DatanodeInfo>) tmp);
           } else {
-            LOG.info("@huanke TaskAndPipeline is not ready for task " + taskEntry.getKey());
+//            LOG.info("@huanke TaskAndPipeline is not ready for task " + taskEntry.getKey());
           }
         }
         else{
-          LOG.info("@huanke TaskAndPipeline is still empty");
+//          LOG.info("@huanke TaskAndPipeline is still empty");
         }
       }
     }else{
-      LOG.info("@huanke TaskSet2 is empty now :" + TaskSet);
+//      LOG.info("@huanke TaskSet2 is empty now :" + TaskSet);
     }
     if(lists.isEmpty()){
-      LOG.info("@huanke listsa is empty now");
+//      LOG.info("@huanke listsa is empty now");
       return null;
     }else{
       LOG.info("@huanke lists1: " + lists);
       //huanke lists1: [[10.1.1.4:50010, 10.1.1.7:50010], [10.1.1.6:50010, 10.1.1.4:50010]]
       List<DatanodeInfo> common = new ArrayList<DatanodeInfo>();
-      LOG.info("@huanke common00: " + common);
+//      LOG.info("@huanke common00: " + common);
 //      huanke common00: []
       common.addAll(lists.get(0));
       LOG.info("@huanke common01: " + common);
 //      huanke common01: [10.1.1.4:50010, 10.1.1.7:50010]
       for (ListIterator<ArrayList<DatanodeInfo>> iter = lists.listIterator(); iter.hasNext(); ) {
         ArrayList<DatanodeInfo> ttt=iter.next();
-        LOG.info("@huanke iter.next(): " + ttt );
+//        LOG.info("@huanke iter.next(): " + ttt );
 //        huanke iter.next(): [10.1.1.4:50010, 10.1.1.7:50010]
 //        huanke iter.next(): [10.1.1.6:50010, 10.1.1.4:50010]
         common.retainAll(ttt);
-        LOG.info("@huanke commonIter: " + common);
+//        LOG.info("@huanke commonIter: " + common);
 //        huanke commonIter: [10.1.1.4:50010, 10.1.1.7:50010]
 //        huanke commonIter: [10.1.1.4:50010]
       }
       if (common == null) {
-        LOG.info("@huanke common is null");
+//        LOG.info("@huanke common is null");
         return null;
       } else {
         LOG.info("@huanke common: " + common);
@@ -887,7 +887,7 @@ public class DefaultSpeculator extends AbstractService implements
         if (estimatedReplacementEndTime >= estimatedEndTime) {
           return TOO_LATE_TO_SPECULATE;
         }
-        LOG.info("@huanke  ---estimatedEndTime: "+estimatedEndTime +"estimatedReplacementEndTime: "+estimatedReplacementEndTime+" progress: "+progress+" now: "+now);
+        //LOG.info("@huanke  ---estimatedEndTime: "+estimatedEndTime +"estimatedReplacementEndTime: "+estimatedReplacementEndTime+" progress: "+progress+" now: "+now);
         //huanke  ---estimatedEndTime: 1470079227747 estimatedReplacementEndTime: 1469999793485 progress: 0.0 now: 1469999785793
         result = estimatedEndTime - estimatedReplacementEndTime;
       
@@ -999,13 +999,13 @@ public class DefaultSpeculator extends AbstractService implements
           ++numberSpeculationsAlready;
         }
 
-        LOG.info("@huanke TaskId"+taskEntry.getKey()+taskEntry.getValue().getType()+" taskProgress: "+taskEntry.getValue().getProgress());
+        //LOG.info("@huanke TaskId"+taskEntry.getKey()+taskEntry.getValue().getType()+" taskProgress: "+taskEntry.getValue().getProgress());
         
         if (mySpeculationValue != NOT_RUNNING) {
           ++numberRunningTasks;
         }
 
-        LOG.info("@huanke mySpeculationValue: "+mySpeculationValue+" bestSpeculationValue: "+bestSpeculationValue + " taskEntry.getKey(): "+ taskEntry.getKey());
+        //LOG.info("@huanke mySpeculationValue: "+mySpeculationValue+" bestSpeculationValue: "+bestSpeculationValue + " taskEntry.getKey(): "+ taskEntry.getKey());
         //huanke mySpeculationValue: -9223372036854775808 bestSpeculationValue: -1 taskEntry.getKey(): task_1470000526915_0001_m_000000
         
         if (mySpeculationValue > bestSpeculationValue) {

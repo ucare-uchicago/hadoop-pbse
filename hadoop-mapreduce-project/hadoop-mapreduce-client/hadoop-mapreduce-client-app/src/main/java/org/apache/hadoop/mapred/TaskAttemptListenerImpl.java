@@ -21,6 +21,7 @@ package org.apache.hadoop.mapred;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Set;
@@ -370,7 +371,7 @@ public class TaskAttemptListenerImpl extends CompositeService
 
     //huanke
     if(!taskStatus.getIsMap()&& taskStatus.getDNpath()!=null){
-      LOG.info("@huanke DNpath[0]: "+taskStatus.getDNpath()[0]+" DNpath[1]:" +taskStatus.getDNpath()[1]);
+      LOG.info("@huanke received DNpath: "+Arrays.toString(taskStatus.getDNpath()));
       //huanke DNpath[0]: 0.0.0.0:0 DNpath[1]:0.0.0.0:0
       taskAttemptStatus.DNpath=taskStatus.getDNpath();
       for(DatanodeInfo ttemp: taskAttemptStatus.DNpath){

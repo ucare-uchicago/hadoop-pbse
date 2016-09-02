@@ -1,4 +1,4 @@
-package org.apache.hadoop.mapreduce.lib.input;
+package org.apache.hadoop.io;
 
 import java.io.InputStream;
 

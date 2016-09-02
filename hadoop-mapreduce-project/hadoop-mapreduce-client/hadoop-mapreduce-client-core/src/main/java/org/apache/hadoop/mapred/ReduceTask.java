@@ -22,10 +22,16 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.text.NumberFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
-import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -35,12 +41,10 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileSystem.Statistics;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.DFSOutputStream;
-
 import org.apache.hadoop.hdfs.client.HdfsDataOutputStream;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.IOUtils;
+import org.apache.hadoop.io.OutputStreamOwner;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Writable;
@@ -54,7 +58,6 @@ import org.apache.hadoop.mapreduce.MRConfig;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskCounter;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormatCounter;
-import org.apache.hadoop.mapreduce.lib.output.OutputStreamOwner;
 import org.apache.hadoop.mapreduce.split.AMtoReduceTask;
 import org.apache.hadoop.mapreduce.task.reduce.Shuffle;
 import org.apache.hadoop.util.Progress;
@@ -64,7 +67,7 @@ import org.apache.hadoop.util.ReflectionUtils;
 /** A Reduce task. */
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
-public class ReduceTask extends Task{
+public class ReduceTask extends Task {
 
   static {                                        // register a ctor
     WritableFactories.setFactory
@@ -73,8 +76,7 @@ public class ReduceTask extends Task{
          public Writable newInstance() { return new ReduceTask(); }
        });
   }
-  //huanke
-  private AMtoReduceTask AMtask=new AMtoReduceTask();
+  
   private static final Log LOG = LogFactory.getLog(ReduceTask.class.getName());
   private int numMaps;
 
@@ -86,7 +88,8 @@ public class ReduceTask extends Task{
   private Map<TaskAttemptID, MapOutputFile> localMapFiles;
 
   //huanke
-  private ArrayList<String> strArray = new ArrayList<String>();
+  private AMtoReduceTask AMtask=new AMtoReduceTask();
+  // private ArrayList<String> strArray = new ArrayList<String>();
   //  private DatanodeInfo[] PathInfo = new HashMap<TaskAttemptID, ArrayList<String>>();
 
   { 
@@ -337,7 +340,6 @@ public class ReduceTask extends Task{
       sortPhase  = getProgress().addPhase("sort");
       reducePhase = getProgress().addPhase("reduce");
     }
-    
     // start thread that will handle communication with parent
     TaskReporter reporter = startReporter(umbilical);
     
@@ -392,11 +394,12 @@ public class ReduceTask extends Task{
     mapOutputFilesOnDisk.clear();
     
     sortPhase.complete();                         // sort is complete
-    setPhase(TaskStatus.Phase.REDUCE);
+    setPhase(TaskStatus.Phase.REDUCE); 
     //huanke reocrd the write reduce phase start time
     long StartTime = System.currentTimeMillis();
     LOG.info("@huanke StartTime: "+StartTime);
-    statusUpdate(umbilical); //I don't want statusUpdate(umbilical) here, because I need to get datanodes from reduce phase . move it to reduce phase
+    //I don't want statusUpdate(umbilical) here, because I need to get datanodes from reduce phase . move it to reduce phase
+    statusUpdate(umbilical);
     Class keyClass = job.getMapOutputKeyClass();
     Class valueClass = job.getMapOutputValueClass();
     RawComparator comparator = job.getOutputValueGroupingComparator();
@@ -435,13 +438,13 @@ public class ReduceTask extends Task{
                      Class<INKEY> keyClass,
                      Class<INVALUE> valueClass) throws IOException {
     LOG.info("@huanke runOldReducer");
-    Reducer<INKEY, INVALUE, OUTKEY, OUTVALUE> reducer =
-            ReflectionUtils.newInstance(job.getReducerClass(), job);
+    Reducer<INKEY,INVALUE,OUTKEY,OUTVALUE> reducer = 
+      ReflectionUtils.newInstance(job.getReducerClass(), job);
     // make output collector
     String finalName = getOutputName(getPartition());
 
     RecordWriter<OUTKEY, OUTVALUE> out = new OldTrackingRecordWriter<OUTKEY, OUTVALUE>(
-            this, job, reporter, finalName);
+        this, job, reporter, finalName);
     final RecordWriter<OUTKEY, OUTVALUE> finalOut = out;
 
     OutputCollector<OUTKEY, OUTVALUE> collector =
@@ -455,10 +458,12 @@ public class ReduceTask extends Task{
             };
 
     //huanke
+    boolean flag = false;
+    OutputStream output = null;
     try {	
       if (out instanceof OutputStreamOwner) {
         LOG.info("@huanke trackRW instanceof ");
-        OutputStream output = ((OutputStreamOwner) out).getOutputStream();
+        output = ((OutputStreamOwner) out).getOutputStream();
         LOG.info("@huanke output HK " + ((output != null) ? 1 : 0));
         if (output != null) {
           LOG.info("@huanke output!=null " + output.getClass() + output.toString());
@@ -471,8 +476,16 @@ public class ReduceTask extends Task{
         } else {
           LOG.info("@huanke output is null");
         }
-        boolean flag = job.getBoolean("reduce.get.pipenodes.flag", false);
+        flag = job.getBoolean("reduce.get.pipenodes.flag", false);
         //huanke .. it seems not work here.
+      }
+    } catch(Exception e) {
+      LOG.error("@huanke : ERROR in reduce task");
+      StringWriter sw = new StringWriter();
+      PrintWriter pw = new PrintWriter(sw);
+      e.printStackTrace(pw);
+      LOG.error(sw.toString());
+    }
 
         // apply reduce function
         try {
@@ -492,7 +505,7 @@ public class ReduceTask extends Task{
             reduceInputKeyCounter.increment(1);
             reducer.reduce(values.getKey(), values, collector, reporter);
             // LOG.info("@huanke flagR :" + flag);
-            if (flag && out != null) {
+            if (flag && output != null) {
               // LOG.info("@huanke output!=null runReducer" + out.getClass() + out.toString());
               //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
               if (out instanceof HdfsDataOutputStream) {
@@ -524,16 +537,9 @@ public class ReduceTask extends Task{
           IOUtils.cleanup(LOG, reducer);
           closeQuietly(out, reporter);
         }
-
-      }
-
-    }catch(Exception e){
-      e.printStackTrace();
-
-    }
   }
 
-  static class OldTrackingRecordWriter<K, V> implements RecordWriter<K, V>, OutputStreamOwner{
+  static class OldTrackingRecordWriter<K, V> implements RecordWriter<K, V>, OutputStreamOwner {
 
     private final RecordWriter<K, V> real;
     private final org.apache.hadoop.mapred.Counters.Counter reduceOutputCounter;
@@ -585,7 +591,7 @@ public class ReduceTask extends Task{
       return bytesWritten;
     }
 
-	@Override
+	  @Override
     public OutputStream getOutputStream() {
       System.out.print("@huanke real instanceof OutputStreamOwner"+real.getClass()+(real instanceof OutputStreamOwner));
       return (real instanceof OutputStreamOwner) ? ((OutputStreamOwner) real)
@@ -737,8 +743,10 @@ public class ReduceTask extends Task{
         reducer.run(reducerContext,output, reporter, flag);
       }
     }catch (Exception e){
-      LOG.error(e.getMessage());
-      LOG.error(e.getStackTrace());
+      StringWriter sw = new StringWriter();
+      PrintWriter pw = new PrintWriter(sw);
+      e.printStackTrace(pw);
+      LOG.error(sw.toString());
     } finally {
       trackedRW.close(reducerContext);
     }
@@ -756,7 +764,10 @@ public class ReduceTask extends Task{
     }
     catch(Exception exc){
       LOG.error("@huanke : ERROR in reduce task");
-      LOG.error("@huanke : " + exc);
+      StringWriter sw = new StringWriter();
+      PrintWriter pw = new PrintWriter(sw);
+      exc.printStackTrace(pw);
+      LOG.error(sw.toString());
     }
 
   }

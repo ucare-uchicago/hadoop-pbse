@@ -19,7 +19,6 @@
 package org.apache.hadoop.mapreduce.lib.input;
 
 import java.io.IOException;
-
 import java.io.InputStream;
 
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -29,6 +28,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.Seekable;
+import org.apache.hadoop.io.InputStreamOwner;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.CodecPool;
