@@ -17,7 +17,7 @@ SLOWNODE=100
 SLOWHOST="VOID"
 SLOWIP="10.1.1."+str(SLOWNODE+2)
 
-VERSION="2.3"
+VERSION="2.4"
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -27,6 +27,7 @@ dataread = re.compile('.+ reporting datanode (.+)')
 re_date = re.compile("..+[-/]..[-/].. ..:..:..(,...)*")
 re_hb = re.compile(".*statusUpdate.*")
 re_tags_pbse = re.compile(".+ (PBSE-[^ :]+).*")
+re_dnpipeline = re.compile(".+ reporting pipeline info \[(.+)\].*")
 re_am_finalct = re.compile(".+Final Stats: PendingReds:(.+) ScheduledMaps:(.+) ScheduledReds:(.+) AssignedMaps:(.+) AssignedReds:(.+) CompletedMaps:(.+) CompletedReds:(.+) ContAlloc:(.+) ContRel:(.+) HostLocal:(.+) RackLocal:(.+)")
 re_am_specadd = re.compile(".+addSpeculativeAttempt.+")
 re_jc_appid = re.compile(".+Submitted application (.+)")
@@ -104,6 +105,7 @@ def getMasterStats(app):
   master["slowNodeInvolvedInDataread"] = False
   master["slowNodeInvolvedInMap"] = False
   master["slowNodeInvolvedInReduce"] = False
+  master["slowNodeInvolvedInDatawrite"] = False
   master["tags_PBSE"] = []
   # location
   master["location"] = ""
@@ -145,12 +147,15 @@ def getMasterStats(app):
           "reducenode": "",
           "datanode": [],
           "lastDatanode": "NONE",
+          "dnpipeline": [],
+          "status_update": [],
           "ismap" : ("_m_" in att),
           "shuffleTime": 0.0,
           "isSuccessful": False,
           "isSlowMapnode": False,
           "isSlowDatanode": False,
-          "isSlowReducenode": False
+          "isSlowReducenode": False,
+          "isSlowPipeline": False
         }
         app["containers"][ct] = container
 
@@ -217,7 +222,6 @@ def getContainerStats(app):
 
     linect = 0
     line = ""
-    ct["status_update"] = []
     for line in f:
       if linect == 0:
         ct["time_start"] = getLogTime(line)
@@ -230,6 +234,15 @@ def getContainerStats(app):
         if datanode.startswith(SLOWHOST):
             ct["isSlowDatanode"] = True
             master["slowNodeInvolvedInDataread"] = True
+
+      match = re_dnpipeline.match(line)
+      if match:
+        pipes = match.group(1).split(", ")
+        ct["dnpipeline"].append(pipes)
+        for p in pipes:
+          if SLOWHOST in p:
+            ct["isSlowPipeline"] = True
+            master["slowNodeInvolvedInDatawrite"] = True
 
       if re_hb.match(line):
         ct["status_update"].append(getLogTime(line))
@@ -317,12 +330,15 @@ def getTopology():
               "reducenode": "",
               "datanode": [],
               "lastDatanode": "NONE",
+              "dnpipeline": [],
+              "status_update": [],
               "ismap": False,
               "shuffleTime": 0.0,
               "isSuccessful": False,
               "isSlowMapnode": False,
               "isSlowDatanode": False,
-              "isSlowReducenode": False
+              "isSlowReducenode": False,
+              "isSlowPipeline": False
               }
             apps[theroot]["containers"][subdirname] = container
           ctcount += 1
@@ -338,7 +354,8 @@ def getTopology():
        master = app["master"]
        master["isInvolveSlownode"] = master["slowNodeInvolvedInDataread"] \
          or master["slowNodeInvolvedInMap"] \
-         or master["slowNodeInvolvedInReduce"]
+         or master["slowNodeInvolvedInReduce"] \
+         or master["slowNodeInvolvedInDatawrite"]
     except Exception as e:
        print 'One container failed with : ' + str(e)
   getJobClientStats(apps)
