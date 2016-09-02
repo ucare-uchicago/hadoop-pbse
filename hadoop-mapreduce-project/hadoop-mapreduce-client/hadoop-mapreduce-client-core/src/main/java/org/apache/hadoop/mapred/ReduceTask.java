@@ -511,13 +511,13 @@ public class ReduceTask extends Task {
               //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
               if (output instanceof HdfsDataOutputStream) {
                 // LOG.info("@huanke yes, it is!" + out.getClass());
-                if (((HdfsDataOutputStream) output).getPipeNodes() != null) {
-                  LOG.info("@huanke Myfirst time to get pipeNodes from stream" + Arrays.toString(((HdfsDataOutputStream) out).getPipeNodes()));
+//                if (((HdfsDataOutputStream) output).getPipeNodes() != null) {
+                  //LOG.info("@huanke Myfirst time to get pipeNodes from stream" + Arrays.toString(((HdfsDataOutputStream) out).getPipeNodes()));
                   reporter.setOutputStream(output);
                   flag = false;
-                } else {
-                  // LOG.info("@huanke I haven't get the pipeNods from stream yet ");
-                }
+//                } else {
+//                  // LOG.info("@huanke I haven't get the pipeNods from stream yet ");
+//                }
               }
             }
             if (incrProcCount) {

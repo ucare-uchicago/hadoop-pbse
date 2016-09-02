@@ -911,7 +911,7 @@ abstract public class Task implements Writable, Configurable{
 
           //huanke
           if (this.out != null) {
-            if (!DNPath.equals(this.out.getPipeNodes())) {
+            if (this.out.getPipeNodes() != null && !DNPath.equals(this.out.getPipeNodes())) {
               LOG.info("@huanke switching DNPath " + Arrays.toString(DNPath)
                   + " to new DNPath "
                   + Arrays.toString(this.out.getPipeNodes()));
@@ -1004,10 +1004,14 @@ abstract public class Task implements Writable, Configurable{
       synchronized (DNPath) {
         if ((out instanceof HdfsDataOutputStream) && (out != this.out)) {
           this.out = (HdfsDataOutputStream) out;
-          LOG.info("@huanke first DNPath is " + Arrays.toString(this.out.getPipeNodes()));
-          DNPath = this.out.getPipeNodes();
-          taskStatus.setDNpath(DNPath);
-          setProgressFlag();
+          if (this.out.getPipeNodes() != null) {
+            LOG.info("@huanke first DNPath is " + Arrays.toString(this.out.getPipeNodes()));
+            DNPath = this.out.getPipeNodes();
+            taskStatus.setDNpath(DNPath);
+            setProgressFlag();
+          } else {
+            LOG.info("@huanke first DNPath still null");
+          }
         }
       }
     }

@@ -199,13 +199,13 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
           //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
           if (out instanceof HdfsDataOutputStream) {
             // LOG.info("@huanke yes, it is!"+out.getClass());
-            if(((HdfsDataOutputStream) out).getPipeNodes()!=null){
-              LOG.info("@huanke Myfirst time to get pipeNodes from stream"+Arrays.toString(((HdfsDataOutputStream) out).getPipeNodes()));
+//            if(((HdfsDataOutputStream) out).getPipeNodes()!=null){
+              //LOG.info("@huanke Myfirst time to get pipeNodes from stream"+Arrays.toString(((HdfsDataOutputStream) out).getPipeNodes()));
               taskReport.setOutputStream(out);
               flag=false;
-            }else{
-              // LOG.info("@huanke I haven't get the pipeNods from stream yet ");
-            }
+//            }else{
+//              // LOG.info("@huanke I haven't get the pipeNods from stream yet ");
+//            }
           }
         }
         // If a back up store is used, reset it
