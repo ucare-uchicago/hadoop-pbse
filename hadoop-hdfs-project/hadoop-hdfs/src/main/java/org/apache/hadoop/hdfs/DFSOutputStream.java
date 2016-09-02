@@ -31,7 +31,12 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.ClosedChannelException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -105,7 +110,6 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
-import com.google.common.collect.Lists;
 
 
 /****************************************************************
@@ -1610,7 +1614,7 @@ public class DFSOutputStream extends FSOutputSummer
   // @Cesar: Get nodes as list
   public synchronized List<String> getAllPipeNodes(){
     if(streamer.getNodes() != null){
-    	List<String> output = Lists.newArrayList();
+    	List<String> output = new ArrayList<String>();
     	for(DatanodeInfo dtaNode : streamer.getNodes()){
     		// @Cesar: Should never happen, but lets see
     		if(DFSClient.LOG.isDebugEnabled() && dtaNode == null){
