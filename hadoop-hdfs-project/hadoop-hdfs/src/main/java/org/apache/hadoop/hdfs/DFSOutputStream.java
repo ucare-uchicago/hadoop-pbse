@@ -1608,7 +1608,10 @@ public class DFSOutputStream extends FSOutputSummer
 
   // huanke --> forward this to task report
   public synchronized DatanodeInfo[] getPipeNodes() {
-    return streamer.getNodes();
+    if (streamer != null)
+      return streamer.getNodes();
+    else
+      return null;
   }
 
   // @Cesar: Get nodes as list

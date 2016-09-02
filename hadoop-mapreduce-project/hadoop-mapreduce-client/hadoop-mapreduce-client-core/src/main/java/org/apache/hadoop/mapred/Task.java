@@ -860,7 +860,11 @@ abstract public class Task implements Writable, Configurable{
               taskStatus.setLastDatanodeID(lastDatanodeId);
             } else {
               // riza: piggyback PBSE reduce information
-              LOG.info("@huanke reporting pipeline info " + Arrays.toString(DNPath));
+              String[] hostnames = new String[DNPath.length];
+              for (int i = 0; i < DNPath.length; i++) {
+                hostnames[i] = DNPath[i].getHostName();
+              }
+              LOG.info("@huanke reporting pipeline info " + Arrays.toString(hostnames));
               taskStatus.setDNpath(DNPath);
             }
 

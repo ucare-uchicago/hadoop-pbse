@@ -29,8 +29,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.hdfs.DFSOutputStream;
-import org.apache.hadoop.hdfs.client.HdfsDataOutputStream;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.OutputStreamOwner;
 import org.apache.hadoop.io.Text;
@@ -77,6 +75,7 @@ public class TextOutputFormat<K, V> extends FileOutputFormat<K, V> {
     }
 
     //huanke bypass DataOutputStream to LineRecordWriter
+    @Override
     public OutputStream getOutputStream() {
       return this.out;
     }
