@@ -365,68 +365,76 @@ public class DefaultSpeculator extends AbstractService implements
   
   //huanke
   private DatanodeInfo checkIntersection() {
-    //huanke--------------------------------------------------------------
-    TaskType type=TaskType.REDUCE;
-//    LOG.info("@huanke TaskSetSize :"+TaskSet+TaskAndPipeline);
-    if(TaskSet.size()!=0) {
-//      LOG.info("@huanke TaskSet1 :" + TaskSet);
-      //huanke TaskSet1 :[task_1471318623508_0001_r_000001]
-      //huanke TaskSet1 :[task_1471318623508_0001_r_000001, task_1471318623508_0001_r_000000]
-      Iterator iter = TaskSet.iterator();
-      TaskId Ttmp = (TaskId) iter.next();
-      Job job = context.getJob(Ttmp.getJobId());
-      Map<TaskId, Task> tasks = job.getTasks(type);
-      LOG.info("@huanke taskSize "+tasks.size()+tasks);
-      for (Map.Entry<TaskId, Task> taskEntry : tasks.entrySet()) {
-        if(TaskAndPipeline!=null && TaskAndPipeline.size()==tasks.size()) {
-          List<DatanodeInfo> tmp = TaskAndPipeline.get(taskEntry.getKey());
-          LOG.info("@huanke TaskAndPipeline for each task" + tmp);
-//          huanke TaskAndPipeline for each task[10.1.1.4:50010, 10.1.1.7:50010]
-//          huanke TaskAndPipeline for each task[10.1.1.6:50010, 10.1.1.4:50010]
-          if (tmp != null) {
-            lists.add((ArrayList<DatanodeInfo>) tmp);
-          } else {
-//            LOG.info("@huanke TaskAndPipeline is not ready for task " + taskEntry.getKey());
-          }
-        }
-        else{
-//          LOG.info("@huanke TaskAndPipeline is still empty");
-        }
-      }
-    }else{
-//      LOG.info("@huanke TaskSet2 is empty now :" + TaskSet);
-    }
-    if(lists.isEmpty()){
-//      LOG.info("@huanke listsa is empty now");
-      return null;
-    }else{
-      LOG.info("@huanke lists1: " + lists);
-      //huanke lists1: [[10.1.1.4:50010, 10.1.1.7:50010], [10.1.1.6:50010, 10.1.1.4:50010]]
-      List<DatanodeInfo> common = new ArrayList<DatanodeInfo>();
-//      LOG.info("@huanke common00: " + common);
-//      huanke common00: []
-      common.addAll(lists.get(0));
-      LOG.info("@huanke common01: " + common);
-//      huanke common01: [10.1.1.4:50010, 10.1.1.7:50010]
-      for (ListIterator<ArrayList<DatanodeInfo>> iter = lists.listIterator(); iter.hasNext(); ) {
-        ArrayList<DatanodeInfo> ttt=iter.next();
-//        LOG.info("@huanke iter.next(): " + ttt );
-//        huanke iter.next(): [10.1.1.4:50010, 10.1.1.7:50010]
-//        huanke iter.next(): [10.1.1.6:50010, 10.1.1.4:50010]
-        common.retainAll(ttt);
-//        LOG.info("@huanke commonIter: " + common);
-//        huanke commonIter: [10.1.1.4:50010, 10.1.1.7:50010]
-//        huanke commonIter: [10.1.1.4:50010]
-      }
-      if (common.isEmpty()) {
-//        LOG.info("@huanke common is null");
-        return null;
-      } else {
-        LOG.info("@huanke common: " + common);
-//        huanke common: [10.1.1.4:50010]
-        return common.get(0);
-      }
-    }
+	// THis should not die if it has an exceptioon for now, it 
+	// should recover in next run
+	try{  
+	    //huanke--------------------------------------------------------------
+	    TaskType type=TaskType.REDUCE;
+	//    LOG.info("@huanke TaskSetSize :"+TaskSet+TaskAndPipeline);
+	    if(TaskSet.size()!=0) {
+	//      LOG.info("@huanke TaskSet1 :" + TaskSet);
+	      //huanke TaskSet1 :[task_1471318623508_0001_r_000001]
+	      //huanke TaskSet1 :[task_1471318623508_0001_r_000001, task_1471318623508_0001_r_000000]
+	      Iterator iter = TaskSet.iterator();
+	      TaskId Ttmp = (TaskId) iter.next();
+	      Job job = context.getJob(Ttmp.getJobId());
+	      Map<TaskId, Task> tasks = job.getTasks(type);
+	      LOG.info("@huanke taskSize "+tasks.size()+tasks);
+	      for (Map.Entry<TaskId, Task> taskEntry : tasks.entrySet()) {
+	        if(TaskAndPipeline!=null && TaskAndPipeline.size()==tasks.size()) {
+	          List<DatanodeInfo> tmp = TaskAndPipeline.get(taskEntry.getKey());
+	          LOG.info("@huanke TaskAndPipeline for each task" + tmp);
+	//          huanke TaskAndPipeline for each task[10.1.1.4:50010, 10.1.1.7:50010]
+	//          huanke TaskAndPipeline for each task[10.1.1.6:50010, 10.1.1.4:50010]
+	          if (tmp != null) {
+	            lists.add((ArrayList<DatanodeInfo>) tmp);
+	          } else {
+	//            LOG.info("@huanke TaskAndPipeline is not ready for task " + taskEntry.getKey());
+	          }
+	        }
+	        else{
+	//          LOG.info("@huanke TaskAndPipeline is still empty");
+	        }
+	      }
+	    }else{
+	//      LOG.info("@huanke TaskSet2 is empty now :" + TaskSet);
+	    }
+	    if(lists.isEmpty()){
+	//      LOG.info("@huanke listsa is empty now");
+	      return null;
+	    }else{
+	      LOG.info("@huanke lists1: " + lists);
+	      //huanke lists1: [[10.1.1.4:50010, 10.1.1.7:50010], [10.1.1.6:50010, 10.1.1.4:50010]]
+	      List<DatanodeInfo> common = new ArrayList<DatanodeInfo>();
+	//      LOG.info("@huanke common00: " + common);
+	//      huanke common00: []
+	      common.addAll(lists.get(0));
+	      LOG.info("@huanke common01: " + common);
+	//      huanke common01: [10.1.1.4:50010, 10.1.1.7:50010]
+	      for (ListIterator<ArrayList<DatanodeInfo>> iter = lists.listIterator(); iter.hasNext(); ) {
+	        ArrayList<DatanodeInfo> ttt=iter.next();
+	//        LOG.info("@huanke iter.next(): " + ttt );
+	//        huanke iter.next(): [10.1.1.4:50010, 10.1.1.7:50010]
+	//        huanke iter.next(): [10.1.1.6:50010, 10.1.1.4:50010]
+	        common.retainAll(ttt);
+	//        LOG.info("@huanke commonIter: " + common);
+	//        huanke commonIter: [10.1.1.4:50010, 10.1.1.7:50010]
+	//        huanke commonIter: [10.1.1.4:50010]
+	      }
+	      if (common.isEmpty()) {
+	//        LOG.info("@huanke common is null");
+	        return null;
+	      } else {
+	        LOG.info("@huanke common: " + common);
+	//        huanke common: [10.1.1.4:50010]
+	        return common.get(0);
+	      }
+	    }
+	}
+	catch(Exception exc){
+		LOG.error("@huanke: There was an exception here, we dont let this thread die for this: " + exc.getMessage());
+		return null;
+	}
   }
 
   //huanke
