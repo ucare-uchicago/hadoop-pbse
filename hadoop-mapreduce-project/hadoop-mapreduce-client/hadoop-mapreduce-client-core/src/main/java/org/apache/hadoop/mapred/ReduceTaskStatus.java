@@ -22,14 +22,9 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
 import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 
@@ -42,6 +37,7 @@ class ReduceTaskStatus extends TaskStatus {
   private List<TaskAttemptID> failedFetchTasks = new ArrayList<TaskAttemptID>(1);
 
   //huanke
+  private int dnPathCount = 0;
   private DatanodeInfo[] DNpath = DatanodeInfo.createDatanodeInfo();
 
   //huanke
@@ -182,10 +178,6 @@ class ReduceTaskStatus extends TaskStatus {
     super.readFields(in);
     shuffleFinishTime = in.readLong(); 
     sortFinishTime = in.readLong();
-    // huanke
-    for(int i=0; i< 2;i++){
-        DNpath[i].readFields(in);
-      }
     
     int noFailedFetchTasks = in.readInt();
     failedFetchTasks = new ArrayList<TaskAttemptID>(noFailedFetchTasks);
@@ -194,6 +186,13 @@ class ReduceTaskStatus extends TaskStatus {
       id.readFields(in);
       failedFetchTasks.add(id);
     }
+
+    // huanke
+    dnPathCount = in.readInt();
+    DNpath = new DatanodeInfo[dnPathCount];
+    for(int i=0; i < dnPathCount; i++){
+        DNpath[i].readFields(in);
+      }
     
     // @Cesar: Read fetch rate report
     reportedFetchRates = FetchRateReport.readFrom(in);
@@ -204,17 +203,18 @@ class ReduceTaskStatus extends TaskStatus {
     super.write(out);
     out.writeLong(shuffleFinishTime);
     out.writeLong(sortFinishTime);
-
-    // huanke
-    for(int i=0; i<2;i++){
-        DNpath[i].write(out);
-    }
     
     out.writeInt(failedFetchTasks.size());
     for (TaskAttemptID taskId : failedFetchTasks) {
       taskId.write(out);
     }
-    
+
+    // huanke
+    out.writeInt(DNpath.length);
+    for(int i=0; i < DNpath.length; i++){
+        DNpath[i].write(out);
+    }
+
     // @Cesar: Add fetch rate reports
     reportedFetchRates.writeTo(out);
   
