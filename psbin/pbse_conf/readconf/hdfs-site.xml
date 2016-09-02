@@ -84,22 +84,30 @@
     <description>fix secondary namenode https</description>
  </property>
 
-  <property>
-    <name>dfs.permissions.enabled</name>
-    <value>false</value>
-    <description>disable permissions</description>
-  </property>
+ <property>
+   <name>dfs.permissions.enabled</name>
+   <value>true</value>
+   <description>Enable permissions</description>
+ </property>
 
-  <!-- @huanke: custom begin -->
-  <property>
-    <name>slow.pipeline.datanode</name>
-    <value>pc001</value> <!-- to be replaced by sed -->
-  </property>
+ <property>
+   <name>dfs.permissions.superusergroup</name>
+   <value>ucare</value>
+   <description>The name of the group of super-users</description>
+ </property>
 
-  <property>
-    <name>pbse.enable.for.reduce.pipeline</name>
-    <value>true</value>
-  </property>
-  <!-- @huanke: custom end -->
+ <!-- @huanke: custom begin -->
+ <property>
+   <name>slow.pipeline.datanode</name>
+   <value>pc001</value> <!-- to be replaced by sed -->
+   <description>HACK: node to force reduce to write</description>
+ </property>
+
+ <property>
+   <name>pbse.enable.for.reduce.pipeline</name>
+   <value>false</value>
+   <description>HACK: force reduce to write to slow node</description>
+ </property>
+ <!-- @huanke: custom end -->
 
 </configuration>
