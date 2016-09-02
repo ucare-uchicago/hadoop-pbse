@@ -20,7 +20,7 @@
 
   <property>
     <name>dfs.name.dir</name>
-    <value>/mnt/extra/dfs-ucare/name</value>
+    <value>/tmp/hadoop-ucare/name</value>
   </property>
 
   <property>
@@ -84,10 +84,16 @@
     <description>fix secondary namenode https</description>
  </property>
 
-  <property>
-    <name>dfs.permissions.enabled</name>
-    <value>false</value>
-    <description>disable permissions</description>
-  </property>
+ <property>
+   <name>dfs.permissions.enabled</name>
+   <value>true</value>
+   <description>Enable permissions</description>
+ </property>
+
+ <property>
+   <name>dfs.permissions.superusergroup</name>
+   <value>ucare</value>
+   <description>The name of the group of super-users</description>
+ </property>
 
 </configuration>
