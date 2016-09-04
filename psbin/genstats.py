@@ -162,6 +162,7 @@ def initJobClientStats():
 def getMasterStats(app):
   appname = app["appid"]
   master = app["master"]
+  master["appid"] = appname
   syslog = os.path.join("yarn/userlogs", \
                           appname,master["syslogdir"],"syslog")
   if not os.path.exists(syslog):
