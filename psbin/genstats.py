@@ -533,7 +533,6 @@ def printGraphs(apps):
   # Job Waiting Time
   dat = [(strToDate(a["time_start"])-strToDate(a["time_submit"])).total_seconds() \
          for a in JC if (strToDate(a["time_start"]) > strToDate(a["time_submit"]))]
-  print len(dat)
   X,Y = makeCDFPoints(dat)
   fig = plt.figure(figsize=(8, 6))
   plt.plot(X, Y, 'r-')
