@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/bin/env python
 import sys
 import Job
 import Container
@@ -7,8 +7,6 @@ import datetime
 import itertools
 import math
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from pprint import pprint
@@ -95,12 +93,20 @@ if __name__ == "__main__":
             killedContainerId = killedId.split('_')[0] + "_" + killedId.split('_')[1]
             killedAttemptCount = int(killedId.split('_')[2])
             if containerId == killedContainerId and  attemptCount > killedAttemptCount and container.isSuccessful == True:
+              # get the index of the lane
+              index  = 0
+              for killed in job.containersKilledBySlowShuffle:
+                kId = killed.split('_')[3] + "_" + str(int(killed.split('_')[4]))
+                if containerId == kId:
+                  break
+                else:
+                  index = index + 1
               # take zero time
-              index = killedBySlowShuffle.index(killedId)
               killedTime = job.slowShuffleDetectionTime[index]
               # so, we add a point at that y coordinate
               detectionTime = (jsonParser.strToDate(killedTime) - jsonParser.strToDate(job.jobStart)).total_seconds()
               plt.plot(int(detectionTime), allY[-1], color='green', linestyle='dotted', linewidth=1.0, marker='o')
+              # print killedContainerId + "--" + str(killedAttemptCount) + " : " + containerId + "--" + str(attemptCount) + "? " + str(index)
       # create figure
       setFigureLabel(fig,"Swimlane","job = " + str(job.jobId) + "(" + str(len(containersSortedByStartDate)) + " containers, duration =" + str(job.jobDurationAM) + " secs)",\
                      "Time (seconds)","")
