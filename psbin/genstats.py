@@ -17,7 +17,8 @@ SLOWNODE=100
 SLOWHOST="VOID"
 SLOWIP="10.1.1."+str(SLOWNODE+2)
 
-VERSION="2.4"
+VERSION="3.0"
+DATE_FORMAT="%Y-%m-%d %H:%M:%S.%f"
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -52,10 +53,13 @@ def getLogTime(line):
   else:
     thedate = datetime.datetime.strptime(datestr, "%y/%m/%d %H:%M:%S")
 
-  return thedate.strftime("%Y-%m-%d %H:%M:%S.%f")
+  return thedate.strftime(DATE_FORMAT)
 
 def strToDate(datestr):
-  return datetime.datetime.strptime(datestr, "%Y-%m-%d %H:%M:%S.%f")
+  return datetime.datetime.strptime(datestr, DATE_FORMAT)
+
+def currentTimeString():
+  return datetime.datetime.now().strftime(DATE_FORMAT)
 
 def getPlacementCode(ct):
   T = "S" if ct["mapnode"].startswith(SLOWHOST) else "F"
@@ -88,6 +92,73 @@ def printTasks(apps):
     for ctname,container in app["containers"].items():
       printTask(container)
 
+def initMasterStats():
+  # init dict
+  master = {
+    "syslogdir" : "",
+    "appid" : "",
+    "time_start" : currentTimeString(),
+    "time_stop" : currentTimeString(),
+    "job_duration" : 0,
+    "ct_PendingReds" : -1,
+    "ct_ScheduledMaps" : -1,
+    "ct_ScheduledReds" : -1,
+    "ct_AssignedMaps" : -1,
+    "ct_AssignedReds" : -1,
+    "ct_CompletedMaps" : -1,
+    "ct_CompletedReds" : -1,
+    "ct_ContAlloc" : -1,
+    "ct_ContRel" : -1,
+    "ct_HostLocal" : -1,
+    "ct_RackLocal" : -1,
+    "ct_SpecMap" : 0,
+    "ct_SpecRed" : 0,
+    "isInvolveSlownode" : False,
+    "slowNodeInvolvedInDataread" : False,
+    "slowNodeInvolvedInMap" : False,
+    "slowNodeInvolvedInReduce" : False,
+    "slowNodeInvolvedInDatawrite" : False,
+    "tags_PBSE" : [],
+    "location" : "", # location
+    "killedBySlowShuffle" : [], # killed by slow shuffle
+    "slowShuffleDetections" : [],   # time where the kill was issued
+  }
+  return master
+
+def initContainerStats():
+  container = {
+    "appid": "",
+    "containerid": "",
+    "time_start": currentTimeString(),
+    "time_stop": currentTimeString(),
+    "task_duration": 0,
+    "isKilled": False,
+    "attempt": "",
+    "mapnode": "",
+    "reducenode": "",
+    "datanode": [],
+    "lastDatanode": "",
+    "dnpipeline": [],
+    "status_update": [],
+    "ismap": False,
+    "shuffleTime": 0.0,
+    "isSuccessful": False,
+    "isSlowMapnode": False,
+    "isSlowDatanode": False,
+    "isSlowReducenode": False,
+    "isSlowPipeline": False
+  }
+  return container
+
+def initJobClientStats():
+  jc = {
+    "time_submit": currentTimeString(),
+    "time_start": currentTimeString(),
+    "time_stop": currentTimeString(),
+    "job_duration": 0
+  }
+  return jc
+
 def getMasterStats(app):
   appname = app["appid"]
   master = app["master"]
@@ -96,23 +167,6 @@ def getMasterStats(app):
   if not os.path.exists(syslog):
     return
   f = open(syslog)
-
-  # init dict
-  master["appid"] = appname
-  master["ct_SpecMap"] = 0
-  master["ct_SpecRed"] = 0
-  master["isInvolveSlownode"] = False
-  master["slowNodeInvolvedInDataread"] = False
-  master["slowNodeInvolvedInMap"] = False
-  master["slowNodeInvolvedInReduce"] = False
-  master["slowNodeInvolvedInDatawrite"] = False
-  master["tags_PBSE"] = []
-  # location
-  master["location"] = ""
-  # killed by slow shuffle
-  master["killedBySlowShuffle"] = []
-  # time where the kill was issued
-  master["slowShuffleDetections"] = []
 
   linect = 0
   for line in f:
@@ -138,25 +192,11 @@ def getMasterStats(app):
       else:
         # killed container
         print "killed: "+appname+"/"+ct
-        container = {
-          "isKilled": True,
-          "appid": app["appid"],
-          "containerid": ct,
-          "attempt": att,
-          "mapnode": "",
-          "reducenode": "",
-          "datanode": [],
-          "lastDatanode": "NONE",
-          "dnpipeline": [],
-          "status_update": [],
-          "ismap" : ("_m_" in att),
-          "shuffleTime": 0.0,
-          "isSuccessful": False,
-          "isSlowMapnode": False,
-          "isSlowDatanode": False,
-          "isSlowReducenode": False,
-          "isSlowPipeline": False
-        }
+        container = initContainerStats()
+        container["isKilled"] = True
+        container["appid"] = app["appid"]
+        container["containerid"] = ct
+        container["attempt"] = att
         app["containers"][ct] = container
 
     match = tasknode.match(line)
@@ -178,17 +218,17 @@ def getMasterStats(app):
 
     match = re_am_finalct.match(line)
     if match:
-      master["ct_PendingReds"] = match.group(1)
-      master["ct_ScheduledMaps"] = match.group(2)
-      master["ct_ScheduledReds"] = match.group(3)
-      master["ct_AssignedMaps"] = match.group(4)
-      master["ct_AssignedReds"] = match.group(5)
-      master["ct_CompletedMaps"] = match.group(6)
-      master["ct_CompletedReds"] = match.group(7)
-      master["ct_ContAlloc"] = match.group(8)
-      master["ct_ContRel"] = match.group(9)
-      master["ct_HostLocal"] = match.group(10)
-      master["ct_RackLocal"] = match.group(11)
+      master["ct_PendingReds"] = int(match.group(1))
+      master["ct_ScheduledMaps"] = int(match.group(2))
+      master["ct_ScheduledReds"] = int(match.group(3))
+      master["ct_AssignedMaps"] = int(match.group(4))
+      master["ct_AssignedReds"] = int(match.group(5))
+      master["ct_CompletedMaps"] = int(match.group(6))
+      master["ct_CompletedReds"] = int(match.group(7))
+      master["ct_ContAlloc"] = int(match.group(8))
+      master["ct_ContRel"] = int(match.group(9))
+      master["ct_HostLocal"] = int(match.group(10))
+      master["ct_RackLocal"] = int(match.group(11))
 
     match = re_am_specadd.match(line)
     if match:
@@ -263,6 +303,7 @@ def getContainerStats(app):
 
     if line:
       ct["time_stop"] = getLogTime(line)
+    ct["task_duration"] = (strToDate(ct["time_stop"])-strToDate(ct["time_start"])).total_seconds()
 
   # shuffle time
   for ctname,ct in app["containers"].items():
@@ -288,7 +329,7 @@ def getJobClientStats(apps):
         return
 
       f = open(jcoutput)
-      jc = {}
+      jc = initJobClientStats()
       for line in f:
         match = re_jc_appid.match(line)
         if match:
@@ -312,7 +353,7 @@ def getTopology():
   for root, dirnames, filenames in os.walk('yarn/userlogs'):
     if root == "yarn/userlogs":
       for subdirname in dirnames:
-        apps[subdirname] = {"master":{},"containers":{}}
+        apps[subdirname] = {"master":initMasterStats(), "containers":{}}
     else:
       theroot = root.split(os.path.sep)[-1]
       if theroot in apps:
@@ -322,24 +363,9 @@ def getTopology():
             apps[theroot]["appid"] = theroot
             apps[theroot]["master"]["syslogdir"] = subdirname
           else:
-            container = {
-              "appid": theroot,
-              "containerid": subdirname,
-              "attempt": "",
-              "mapnode": "",
-              "reducenode": "",
-              "datanode": [],
-              "lastDatanode": "NONE",
-              "dnpipeline": [],
-              "status_update": [],
-              "ismap": False,
-              "shuffleTime": 0.0,
-              "isSuccessful": False,
-              "isSlowMapnode": False,
-              "isSlowDatanode": False,
-              "isSlowReducenode": False,
-              "isSlowPipeline": False
-              }
+            container = initContainerStats()
+            container["appid"] = theroot
+            container["containerid"] = subdirname
             apps[theroot]["containers"][subdirname] = container
           ctcount += 1
 
@@ -395,7 +421,7 @@ def printGraphs(apps):
   ALL_JOBS = [a for aname,a in apps.items()]
 
   # Heartbeat CDF
-  dat = [len(a["status_update"]) for a in MAPS if ("status_update" in a)]
+  dat = [len(a["status_update"]) for a in MAPS]
   X,Y = makeCDFPoints(dat)
   fig = plt.figure(figsize=(8, 6))
   plt.plot(X, Y, 'r-')
@@ -406,8 +432,7 @@ def printGraphs(apps):
   plt.close()
 
   # Map Running Time
-  dat = [(strToDate(a["time_stop"])-strToDate(a["time_start"])).total_seconds() \
-         for a in MAPS if ("time_start" in a) and ("time_stop" in a)]
+  dat = [a["task_duration"] for a in MAPS if not a["isKilled"]]
   X,Y = makeCDFPoints(dat)
   fig = plt.figure(figsize=(8, 6))
   plt.plot(X, Y, 'r-')
@@ -418,8 +443,7 @@ def printGraphs(apps):
   plt.close()
 
   # Reduce Running Time
-  dat = [(strToDate(a["time_stop"])-strToDate(a["time_start"])).total_seconds() \
-         for a in REDUCES if ("time_start" in a) and ("time_stop" in a)]
+  dat = [a["task_duration"] for a in REDUCES if not a["isKilled"]]
   X,Y = makeCDFPoints(dat)
   fig = plt.figure(figsize=(8, 6))
   plt.plot(X, Y, 'r-')
@@ -430,7 +454,7 @@ def printGraphs(apps):
   plt.close()
 
   # Shuffle Running Time
-  dat = [a["shuffleTime"] for a in REDUCES if ("shuffleTime" in a) and ("time_start" in a) and ("time_stop" in a)]
+  dat = [a["shuffleTime"] for a in REDUCES if not a["isKilled"]]
   X,Y = makeCDFPoints(dat)
   fig = plt.figure(figsize=(8, 6))
   plt.plot(X, Y, 'r-')
@@ -441,8 +465,7 @@ def printGraphs(apps):
   plt.close()
 
   # Job Running Time
-  dat = [(strToDate(a["time_stop"])-strToDate(a["time_start"])).total_seconds() \
-         for a in AM if ("time_start" in a) and ("time_stop" in a)]
+  dat = [a["job_duration"] for a in AM]
   X,Y = makeCDFPoints(dat)
   fig = plt.figure(figsize=(8, 6))
   plt.plot(X, Y, 'r-')
@@ -454,8 +477,9 @@ def printGraphs(apps):
   plt.close()
 
   # Job Running Time for jobs where the slow node is involved in map
-  dat = [(strToDate(a["master"]["time_stop"])-strToDate(a["master"]["time_start"])).total_seconds() \
-         for a in ALL_JOBS if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (a["master"]["slowNodeInvolvedInMap"]) and (not a["master"]["slowNodeInvolvedInReduce"])]
+  dat = [a["job_duration"] for a in AM \
+         if (a["slowNodeInvolvedInMap"] or (a["slowNodeInvolvedInDataread"])) \
+           and not (a["slowNodeInvolvedInReduce"] or (a["slowNodeInvolvedInDatawrite"]))]
   X,Y = makeCDFPoints(dat)
   fig = plt.figure(figsize=(8, 6))
   plt.plot(X, Y, 'r-')
@@ -467,8 +491,9 @@ def printGraphs(apps):
   plt.close()
 
   # Job Running Time for jobs where the slow node is involved in reduce
-  dat = [(strToDate(a["master"]["time_stop"])-strToDate(a["master"]["time_start"])).total_seconds() \
-         for a in ALL_JOBS if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (not a["master"]["slowNodeInvolvedInMap"]) and (a["master"]["slowNodeInvolvedInReduce"])]
+  dat = [a["job_duration"] for a in AM \
+         if not (a["slowNodeInvolvedInMap"] or (a["slowNodeInvolvedInDataread"])) \
+           and (a["slowNodeInvolvedInReduce"] or (a["slowNodeInvolvedInDatawrite"]))]
   X,Y = makeCDFPoints(dat)
   fig = plt.figure(figsize=(8, 6))
   plt.plot(X, Y, 'r-')
@@ -480,8 +505,9 @@ def printGraphs(apps):
   plt.close()
 
   # Job Running Time for jobs where the slow node is involved in reduce and map
-  dat = [(strToDate(a["master"]["time_stop"])-strToDate(a["master"]["time_start"])).total_seconds() \
-         for a in ALL_JOBS if ("time_start" in a["master"]) and ("time_stop" in a["master"]) and (a["master"]["slowNodeInvolvedInMap"]) and (a["master"]["slowNodeInvolvedInReduce"])]
+  dat = [a["job_duration"] for a in AM \
+         if (a["slowNodeInvolvedInMap"] or (a["slowNodeInvolvedInDataread"])) \
+           and (a["slowNodeInvolvedInReduce"] or (a["slowNodeInvolvedInDatawrite"]))]
   X,Y = makeCDFPoints(dat)
   fig = plt.figure(figsize=(8, 6))
   plt.plot(X, Y, 'r-')
@@ -493,7 +519,7 @@ def printGraphs(apps):
   plt.close()
 
   # JobClient Duration
-  dat = [a["job_duration"] for a in JC if ("job_duration" in a)]
+  dat = [a["job_duration"] for a in JC if a["job_duration"] > 0]
   X,Y = makeCDFPoints(dat)
   fig = plt.figure(figsize=(8, 6))
   plt.plot(X, Y, 'r-')
@@ -506,7 +532,8 @@ def printGraphs(apps):
 
   # Job Waiting Time
   dat = [(strToDate(a["time_start"])-strToDate(a["time_submit"])).total_seconds() \
-         for a in JC if ("time_start" in a) and ("time_submit" in a)]
+         for a in JC if (strToDate(a["time_start"]) > strToDate(a["time_submit"]))]
+  print len(dat)
   X,Y = makeCDFPoints(dat)
   fig = plt.figure(figsize=(8, 6))
   plt.plot(X, Y, 'r-')
@@ -519,7 +546,7 @@ def printGraphs(apps):
 
   # Locality percentage
   dat = [float(a["ct_HostLocal"])/float(a["ct_CompletedMaps"]) \
-         for a in AM if ("ct_HostLocal" in a) and ("ct_CompletedMaps" in a)]
+         for a in AM if a["ct_HostLocal"]>=0 and a["ct_CompletedMaps"] > 0]
   X,Y = makeCDFPoints(dat)
   fig = plt.figure(figsize=(8, 6))
   plt.plot(X, Y, 'r-')
@@ -543,7 +570,7 @@ def printGraphs(apps):
   plt.close()
 
 
-  with PdfPages('all_graphs.pdf') as pdf:
+  with PdfPages('run_graphs.pdf') as pdf:
     ct = 0
     for fig in figs:
       print "saving page %d" % ct
@@ -621,7 +648,8 @@ def saveAppsStats(apps):
       "linewidth": 2,
       "slownode": SLOWNODE,
       "slowhost": SLOWHOST,
-      "slowip": SLOWIP
+      "slowip": SLOWIP,
+      "script_time": currentTimeString()
     }
     toprint["apps"] = apps
     json.dump(toprint, fp, indent=2, sort_keys=True)
