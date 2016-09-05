@@ -100,6 +100,8 @@ public class DefaultSpeculator extends AbstractService implements
   // @Cesar: To hold the info about the reported fetch rates
   private ShuffleTable shuffleTable = new ShuffleTable();
   private boolean fetchRateSpeculationEnabled = false;
+  private boolean smartFetchRateSpeculationEnabled = false;
+  private double smartFetchRateSpeculationFactor = 0.0;
   private double fetchRateSpeculationSlowNodeThresshold = 0.0;
   private double fetchRateSpeculationSlowProgressThresshold = 0.0;
   // @Cesar: I will keep events in here
@@ -226,6 +228,8 @@ public class DefaultSpeculator extends AbstractService implements
     this.fetchRateSpeculationEnabled = conf.getBoolean("mapreduce.experiment.enable_fetch_rate_speculation", false);
     this.fetchRateSpeculationSlowNodeThresshold = conf.getDouble("mapreduce.experiment.fetch_rate_speculation_slow_thresshold", Double.MAX_VALUE);
     this.fetchRateSpeculationSlowProgressThresshold = conf.getDouble("mapreduce.experiment.fetch_rate_speculation_progress_thresshold", Double.MAX_VALUE);
+    this.smartFetchRateSpeculationEnabled = conf.getBoolean("mapreduce.experiment.smart_fetch_rate_speculation_enabled", false);
+    this.smartFetchRateSpeculationFactor = conf.getDouble("mapreduce.experiment.smart_fetch_rate_speculation_factor", 3.0);
     // huanke
     this.PBSEenabled=conf.getBoolean("pbse.enable.for.reduce.pipeline", false);
     // riza
@@ -509,7 +513,14 @@ public class DefaultSpeculator extends AbstractService implements
 						  			  fetchRateSpeculationSlowNodeThresshold, 
 						  			  fetchRateSpeculationSlowProgressThresshold)){
 					  // @Cesar: So, this node is slow. Get all its map tasks
-					  Set<TaskAttemptId> allMapTasksInHost = shuffleTable.getAllSuccessfullMapTaskAttemptsFromHost(nextEntry.getKey().getMapHost());
+					  Set<TaskAttemptId> allMapTasksInHost = null;
+					  if(smartFetchRateSpeculationEnabled){
+						  allMapTasksInHost = shuffleTable.getCompliantSuccessfullMapTaskAttemptsFromHost(nextEntry.getKey().getMapHost(),
+								  																		 smartFetchRateSpeculationFactor);
+					  }
+					  else{
+						  allMapTasksInHost = shuffleTable.getAllSuccessfullMapTaskAttemptsFromHost(nextEntry.getKey().getMapHost());  
+					  }
 					  LOG.info("@Cesar: " + allMapTasksInHost.size() + " map tasks will be speculated at " + nextEntry.getKey());
 					  Iterator<TaskAttemptId> mapIterator = allMapTasksInHost.iterator();
 					  while(mapIterator.hasNext()){
@@ -601,7 +612,7 @@ public class DefaultSpeculator extends AbstractService implements
         if(event.isSuccedded() && event.getReportedStatus().id.getTaskId().getTaskType() == TaskType.MAP && 
            fetchRateSpeculationEnabled){
         	// @Cesar: Report attempt as finished
-        	shuffleTable.reportSuccessfullAttempt(event.getMapperHost(), event.getReportedStatus().id);
+        	shuffleTable.reportSuccessfullAttempt(event.getMapperHost(), event.getReportedStatus().id, event.getTime());
         	LOG.info("@Cesar: Reported successfull map at " + event.getMapperHost()  + " : " + event.getReportedStatus().id);
         	// @Cesar: The event contains the time reported for this map task
         }
