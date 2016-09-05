@@ -35,8 +35,12 @@ re_jc_appid = re.compile(".+Submitted application (.+)")
 re_jc_startrun = re.compile(".+Job .+ running in uber mode.+")
 re_jc_stoprun = re.compile(".+Job .+ completed successfully")
 re_jc_duration = re.compile("The job took (.+) seconds.")
-re_shffle_duration = re.compile(".+ PBSE_SHUFFLE:\{(.+)\:(.+),(.+)\:(.+)\}")
+re_shuffle_msg = re.compile(".+ PBSE_SHUFFLE:\{(.+)\:(.+),(.+)\:(.+)\}")
+re_sort_msg = re.compile(".+ PBSE_SHUFFLE:\{(.+)\:(.+)\}")
+re_red_msg = re.compile(".+ PBSE_SHUFFLE:\{(.+)\:(.+)\}")
 lookForShuffleTime = "\"SHUFFLE_TIME\""
+lookForSortTime = "\"SORT_TIME\""
+lookForReduceTime = "\"REDUCE_TIME\""
 re_container_finished = re.compile(".+Task \'(.+)\' done\.")
 re_app_master_node = re.compile(".+Instantiated MRClientService at (.+)/(.+)")
 re_relauch_attempt = re.compile(".+Relaunching attempt (.+) of task (.+) at host (.+)")
@@ -146,7 +150,11 @@ def initContainerStats():
     "isSlowMapnode": False,
     "isSlowDatanode": False,
     "isSlowReducenode": False,
-    "isSlowPipeline": False
+    "isSlowPipeline": False,
+	# to differentiate between reduce phases
+	"shuffleEndTime":'',
+	"sortEndTime":'',
+	"reduceEndTime":''
   }
   return container
 
@@ -276,6 +284,14 @@ def getContainerStats(app):
             ct["isSlowDatanode"] = True
             master["slowNodeInvolvedInDataread"] = True
 
+      match = re_sort_msg.match(line)
+      if match and match.group(2) == lookForSortTime:
+          ct['sortEndTime'] = getLogTime(line)
+
+	  match = re_red_msg.match(line)
+      if match and match.group(2) == lookForReduceTime:
+          ct['reduceEndTime'] = getLogTime(line)			
+      
       match = re_dnpipeline.match(line)
       if match:
         pipes = match.group(1).split(", ")
@@ -316,9 +332,10 @@ def getContainerStats(app):
     f = open(syslog)
     fmatch = 0
     for line in f:
-      match = re_shffle_duration.match(line)
+      match = re_shuffle_msg.match(line)
       if match and match.group(2) == lookForShuffleTime:
           shuffleTime = shuffleTime + int(match.group(4))
+          ct['shuffleEndTime'] = getLogTime(line)
     ct['shuffleTime'] = (shuffleTime / 1000000000)
 
 

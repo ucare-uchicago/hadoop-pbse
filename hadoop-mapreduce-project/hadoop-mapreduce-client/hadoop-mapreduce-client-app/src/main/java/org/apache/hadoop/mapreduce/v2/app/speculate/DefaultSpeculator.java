@@ -603,6 +603,7 @@ public class DefaultSpeculator extends AbstractService implements
         	// @Cesar: Report attempt as finished
         	shuffleTable.reportSuccessfullAttempt(event.getMapperHost(), event.getReportedStatus().id);
         	LOG.info("@Cesar: Reported successfull map at " + event.getMapperHost()  + " : " + event.getReportedStatus().id);
+        	// @Cesar: The event contains the time reported for this map task
         }
         break;
       case TASK_CONTAINER_NEED_UPDATE:

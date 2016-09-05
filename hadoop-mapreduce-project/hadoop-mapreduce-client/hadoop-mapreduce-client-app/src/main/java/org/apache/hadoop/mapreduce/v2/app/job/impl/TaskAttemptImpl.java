@@ -1774,9 +1774,11 @@ public abstract class TaskAttemptImpl implements
           TaskEventType.T_ATTEMPT_SUCCEEDED));
       // @Cesar: Mark as success
       if(taskAttempt.fetchRateSpeculationEnabled && taskAttempt.attemptId.getTaskId().getTaskType().equals(TaskType.MAP)){
+    	  // @Cesar: Get the map duration in here
+    	  long mapTime = taskAttempt.finishTime - taskAttempt.launchTime;
     	  taskAttempt.eventHandler.handle
           (new SpeculatorEvent
-              (taskAttempt.reportedStatus, taskAttempt.clock.getTime(), true, taskAttempt.getNodeId().getHost()));
+              (taskAttempt.reportedStatus, taskAttempt.clock.getTime(), true, taskAttempt.getNodeId().getHost(), mapTime));
       }
       else{
     	  taskAttempt.eventHandler.handle

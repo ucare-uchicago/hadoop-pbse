@@ -38,6 +38,7 @@ public class SpeculatorEvent extends AbstractEvent<Speculator.EventType> {
   private TaskAttemptId reduceTaskId = null;
   private String mapperHost = null;
   private double progress = 0.0;
+  private long time = 0L;
   
   // valid for ATTEMPT_STATUS_UPDATE
   private TaskAttemptStatus reportedStatus;
@@ -70,6 +71,14 @@ public class SpeculatorEvent extends AbstractEvent<Speculator.EventType> {
 	    this.reportedStatus = reportedStatus;
 	    this.succedded = success;
 	    this.mapperHost = host;
+	  }
+  
+  public SpeculatorEvent(TaskAttemptStatus reportedStatus, long timestamp, boolean success, String host, long time) {
+	    super(Speculator.EventType.ATTEMPT_STATUS_UPDATE, timestamp);
+	    this.reportedStatus = reportedStatus;
+	    this.succedded = success;
+	    this.mapperHost = host;
+	    this.time = time;
 	  }
   
   public SpeculatorEvent(TaskAttemptId attemptID, boolean flag, long timestamp) {
@@ -174,6 +183,14 @@ public class SpeculatorEvent extends AbstractEvent<Speculator.EventType> {
   public void setSuccedded(boolean succedded) {
 	this.succedded = succedded;
   }
+
+	public long getTime() {
+		return time;
+	}
+	
+	public void setTime(long time) {
+		this.time = time;
+	}
   
   
   
