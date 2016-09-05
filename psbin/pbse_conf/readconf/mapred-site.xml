@@ -83,7 +83,13 @@
   <property>
     <name>mapreduce.policy.faread</name>
     <value>true</value>
-    <description>UCARE: failure aware read</description>
+    <description>UCARE: report datanode being read to AM</description>
+  </property>
+
+  <property>
+    <name>mapreduce.policy.pbse.read_new_datanode</name>
+    <value>true</value>
+    <description>UCARE: avoid read from same datanode as original task</description>
   </property>
 
   <property>
@@ -184,6 +190,12 @@
     <name>reduce.get.pipenodes.flag</name>
     <value>true</value>
     <description>UCARE: the scope for reduce tasks</description>
+  </property>
+
+  <property>
+    <name>mapreduce.policy.pbse.read_new_datanode</name>
+    <value>true</value>
+    <description>UCARE: avoid read from same datanode as original task</description>
   </property>
   <!-- @huanke: custom end -->
 

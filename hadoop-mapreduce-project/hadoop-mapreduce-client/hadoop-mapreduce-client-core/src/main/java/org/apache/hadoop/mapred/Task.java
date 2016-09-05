@@ -1301,7 +1301,11 @@ abstract public class Task implements Writable, Configurable{
             LOG.info("riza: extra reporting datanode " + lastDatanodeId.getHostName());
             taskStatus.setLastDatanodeID(lastDatanodeId);
           } else {
-            LOG.info("@huanke extra reporting path info" + DNPath);
+            String[] hostnames = new String[DNPath.length];
+            for (int i = 0; i < DNPath.length; i++) {
+              hostnames[i] = DNPath[i].getHostName();
+            }
+            LOG.info("@huanke extra reporting pipeline info" + Arrays.toString(hostnames));
             taskStatus.setDNpath(DNPath);
           }
 

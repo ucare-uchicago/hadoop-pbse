@@ -616,10 +616,12 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 	   }
     }	
 	// riza: if map, check lastDatanodeID
-    if (this instanceof MapTaskImpl) {
+    if ((this instanceof MapTaskImpl)
+        && conf.getBoolean("mapreduce.policy.pbse.read_new_datanode", false)) {
       LOG.debug("Updating MapTaskImpl.taskSplitMetaInfo");
       ((MapTaskImpl) this).updateTaskSplitMetaInfo();
-    }else{
+    }else if ((this instanceof ReduceTaskImpl)
+        && conf.getBoolean("mapreduce.policy.pbse.write_new_pipeline", false)){
       //huanke
       LOG.info("@huanke lauch1 a backup reduce task"+this.getID().getId());
       ((ReduceTaskImpl) this).updateTaskOutputDN();
