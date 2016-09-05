@@ -53,16 +53,16 @@ if __name__ == "__main__":
         allX = []
         if isZero == True:
           # first
-          containerX = range(int((jsonParser.strToDate(container.startDate) - jsonParser.strToDate(job.jobStart)).total_seconds()), int((jsonParser.strToDate(container.startDate) - jsonParser.strToDate(job.jobStart)).total_seconds()) + int(container.containerTime), 1)
+          containerX = range(int(math.ceil((jsonParser.strToDate(container.startDate) - jsonParser.strToDate(job.jobStart)).total_seconds())), int(math.ceil((jsonParser.strToDate(container.startDate) - jsonParser.strToDate(job.jobStart)).total_seconds())) + int(math.ceil(container.containerTime)), 1)
           isZero = False
           timeZero = job.jobStart
         else:
           # others
-          containerX = range(int((jsonParser.strToDate(container.startDate) - jsonParser.strToDate(timeZero)).total_seconds()), int(container.containerTime) + int((jsonParser.strToDate(container.startDate) - jsonParser.strToDate(timeZero)).total_seconds()), 1)
+          containerX = range(int(math.ceil((jsonParser.strToDate(container.startDate) - jsonParser.strToDate(timeZero)).total_seconds())), int(math.ceil(container.containerTime)) + int(math.ceil((jsonParser.strToDate(container.startDate) - jsonParser.strToDate(timeZero)).total_seconds())), 1)
         allY = allY + [firstYCoordinate] * len(containerX)
         allX = allX + containerX
         firstYCoordinate = firstYCoordinate - 1
-        plt.xlim([0, job.jobDurationAM + 1])
+        plt.xlim([0, job.jobDurationAM + 5])
         plt.ylim([0, len(containersSortedByStartDate) + 1])
         # plot, set colors and line styles
         if len(allX) > 1 and len(allY) > 1:
@@ -83,9 +83,30 @@ if __name__ == "__main__":
           cur_axes.axes.get_yaxis().set_ticks([])
           # annotate
           if container.onSlowNode == True:
-            plt.annotate(container.attemptId, xy=(allX[-1] + 1, allY[-1]), xytext=(allX[-1] + 1, allY[-1]), bbox=dict(facecolor='red', alpha=0.5))
+            plt.annotate(container.attemptId, xy=(allX[-1], allY[-1]), xytext=(allX[-1] + 1, allY[-1]), bbox=dict(facecolor='red', alpha=0.5))
           else:
-            plt.annotate(container.attemptId, xy=(allX[-1] + 1, allY[-1]), xytext=(allX[-1] + 1, allY[-1]))
+            plt.annotate(container.attemptId, xy=(allX[-1], allY[-1]), xytext=(allX[-1] + 1, allY[-1]))
+          # in here, we add markers for reducer phases
+          if container.isReduce == True:
+            reduceTime = container.reduceFinishTime
+            shuffleTime = container.shuffleFinishTime
+            sortTime = container.sortFinishTime
+            reduceX = -1
+            shuffleX = -1
+            sortX = -1
+            # get the points
+            if shuffleTime is not None and shuffleTime != '':
+              shuffleX = (jsonParser.strToDate(container.shuffleFinishTime) - jsonParser.strToDate(job.jobStart)).total_seconds()
+              # print "::" + str(shuffleX)
+              plt.plot(int(shuffleX), allY[-1], color='green', linestyle='dotted', linewidth=1.0, marker='o')
+            if sortTime is not None and sortTime != '':
+              sortX = (jsonParser.strToDate(container.sortFinishTime) - jsonParser.strToDate(job.jobStart)).total_seconds()
+              # print "::" + str(sortX)
+              plt.plot(int(sortX), allY[-1], color='yellow', linestyle='dotted', linewidth=1.0, marker='o')
+            if reduceTime is not None and reduceTime != '':
+              reduceX = (jsonParser.strToDate(container.reduceFinishTime) - jsonParser.strToDate(job.jobStart)).total_seconds()
+              plt.plot(int(reduceX), allY[-1], color='blue', linestyle='dotted', linewidth=1.0, marker='o')
+              # print "::" + str(reduceX)
           # in here, we add the slow shuffle detection point
           containerId = container.attemptId.split('_')[0] + "_" + container.attemptId.split('_')[1]
           attemptCount = int(container.attemptId.split('_')[2])
@@ -101,12 +122,13 @@ if __name__ == "__main__":
                   break
                 else:
                   index = index + 1
-              # take zero time
+			        # take zero time
               killedTime = job.slowShuffleDetectionTime[index]
               # so, we add a point at that y coordinate
               detectionTime = (jsonParser.strToDate(killedTime) - jsonParser.strToDate(job.jobStart)).total_seconds()
               plt.plot(int(detectionTime), allY[-1], color='green', linestyle='dotted', linewidth=1.0, marker='o')
               # print killedContainerId + "--" + str(killedAttemptCount) + " : " + containerId + "--" + str(attemptCount) + "? " + str(index)
+          
       # create figure
       setFigureLabel(fig,"Swimlane","job = " + str(job.jobId) + "(" + str(len(containersSortedByStartDate)) + " containers, duration =" + str(job.jobDurationAM) + " secs)",\
                      "Time (seconds)","")

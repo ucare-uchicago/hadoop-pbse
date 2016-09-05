@@ -44,10 +44,16 @@ class JsonParser:
            ct.startDate = container['time_start']
            ct.onSlowNode = False
            ct.isSuccessful = container['isSuccessful']
+           ct.shuffleFinishTime = container['shuffleEndTime']
+           ct.sortFinishTime = container['sortEndTime']
+           ct.reduceFinishTime = container['reduceEndTime']
            # match attempt
+           if container['attempt'] is None or container['attempt'] == '':
+             container['attempt'] = 'attempt_0_0_g_000000_0' 
+             print "Failed to parse container on job " + str(job.jobId) + ": No attempt id!"
            ct.attemptId = str(container['attempt']).split('_')[3] + '_' + str(int(str(container['attempt']).split('_')[4])) + '_' + str(int(str(container['attempt']).split('_')[5]))
            ct.wholeAttemptId = container['attempt']
-           if (self.slowNode in container['mapnode']) or (self.slowNode in container['reducenode']):
+           if self.slowNode in container['mapnode']:
              ct.onSlowNode = True
              # done reading, now add to job list
            containers.append(ct)

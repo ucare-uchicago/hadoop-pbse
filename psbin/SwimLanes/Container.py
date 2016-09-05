@@ -9,3 +9,6 @@ class Container:
     isSuccessful = False
     attemptId = ''
     wholeAttemptId = ''
+    shuffleFinishTime = ''
+    sortFinishTime = ''
+    reduceFinishTime = ''
