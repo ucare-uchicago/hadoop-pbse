@@ -216,7 +216,7 @@ class Fetcher<K,V> extends Thread {
           // Shuffle
           copyFromHost(host);
           // @Cesar: Add some logging
-          LOG.info(PBSEShuffleMessage.createPBSESlowShuffleLogMessage(host.getHostName(), 
+          LOG.info(PBSEShuffleMessage.createPBSEMessageFetcherThreadAssigned(host.getHostName(), 
         		  													  this.id));
         } finally {
           if (host != null) {

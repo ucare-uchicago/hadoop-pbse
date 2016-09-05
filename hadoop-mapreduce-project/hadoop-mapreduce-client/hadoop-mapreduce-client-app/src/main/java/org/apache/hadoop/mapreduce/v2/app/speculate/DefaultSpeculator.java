@@ -946,7 +946,7 @@ public class DefaultSpeculator extends AbstractService implements
         ("DefaultSpeculator.relaunchTask.@cesar -- we are speculating a map task of id " + taskID);
     eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ATTEMPT_KILLED, mapperHost, mapId));
     // @Cesar: Log
-    LOG.info(PBSEShuffleMessage.createPBSESlowShuffleLogMessage(mapperHost));
+    LOG.info(PBSEShuffleMessage.createPBSEMessageMapTaskRelaunched(mapperHost));
     // @Cesar: Add this as speculated
 	mayHaveSpeculated.add(taskID);
 	

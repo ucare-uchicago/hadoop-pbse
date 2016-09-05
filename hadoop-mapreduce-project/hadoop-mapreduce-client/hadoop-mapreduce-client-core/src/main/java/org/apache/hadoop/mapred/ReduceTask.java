@@ -60,6 +60,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskCounter;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormatCounter;
 import org.apache.hadoop.mapreduce.split.AMtoReduceTask;
+import org.apache.hadoop.mapreduce.task.reduce.PBSEShuffleMessage;
 import org.apache.hadoop.mapreduce.task.reduce.Shuffle;
 import org.apache.hadoop.util.Progress;
 import org.apache.hadoop.util.Progressable;
@@ -390,11 +391,14 @@ public class ReduceTask extends Task {
     shuffleConsumerPlugin.init(shuffleContext);
 
     rIter = shuffleConsumerPlugin.run();
-
+    long sortStarted = System.nanoTime();
     // free up the data structures
     mapOutputFilesOnDisk.clear();
     
     sortPhase.complete();                         // sort is complete
+    long sorFinished = System.nanoTime();
+    // @Cesar: Log sort finish time
+    LOG.info(PBSEShuffleMessage.createPBSEMessageSortFinished());
     setPhase(TaskStatus.Phase.REDUCE); 
     //huanke reocrd the write reduce phase start time
     long StartTime = System.currentTimeMillis();
@@ -424,7 +428,8 @@ public class ReduceTask extends Task {
     long EndTime = System.currentTimeMillis();
     LOG.info("@huanke EndTime: "+StartTime);
     LOG.info("@huanke ReducePhase time: "+ (EndTime-StartTime));
-
+    // @Cesar: Log reduce finish time
+    LOG.info(PBSEShuffleMessage.createPBSEMessageReduceFinished());
     shuffleConsumerPlugin.close();
     done(umbilical, reporter);
   }

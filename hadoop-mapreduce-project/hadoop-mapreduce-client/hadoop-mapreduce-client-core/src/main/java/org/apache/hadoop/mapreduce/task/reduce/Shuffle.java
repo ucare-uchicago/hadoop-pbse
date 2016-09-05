@@ -189,12 +189,12 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
 
     // @Cesar: Log shuffle finish time
     long shuffleTimeStop = System.nanoTime();
-    LOG.info(PBSEShuffleMessage.createPBSESlowShuffleLogMessage(shuffleTimeStop - shuffleTimeStart));
+    LOG.info(PBSEShuffleMessage.createPBSEMessageShuffleFinished(shuffleTimeStop - shuffleTimeStart));
     
     copyPhase.complete(); // copy is already complete
     taskStatus.setPhase(TaskStatus.Phase.SORT);
     reduceTask.statusUpdate(umbilical);
-
+    
     // Finish the on-going merges...
     RawKeyValueIterator kvIter = null;
     try {
