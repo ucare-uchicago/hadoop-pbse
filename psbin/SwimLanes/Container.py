@@ -12,3 +12,4 @@ class Container:
     shuffleFinishTime = ''
     sortFinishTime = ''
     reduceFinishTime = ''
+    touchSlowNode = False

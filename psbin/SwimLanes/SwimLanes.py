@@ -83,9 +83,11 @@ if __name__ == "__main__":
           cur_axes.axes.get_yaxis().set_ticks([])
           # annotate
           if container.onSlowNode == True:
-            plt.annotate(container.attemptId, xy=(allX[-1], allY[-1]), xytext=(allX[-1] + 1, allY[-1]), bbox=dict(facecolor='red', alpha=0.5))
+            plt.annotate(container.attemptId if not container.touchSlowNode else container.attemptId+"*", \
+              xy=(allX[-1] + 1, allY[-1]), xytext=(allX[-1] + 1, allY[-1]), bbox=dict(facecolor='red', alpha=0.5))
           else:
-            plt.annotate(container.attemptId, xy=(allX[-1], allY[-1]), xytext=(allX[-1] + 1, allY[-1]))
+            plt.annotate(container.attemptId if not container.touchSlowNode else container.attemptId+"*", \
+              xy=(allX[-1] + 1, allY[-1]), xytext=(allX[-1] + 1, allY[-1]))
           # in here, we add markers for reducer phases
           if container.isReduce == True:
             reduceTime = container.reduceFinishTime

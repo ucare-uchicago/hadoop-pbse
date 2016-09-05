@@ -56,6 +56,10 @@ class JsonParser:
            if self.slowNode in container['mapnode']:
              ct.onSlowNode = True
              # done reading, now add to job list
+           if (ct.isMap):
+             ct.touchSlowNode = container['isSlowDatanode']
+           else:
+             ct.touchSlowNode = container['isSlowPipeline']
            containers.append(ct)
          job.containers = job.containers + containers
          allJobs.append(job)
