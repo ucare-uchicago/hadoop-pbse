@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -36,7 +37,9 @@ public class ShuffleTable {
 	private Map<String, Set<TaskId>> tasksStartedPerHost = new TreeMap<>();
 	// @Cesar: Store all successful started for a given host
 	private Map<String, Set<TaskId>> tasksSuccessfulPerHost = new TreeMap<>();
-		
+	// @Cesar: Store map times ordered. This is like maptime -> fetchrate
+	private Set<SpeculationUtilInfo> mapAttempts = new TreeSet<>();
+	
 	
 	private void updateReportCount(ShuffleRateInfo info){
 		long oldCount = 0L;
@@ -122,7 +125,7 @@ public class ShuffleTable {
 		return true;
 	}
 	
-	public synchronized boolean reportSuccessfullAttempt(String host, TaskAttemptId mapTaskAttempt){
+	public synchronized boolean reportSuccessfullAttempt(String host, TaskAttemptId mapTaskAttempt, long time){
 		Set<MapAttemptInfo> newInfo = null;
 		if(attemptsSucceededPerHost.containsKey(host)){
 			newInfo = attemptsSucceededPerHost.get(host);
@@ -134,7 +137,36 @@ public class ShuffleTable {
 		attemptsSucceededPerHost.put(host, newInfo);
 		// @Cesar: Also, report the task as successful
 		reportSuccessfulTask(host, mapTaskAttempt.getTaskId());
+		// @Cesar: Also, store time
+		mapAttempts.add(new SpeculationUtilInfo(mapTaskAttempt, time, host));
 		return added;
+	}
+	
+	// @Cesar: Get the best map attempt at some host
+	public synchronized SpeculationUtilInfo getBestMapAttempt(String notFrom){
+		long bestTime = Long.MAX_VALUE;
+		SpeculationUtilInfo best = null;
+		for(SpeculationUtilInfo nfo : mapAttempts){
+			if(bestTime > nfo.getTaskTime() && nfo.getHost().compareToIgnoreCase(notFrom) != 0){
+				bestTime = nfo.getTaskTime();
+				best = nfo;
+			}
+		}
+		return best;
+	}
+	
+	// @Cesar: Get host average shuffle rate
+	public synchronized double getHostShuffleRate(String host){
+		double sum = 0.0;
+		double count = 0.0;
+		Set<ShuffleRateInfo> hostNfo = shuffleReports.get(new ShuffleHost(host));
+		if(hostNfo != null){
+			for(ShuffleRateInfo nfo : hostNfo){
+				sum += nfo.getFetchRate();
+				count += 1.0;
+			}
+		}
+		return (count != 0.0? (sum/count) : (0.0));
 	}
 	
 	public synchronized boolean reportStartedTask(String host, TaskId mapTask){
@@ -177,6 +209,47 @@ public class ShuffleTable {
 		return allAttempts;
 	}
 	
+	
+	// @Cesar: Get all successful maps from a given host given that they comply with the condition
+	// ctime > reruntime + shuffletime + delta (delat will be zero here)
+	public synchronized Set<TaskAttemptId> getCompliantSuccessfullMapTaskAttemptsFromHost(String badHost,
+																						  double slownessFactor){
+		Set<TaskAttemptId> allAttempts = new TreeSet<>();
+		SpeculationUtilInfo bestOnOtherHost = this.getBestMapAttempt(badHost);
+		if(bestOnOtherHost != null){	
+			double bestAvgRateOnOtherHost = this.getHostShuffleRate(bestOnOtherHost.getHost());
+			Set<ShuffleRateInfo> hostNfo = shuffleReports.get(new ShuffleHost(badHost));
+			if(hostNfo != null){
+				for(ShuffleRateInfo nfo : hostNfo){
+					// @Cesar: remaining time?
+					long remainingTime = (long)(((double)(nfo.getTotalBytes() - nfo.getShuffledBytes()) * 8.0 / 1024.0 / 1024.0) // in mbits 
+												 / (nfo.getFetchRate() > 0? nfo.getFetchRate() : 1.0));
+					long betterTime = (long)(((double)nfo.getTotalBytes() * 8.0 / 1024.0 / 1024.0) // in mbits 
+												/ (bestAvgRateOnOtherHost > 0? bestAvgRateOnOtherHost : 1.0));
+					// @Cesar: ask here...
+					if(remainingTime > slownessFactor * (bestOnOtherHost.getTaskTime() / 1000L + betterTime)){ // it was in millisec
+						LOG.info("@Cesar: Relaunching " + nfo.getMapTaskAttempId() + ". remainingTime=" + remainingTime + 
+								", betterTime=" + betterTime + ", bestOnOtherHost.getTaskTime()=" + bestOnOtherHost.getTaskTime()/1000 + 
+								", betterRate=" + bestAvgRateOnOtherHost + "MBITS PER SEC, totalMegaBits=" + ((double)nfo.getTotalBytes() * 8.0 / 1024.0 / 1024.0) + 
+								", slownessFactor=" + slownessFactor);
+						allAttempts.add(nfo.getMapTaskAttempId());
+					}
+					else{
+						LOG.info("@Cesar: NOT Relaunching " + nfo.getMapTaskAttempId() + ". remainingTime=" + remainingTime + 
+								", betterTime=" + betterTime + ", bestOnOtherHost.getTaskTime()=" + bestOnOtherHost.getTaskTime()/1000 + 
+								", betterRate=" + bestAvgRateOnOtherHost + "MBITS PER SEC, totalMegaBits=" + ((double)nfo.getTotalBytes() * 8.0 / 1024.0 / 1024.0) + 
+								", slownessFactor=" + slownessFactor);
+					}
+				}
+			}
+		}
+		else{
+			LOG.info("@Cesar: We are going to return all map tasks of this host, no better was found...");
+			return getAllSuccessfullMapTaskAttemptsFromHost(badHost);
+		}
+		return allAttempts;
+	}
+	
 	// @Cesar: Count the number of different successful attempts in a given host
 	public synchronized void unsucceedTaskAtHost(String host, TaskId task){
 		if(tasksSuccessfulPerHost.containsKey(host)){
@@ -203,6 +276,60 @@ public class ShuffleTable {
 		return true;
 	}
 
+	
+	// @Cesar: Utility class for speculation
+	private static class SpeculationUtilInfo implements Comparable<SpeculationUtilInfo>{
+		
+		private TaskAttemptId mapTaskAttemptId = null;
+		private long taskTime = 0L;
+		private String host = null;
+		
+		public SpeculationUtilInfo(TaskAttemptId mapTaskAttemptId, long taskTime, String host) {
+			this.mapTaskAttemptId = mapTaskAttemptId;
+			this.taskTime = taskTime;
+			this.host = host;
+		}
+
+		public TaskAttemptId getMapTaskAttemptId() {
+			return mapTaskAttemptId;
+		}
+
+		public void setMapTaskAttemptId(TaskAttemptId mapTaskAttemptId) {
+			this.mapTaskAttemptId = mapTaskAttemptId;
+		}
+
+		public long getTaskTime() {
+			return taskTime;
+		}
+
+		public void setTaskTime(long taskTime) {
+			this.taskTime = taskTime;
+		}
+
+		
+		public String getHost() {
+			return host;
+		}
+
+		public void setHost(String host) {
+			this.host = host;
+		}
+
+		@Override
+		public int compareTo(SpeculationUtilInfo other) {
+			if(mapTaskAttemptId != null){
+				if(other.mapTaskAttemptId != null){
+					return mapTaskAttemptId.compareTo(other.mapTaskAttemptId);
+				}
+				else{
+					return 1;
+				}
+			}
+			else{
+				return -1;
+			}
+		}
+	}
 
 	// @Cesar: Utility class
 	private static class MapAttemptInfo implements Comparable<MapAttemptInfo>{
