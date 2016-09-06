@@ -2081,6 +2081,8 @@ public class DataNode extends ReconfigurableBase
       final boolean isClient = clientname.length() > 0;
       
       try {
+        //huanke
+        long StartTime=System.currentTimeMillis();
         final String dnAddr = targets[0].getXferAddr(connectToDnViaHostname);
         InetSocketAddress curTarget = NetUtils.createSocketAddr(dnAddr);
         if (LOG.isDebugEnabled()) {
@@ -2124,12 +2126,15 @@ public class DataNode extends ReconfigurableBase
 
         // send data & checksum
         blockSender.sendBlock(out, unbufOut, null);
+        long EndTime=System.currentTimeMillis();
 
         // no response necessary
         LOG.info(getClass().getSimpleName() + ": Transmitted " + b
             + " (numBytes=" + b.getNumBytes() + ") to " + curTarget);
-        
-        LOG.info("@huanke targets: "+targets+ "Transmitted: "+b.getNumBytes() +" to: "+curTarget+" in Time: "+(EndTime-StartTime)+" with transfer rate: ");
+
+
+
+        LOG.info("@huanke targets: "+targets+ "Transmitted: "+b.getNumBytes() +" to: "+curTarget+" in Time: "+(EndTime-StartTime)+" with transfer rate: "+ b.getNumBytes()*8/(EndTime-StartTime)*1024);
 
         // read ack
         if (isClient) {
