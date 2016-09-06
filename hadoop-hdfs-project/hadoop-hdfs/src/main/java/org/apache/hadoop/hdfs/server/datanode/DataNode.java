@@ -2128,6 +2128,8 @@ public class DataNode extends ReconfigurableBase
         // no response necessary
         LOG.info(getClass().getSimpleName() + ": Transmitted " + b
             + " (numBytes=" + b.getNumBytes() + ") to " + curTarget);
+        
+        LOG.info("@huanke targets: "+targets+ "Transmitted: "+b.getNumBytes() +" to: "+curTarget+" in Time: "+(EndTime-StartTime)+" with transfer rate: ");
 
         // read ack
         if (isClient) {
