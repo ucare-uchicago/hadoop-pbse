@@ -191,12 +191,6 @@
     <value>true</value>
     <description>UCARE: the scope for reduce tasks</description>
   </property>
-
-  <property>
-    <name>mapreduce.policy.pbse.read_new_datanode</name>
-    <value>true</value>
-    <description>UCARE: avoid read from same datanode as original task</description>
-  </property>
   <!-- @huanke: custom end -->
 
 </configuration>
