@@ -163,6 +163,9 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       this.totalLocalBytesRead = rhs.getTotalLocalBytesRead();
       this.totalShortCircuitBytesRead = rhs.getTotalShortCircuitBytesRead();
       this.totalZeroCopyBytesRead = rhs.getTotalZeroCopyBytesRead();
+      // riza: added field
+      this.totalReadTime = rhs.getTotalReadTime();
+      this.totalLocalReadTime = rhs.getTotalLocalReadTime();
     }
 
     /**
@@ -202,20 +205,65 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
     public long getRemoteBytesRead() {
       return totalBytesRead - totalLocalBytesRead;
     }
-    
-    void addRemoteBytes(long amt) {
-      this.totalBytesRead += amt;
+
+    /**
+     * riza: Get actual remote read time in ms
+     * @return
+     */
+    public long getTotalRemoteReadTime() {
+      return totalReadTime - totalLocalReadTime;
     }
 
-    void addLocalBytes(long amt) {
+    /**
+     * riza: Get total read time both local and remote
+     * @return
+     */
+    public long getTotalReadTime() {
+      return totalReadTime;
+    }
+
+    /**
+     * riza: Get total read local time
+     * @return
+     */
+    public long getTotalLocalReadTime() {
+      return totalLocalReadTime;
+    }
+
+    /**
+     * riza: Get actual remote read transfer rate in Mbps
+     * @return
+     */
+    public double getMbpsRemoteTransferRate() {
+      return 8.0D * getRemoteBytesRead() / getTotalRemoteReadTime() / 1000.0D;
+    }
+    
+    /**
+     * riza: Get combined read transfer rate, both local and remote, in Mbps
+     * @return
+     */
+    public double getMbpsTransferRate() {
+      return 8.0D * getTotalBytesRead() / getTotalReadTime() / 1000.0D;
+    }
+
+    void addRemoteBytes(long amt, long time) {
+      this.totalBytesRead += amt;
+      this.totalReadTime += time;
+    }
+
+    void addLocalBytes(long amt, long time) {
       this.totalBytesRead += amt;
       this.totalLocalBytesRead += amt;
+      this.totalReadTime += time;
+      this.totalLocalReadTime += time;
     }
 
-    void addShortCircuitBytes(long amt) {
+    void addShortCircuitBytes(long amt, long time) {
       this.totalBytesRead += amt;
       this.totalLocalBytesRead += amt;
       this.totalShortCircuitBytesRead += amt;
+      this.totalReadTime += time;
+      this.totalLocalReadTime += time;
     }
 
     void addZeroCopyBytes(long amt) {
@@ -230,6 +278,9 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       this.totalLocalBytesRead = 0;
       this.totalShortCircuitBytesRead = 0;
       this.totalZeroCopyBytesRead = 0;
+      // riza: added field
+      this.totalReadTime = 0;
+      this.totalLocalReadTime = 0;
     }
     
     private long totalBytesRead;
@@ -239,6 +290,10 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
     private long totalShortCircuitBytesRead;
 
     private long totalZeroCopyBytesRead;
+
+    // riza: total read times in milisecond
+    private long totalReadTime;
+    private long totalLocalReadTime;
   }
   
   /**
@@ -729,15 +784,15 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
   }
 
   private void updateReadStatistics(ReadStatistics readStatistics, 
-        int nRead, BlockReader blockReader) {
+        int nRead, BlockReader blockReader, long readTime) {
     if (nRead <= 0) return;
     synchronized(infoLock) {
       if (blockReader.isShortCircuit()) {
-        readStatistics.addShortCircuitBytes(nRead);
+        readStatistics.addShortCircuitBytes(nRead, readTime);
       } else if (blockReader.isLocal()) {
-        readStatistics.addLocalBytes(nRead);
+        readStatistics.addLocalBytes(nRead, readTime);
       } else {
-        readStatistics.addRemoteBytes(nRead);
+        readStatistics.addRemoteBytes(nRead, readTime);
       }
     }
   }
@@ -755,8 +810,10 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
     @Override
     public int doRead(BlockReader blockReader, int off, int len)
           throws ChecksumException, IOException {
+      long startRead = System.currentTimeMillis();
       int nRead = blockReader.read(buf, off, len);
-      updateReadStatistics(readStatistics, nRead, blockReader);
+      long finishRead = System.currentTimeMillis();
+      updateReadStatistics(readStatistics, nRead, blockReader, finishRead-startRead);
       return nRead;
     }
   }
@@ -777,9 +834,11 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       int oldlimit = buf.limit();
       boolean success = false;
       try {
+        long startRead = System.currentTimeMillis();
         int ret = blockReader.read(buf);
+        long finishRead = System.currentTimeMillis();
         success = true;
-        updateReadStatistics(readStatistics, ret, blockReader);
+        updateReadStatistics(readStatistics, ret, blockReader, finishRead-startRead);
         return ret;
       } finally {
         if (!success) {
@@ -1180,8 +1239,10 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
             setUserGroupInformation(dfsClient.ugi).
             setConfiguration(dfsClient.getConfiguration()).
             build();
+        long startRead = System.currentTimeMillis();
         int nread = reader.readAll(buf, offset, len);
-        updateReadStatistics(readStatistics, nread, reader);
+        long finishRead = System.currentTimeMillis();
+        updateReadStatistics(readStatistics, nread, reader, finishRead-startRead);
 
         if (nread != len) {
           throw new IOException("truncated return from reader.read(): " +
