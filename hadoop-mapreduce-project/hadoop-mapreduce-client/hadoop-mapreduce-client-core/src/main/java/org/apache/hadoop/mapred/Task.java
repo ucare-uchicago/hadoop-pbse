@@ -93,8 +93,14 @@ abstract public class Task implements Writable, Configurable{
   // riza: lastDatanode being read
   private DatanodeID lastDatanodeId = DatanodeID.createNullDatanodeID();
 
+  // huan: last known
   private DatanodeInfo[] DNPath=DatanodeInfo.createDatanodeInfo();
 
+  // riza: PBSE fields
+  private HdfsDataInputStream hdfsInputStream = null;
+
+  // huanke
+  private HdfsDataOutputStream hdfsOutputStream = null;
 
   /**
    * @deprecated Provided for compatibility. Use {@link TaskCounter} instead.
@@ -656,13 +662,6 @@ abstract public class Task implements Writable, Configurable{
     private boolean done = true;
     private Object lock = new Object();
 
-
-    // riza: PBSE fields
-    private HdfsDataInputStream in = null;
-
-    //huanke
-    private HdfsDataOutputStream out = null;
-
     /**
      * flag that indicates whether progress update needs to be sent to parent.
      * If true, it has been set. If false, it has been reset.
@@ -814,7 +813,7 @@ abstract public class Task implements Writable, Configurable{
           // riza: heartbeat delaying here
           if (datanodeRetries > 0 && isMapTask()) {
             // riza: MapTask delaying
-            if (this.in == null) {
+            if (hdfsInputStream == null) {
               datanodeRetries -= 1;
               sendProgress = sendProgress || resetProgressFlag();
               LOG.info("riza: datainputstream still null, wait for next "
@@ -833,7 +832,7 @@ abstract public class Task implements Writable, Configurable{
                 || taskStatus.getReportedFetchRates() == null
                 || taskStatus.getReportedFetchRates().getFetchRateReport() == null || taskStatus
                 .getReportedFetchRates().getFetchRateReport().size() == 0);
-            boolean shouldNotSendHdfsWRiteProgress = (this.out == null);
+            boolean shouldNotSendHdfsWRiteProgress = (hdfsOutputStream == null);
             if (shouldNotSendHdfsWRiteProgress && shouldNotSendShuffleProgress) {
               sendReduceProgress -= 1;
               sendProgress = sendProgress || resetProgressFlag();
@@ -856,8 +855,10 @@ abstract public class Task implements Writable, Configurable{
 
             if (isMapTask()) {
               // riza: attach lastDatanodeID as additional information
-              LOG.info("riza: reporting datanode " + lastDatanodeId.getHostName());
+              double transferRate = hdfsInputStream.getReadStatistics().getMbpsTransferRate();
+              LOG.info("riza: reporting datanode " + lastDatanodeId.getHostName() + " with rate " + transferRate + " Mbps");
               taskStatus.setLastDatanodeID(lastDatanodeId);
+              taskStatus.setMapTransferRate(transferRate);
             } else {
               // riza: piggyback PBSE reduce information
               String[] hostnames = new String[DNPath.length];
@@ -872,14 +873,14 @@ abstract public class Task implements Writable, Configurable{
             taskStatus.clearStatus();
 
             // riza: datanode switch query
-            if (askForSwitch && (this.in != null)) {
+            if (askForSwitch && (hdfsInputStream != null)) {
               byte shallswitch = umbilical.shallSwitchDatanode(taskId);
               if (shallswitch == 1)
                 try {
-                  this.in.switchDatanode(lastDatanodeId);
+                  hdfsInputStream.switchDatanode(lastDatanodeId);
                   LOG.info("PBSE-Read-Diversity-1: lastDatanode "
                       + lastDatanodeId + " newDatanode "
-                      + this.in.getCurrentOrChoosenDatanode());
+                      + hdfsInputStream.getCurrentOrChoosenDatanode());
                 } catch (IOException ex) {
                   LOG.warn("riza: Datanode switch failed: " + ex.toString());
                 }
@@ -901,11 +902,11 @@ abstract public class Task implements Writable, Configurable{
           }
 
           //riza: set progress flag again if there is a datasource change
-          if (this.in != null) {
-            if (!lastDatanodeId.equals(this.in.getCurrentOrChoosenDatanode())) {
+          if (hdfsInputStream != null) {
+            if (!lastDatanodeId.equals(hdfsInputStream.getCurrentOrChoosenDatanode())) {
               LOG.info("riza: switching datanode " + lastDatanodeId + " to "
-                      + in.getCurrentOrChoosenDatanode());
-              lastDatanodeId = in.getCurrentOrChoosenDatanode();
+                      + hdfsInputStream.getCurrentOrChoosenDatanode());
+              lastDatanodeId = hdfsInputStream.getCurrentOrChoosenDatanode();
               taskStatus.setLastDatanodeID(lastDatanodeId);
               setProgressFlag();
               switchHappened = true;
@@ -914,12 +915,12 @@ abstract public class Task implements Writable, Configurable{
           }
 
           //huanke
-          if (this.out != null) {
-            if (this.out.getPipeNodes() != null && !DNPath.equals(this.out.getPipeNodes())) {
+          if (hdfsOutputStream != null) {
+            if (hdfsOutputStream.getPipeNodes() != null && !DNPath.equals(hdfsOutputStream.getPipeNodes())) {
               LOG.info("@huanke switching DNPath " + Arrays.toString(DNPath)
                   + " to new DNPath "
-                  + Arrays.toString(this.out.getPipeNodes()));
-              DNPath = this.out.getPipeNodes();
+                  + Arrays.toString(hdfsOutputStream.getPipeNodes()));
+              DNPath = hdfsOutputStream.getPipeNodes();
               taskStatus.setDNpath(DNPath);
               setProgressFlag();
               switchHappened = true;
@@ -988,13 +989,13 @@ abstract public class Task implements Writable, Configurable{
     public void setInputStream(InputStream newIn) {
       synchronized (lastDatanodeId) {
         if (isMapTask() && newIn instanceof HdfsDataInputStream) {
-          this.in = (HdfsDataInputStream) newIn;
-          if (!lastDatanodeId.equals(in.getCurrentOrChoosenDatanode())) {
+          hdfsInputStream = (HdfsDataInputStream) newIn;
+          if (!lastDatanodeId.equals(hdfsInputStream.getCurrentOrChoosenDatanode())) {
             if (lastDatanodeId.equals(DatanodeID.nullDatanodeID))
-              LOG.info("riza: first datanode is " + in.getCurrentOrChoosenDatanode());
+              LOG.info("riza: first datanode is " + hdfsInputStream.getCurrentOrChoosenDatanode());
             else
-              LOG.info("riza: reset datainputstream with datanode change to " + in.getCurrentOrChoosenDatanode());
-            lastDatanodeId = in.getCurrentOrChoosenDatanode();
+              LOG.info("riza: reset datainputstream with datanode change to " + hdfsInputStream.getCurrentOrChoosenDatanode());
+            lastDatanodeId = hdfsInputStream.getCurrentOrChoosenDatanode();
             taskStatus.setLastDatanodeID(lastDatanodeId);
             setProgressFlag();
           }
@@ -1004,13 +1005,13 @@ abstract public class Task implements Writable, Configurable{
 
 
     //huanke
-    public void setOutputStream(OutputStream out) {
+    public void setOutputStream(OutputStream outputStream) {
       synchronized (DNPath) {
-        if ((out instanceof HdfsDataOutputStream) && (out != this.out)) {
-          this.out = (HdfsDataOutputStream) out;
-          if (this.out.getPipeNodes() != null) {
-            LOG.info("@huanke first DNPath is " + Arrays.toString(this.out.getPipeNodes()));
-            DNPath = this.out.getPipeNodes();
+        if ((hdfsOutputStream instanceof HdfsDataOutputStream) && (outputStream != hdfsOutputStream)) {
+          hdfsOutputStream = (HdfsDataOutputStream) outputStream;
+          if (hdfsOutputStream.getPipeNodes() != null) {
+            LOG.info("@huanke first DNPath is " + Arrays.toString(hdfsOutputStream.getPipeNodes()));
+            DNPath = hdfsOutputStream.getPipeNodes();
             taskStatus.setDNpath(DNPath);
             setProgressFlag();
           } else {
@@ -1298,8 +1299,10 @@ abstract public class Task implements Writable, Configurable{
         try {
           // riza: attach lastDatanodeID as additional information
           if (this.isMapTask()) {
-            LOG.info("riza: extra reporting datanode " + lastDatanodeId.getHostName());
+            double transferRate = hdfsInputStream.getReadStatistics().getMbpsTransferRate();
+            LOG.info("riza: extra reporting datanode " + lastDatanodeId.getHostName() + " with rate " + transferRate + " Mbps");
             taskStatus.setLastDatanodeID(lastDatanodeId);
+            taskStatus.setMapTransferRate(transferRate);
           } else {
             String[] hostnames = new String[DNPath.length];
             for (int i = 0; i < DNPath.length; i++) {

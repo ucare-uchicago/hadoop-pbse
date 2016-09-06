@@ -235,7 +235,10 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
      * @return
      */
     public double getMbpsRemoteTransferRate() {
-      return 8.0D * getRemoteBytesRead() / getTotalRemoteReadTime() / 1000.0D;
+      if (getTotalRemoteReadTime() > 0)
+        return 8.0D * getRemoteBytesRead() / getTotalRemoteReadTime() / 1000.0D;
+      else
+        return 0.0D;
     }
     
     /**
@@ -243,7 +246,10 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
      * @return
      */
     public double getMbpsTransferRate() {
-      return 8.0D * getTotalBytesRead() / getTotalReadTime() / 1000.0D;
+      if (getTotalReadTime() > 0)
+        return 8.0D * getTotalBytesRead() / getTotalReadTime() / 1000.0D;
+      else
+        return 0.0D;
     }
 
     void addRemoteBytes(long amt, long time) {

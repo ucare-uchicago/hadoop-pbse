@@ -364,9 +364,11 @@ public class TaskAttemptListenerImpl extends CompositeService
     // riza: Map lastDatanodeID set by the task (map only)
     if (taskStatus.getIsMap() && taskStatus.getLastDatanodeID() != null) {
       taskAttemptStatus.lastDatanodeID = taskStatus.getLastDatanodeID();
+      taskAttemptStatus.mapTransferRate = taskStatus.getMapTransferRate();
     } else {
       // not from map task
       taskAttemptStatus.lastDatanodeID = DatanodeID.createNullDatanodeID();
+      taskAttemptStatus.mapTransferRate = 0.0D;
     }
 
     //huanke

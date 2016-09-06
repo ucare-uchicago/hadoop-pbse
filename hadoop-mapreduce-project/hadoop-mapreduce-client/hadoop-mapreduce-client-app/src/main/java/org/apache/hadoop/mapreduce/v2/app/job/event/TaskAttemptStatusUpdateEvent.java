@@ -60,7 +60,9 @@ public class TaskAttemptStatusUpdateEvent extends TaskAttemptEvent {
     public long sortFinishTime;
     public TaskAttemptState taskState;
     // riza: PBSE piggyback
+    public String containerHost;
     public DatanodeID lastDatanodeID;
+    public double mapTransferRate;
     public String tag;
     // @Cesar: fetch rate report
     public FetchRateReport fetchRateReport;
