@@ -140,10 +140,13 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   // @Cesar: I will keep events in here
   private Map<ShuffleHost, List<ShuffleRateInfo>> fetchRateUpdateEvents = new HashMap<>();
   
-  // riza
+  // riza: PBSE-Read-2 fields
   private int maxSpeculationDelay = 0;
   private boolean everDelaySpeculation = false;
   private boolean hasDelayThisIteration = false;
+  // riza: PBSE-Read-3 fields
+  private boolean mapPathSpeculationEnabled = false;
+  private double slowTransferRateThreshold = 0.1;
 
   public PBSESpeculator(Configuration conf, AppContext context) {
     this(conf, context, context.getClock());
@@ -235,8 +238,13 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 
     // riza
     this.maxSpeculationDelay = conf.getInt(
-        "mapreduce.policy.faread.maximum_speculation_delay", 0)
+        MRJobConfig.PBSE_MAP_DELAY_INTERVAL_MS, 0)
         / (int) this.soonestRetryAfterNoSpeculate;
+    this.mapPathSpeculationEnabled =
+        conf.getBoolean(MRJobConfig.PBSE_MAP_PATH_SPECULATION_ENABLED, true);
+    this.slowTransferRateThreshold =
+        conf.getDouble(MRJobConfig.PBSE_MAP_SLOW_TRANSFER_THRESHOLD,
+            MRJobConfig.DEFAULT_PBSE_MAP_SLOW_TRANSFER_THRESHOLD);
     this.everDelaySpeculation = false;
   }
 
@@ -250,8 +258,10 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   protected void serviceStart() throws Exception {
     Runnable speculationBackgroundCore
         = new Runnable() {
-      private long nextFetchRateSpeculation;
-      private long nextReduceDiversitySpeculation;
+      private long nextDefaultSpeculation = 0;
+      private long nextFetchRateSpeculation = 0;
+      private long nextReduceDiversitySpeculation = 0;
+      private long nextMapPathSpeculation = 0;
 
       @Override
       public void run() {
@@ -275,7 +285,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
                       : soonestRetryAfterNoSpeculate);
             }
 
-            if (fetchRateSpeculationEnabled) {
+            if (fetchRateSpeculationEnabled
+                && nextFetchRateSpeculation <= backgroundRunStartTime) {
               // riza: this is Cesar's map speculation based on fetch rate
               int spec = checkFetchRateTable();
               mapSpeculation += spec;
@@ -283,13 +294,26 @@ public class PBSESpeculator extends AbstractService implements Speculator {
               nextFetchRateSpeculation = backgroundRunStartTime
                   + soonestRetryAfterNoSpeculate;
             }
+            
+            if (mapPathSpeculationEnabled
+                && nextMapPathSpeculation <= backgroundRunStartTime) {
+              // riza: map path group speculation
+              int spec = calculateMapPathSpeculation();
+              mapSpeculation += spec;
+              nextFetchRateSpeculation = backgroundRunStartTime
+                  + (speculations > 0 ? soonestRetryAfterSpeculate : soonestRetryAfterNoSpeculate);
+            }
 
             // riza: this is basic speculative algorithm. If PBSE algorithm has
             // kick in before, wait until next iteration to speculation again.
-            if (mapSpeculation <= 0)
-              mapSpeculation += maybeScheduleAMapSpeculation();
-            if (reduceSpeculation <= 0)
-              reduceSpeculation += maybeScheduleAReduceSpeculation();
+            if (nextDefaultSpeculation <= backgroundRunStartTime) {
+              if (mapSpeculation <= 0)
+                mapSpeculation += maybeScheduleAMapSpeculation();
+              if (reduceSpeculation <= 0)
+                reduceSpeculation += maybeScheduleAReduceSpeculation();
+              nextDefaultSpeculation = backgroundRunStartTime
+                  + (speculations > 0 ? soonestRetryAfterSpeculate : soonestRetryAfterNoSpeculate);
+            }
 
             speculations = mapSpeculation + reduceSpeculation;
             // riza: disable backoff for now
@@ -493,7 +517,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   //
   // All of these values are negative.  Any value that should be allowed to
   //  speculate is 0 or positive.
-  private long speculationValue(TaskId taskID, long now) {
+  private long speculationValue(TaskId taskID, long now, boolean onlyCheckNegativeResult) {
     Job job = context.getJob(taskID.getJobId());
     Task task = job.getTask(taskID);
     Map<TaskAttemptId, TaskAttempt> attempts = task.getAttempts();
@@ -562,48 +586,50 @@ public class PBSESpeculator extends AbstractService implements Speculator {
             return TOO_NEW;
           }
         }
-
-        long estimatedEndTime = estimatedRunTime + taskAttemptStartTime;
-
-        long estimatedReplacementEndTime
-            = now + estimator.estimatedNewAttemptRuntime(taskID);
-
-        float progress = taskAttempt.getProgress();
-        TaskAttemptHistoryStatistics data =
-            runningTaskAttemptStatistics.get(runningTaskAttemptID);
-        if (data == null) {
-          runningTaskAttemptStatistics.put(runningTaskAttemptID,
-              new TaskAttemptHistoryStatistics(estimatedRunTime, progress, now));
-        } else {
-          if (estimatedRunTime == data.getEstimatedRunTime()
-              && progress == data.getProgress()) {
-            // Previous stats are same as same stats
-            if (data.notHeartbeatedInAWhile(now)) {
-              // Stats have stagnated for a while, simulate heart-beat.
-              TaskAttemptStatus taskAttemptStatus = new TaskAttemptStatus();
-              taskAttemptStatus.id = runningTaskAttemptID;
-              taskAttemptStatus.progress = progress;
-              taskAttemptStatus.taskState = taskAttempt.getState();
-              // Now simulate the heart-beat
-              handleAttempt(taskAttemptStatus);
-            }
+        
+        if (!onlyCheckNegativeResult) {
+          long estimatedEndTime = estimatedRunTime + taskAttemptStartTime;
+  
+          long estimatedReplacementEndTime
+              = now + estimator.estimatedNewAttemptRuntime(taskID);
+  
+          float progress = taskAttempt.getProgress();
+          TaskAttemptHistoryStatistics data =
+              runningTaskAttemptStatistics.get(runningTaskAttemptID);
+          if (data == null) {
+            runningTaskAttemptStatistics.put(runningTaskAttemptID,
+                new TaskAttemptHistoryStatistics(estimatedRunTime, progress, now));
           } else {
-            // Stats have changed - update our data structure
-            data.setEstimatedRunTime(estimatedRunTime);
-            data.setProgress(progress);
-            data.resetHeartBeatTime(now);
+            if (estimatedRunTime == data.getEstimatedRunTime()
+                && progress == data.getProgress()) {
+              // Previous stats are same as same stats
+              if (data.notHeartbeatedInAWhile(now)) {
+                // Stats have stagnated for a while, simulate heart-beat.
+                TaskAttemptStatus taskAttemptStatus = new TaskAttemptStatus();
+                taskAttemptStatus.id = runningTaskAttemptID;
+                taskAttemptStatus.progress = progress;
+                taskAttemptStatus.taskState = taskAttempt.getState();
+                // Now simulate the heart-beat
+                handleAttempt(taskAttemptStatus);
+              }
+            } else {
+              // Stats have changed - update our data structure
+              data.setEstimatedRunTime(estimatedRunTime);
+              data.setProgress(progress);
+              data.resetHeartBeatTime(now);
+            }
           }
+  
+          if (estimatedEndTime < now) {
+            return PROGRESS_IS_GOOD;
+          }
+  
+          if (estimatedReplacementEndTime >= estimatedEndTime) {
+            return TOO_LATE_TO_SPECULATE;
+          }
+  
+          result = estimatedEndTime - estimatedReplacementEndTime;
         }
-
-        if (estimatedEndTime < now) {
-          return PROGRESS_IS_GOOD;
-        }
-
-        if (estimatedReplacementEndTime >= estimatedEndTime) {
-          return TOO_LATE_TO_SPECULATE;
-        }
-
-        result = estimatedEndTime - estimatedReplacementEndTime;
       }
     }
 
@@ -680,7 +706,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       // this loop is potentially pricey.
       // TODO track the tasks that are potentially worth looking at
       for (Map.Entry<TaskId, Task> taskEntry : tasks.entrySet()) {
-        long mySpeculationValue = speculationValue(taskEntry.getKey(), now);
+        long mySpeculationValue = speculationValue(taskEntry.getKey(), now, false);
 
         if (mySpeculationValue == ALREADY_SPECULATING) {
           ++numberSpeculationsAlready;
@@ -879,27 +905,6 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     }
     LOG.info("@huanke PBSESpeculator TaskAndPipeline" + TaskAndPipeline
         + TaskAndPipeline.size());
-
-    if (job == null) {
-      return;
-    }
-
-    Task task = job.getTask(taskID);
-
-    if (task == null) {
-      return;
-    }
-    //
-    // estimator.updateAttempt(reportedStatus, timestamp);
-
-    if (stateString.equals(TaskAttemptState.RUNNING.name())) {
-      runningTasks.putIfAbsent(taskID, Boolean.TRUE);
-    } else {
-      runningTasks.remove(taskID, Boolean.TRUE);
-      if (!stateString.equals(TaskAttemptState.STARTING.name())) {
-        runningTaskAttemptStatistics.remove(attemptID);
-      }
-    }
   }
 
   // huanke reduce task does not launch backup task as map task like T_ADD_SPEC_ATTEMPT
@@ -1078,5 +1083,132 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 
     // @Cesar: Add this as speculated
     mayHaveSpeculated.add(taskID);
+  }
+  
+  // riza: map speculation based on mapTransferRate
+  private int calculateMapPathSpeculation() {
+    HashMap<String, DataStatistics> hostStatistics = new HashMap<String, DataStatistics>();
+    DataStatistics globalTransferRate = new DataStatistics();
+
+    int successes = 0;
+
+    long now = clock.getTime();
+
+    ConcurrentMap<JobId, AtomicInteger> containerNeeds = mapContainerNeeds;
+
+    for (ConcurrentMap.Entry<JobId, AtomicInteger> jobEntry : containerNeeds.entrySet()) {
+      // riza: follow maybeScheduleASpeculation. Skip speculating job that still
+      // requesting container
+      if (jobEntry.getValue().get() > 0) {
+        continue;
+      }
+
+      HashMap<String, HashSet<TaskId>> taskGroup = new HashMap<String, HashSet<TaskId>>();
+
+      int numberSpeculationsAlready = 0;
+      int numberRunningTasks = 0;
+
+      // loop through the tasks of the kind
+      Job job = context.getJob(jobEntry.getKey());
+
+      Map<TaskId, Task> tasks = job.getTasks(TaskType.MAP);
+      
+      MapTaskAttemptImpl slowestMap = null;
+      
+      // riza: first pass to build up path statistic, grouping, and find attempt
+      // having least transferRate
+      for (Map.Entry<TaskId, Task> taskEntry : tasks.entrySet()) {
+        long mySpeculationValue = speculationValue(taskEntry.getKey(), now, true);
+
+        if (mySpeculationValue != NOT_RUNNING) {
+          ++numberRunningTasks;
+          continue;
+        }
+        
+        MapTaskAttemptImpl latestMap = null;
+        Map<TaskAttemptId, TaskAttempt> attemptsMap = taskEntry.getValue().getAttempts();
+        for (TaskAttempt attempt : attemptsMap.values()) {
+          if (!(attempt instanceof MapTaskAttemptImpl))
+            continue;
+
+          MapTaskAttemptImpl map = (MapTaskAttemptImpl) attempt;
+          if (map.getMapTransferRate() > 0.0D
+              && (map.getState() == TaskAttemptState.RUNNING
+                || map.getState() == TaskAttemptState.SUCCEEDED)) {
+            // riza: stat for mapnode
+            DataStatistics hostStat = hostStatistics.get(map.getNodeId().getHost());
+            hostStat.add(map.getMapTransferRate());
+
+            //riza: stat for datanode
+            DataStatistics dnStat = hostStatistics.get(map.getLastDatanodeID().getHostName());
+            dnStat.add(map.getMapTransferRate());
+            
+            // riza: contribute to globalTransferRate
+            globalTransferRate.add(map.getMapTransferRate());
+          }
+          
+          if (latestMap == null
+              || map.getID().compareTo(latestMap.getID()) > 0) {
+            latestMap = map;
+            if (slowestMap == null
+                || slowestMap.getMapTransferRate() > latestMap.getMapTransferRate()) {
+              slowestMap = latestMap;
+            }
+          }
+        }
+
+        if (mySpeculationValue == ALREADY_SPECULATING) {
+          // riza: right now, PBSE do not speculate task that has been speculated before
+          ++numberSpeculationsAlready;
+        } else if (latestMap != null) {
+          // riza: group task based on datanode
+          String datanode = latestMap.getLastDatanodeID().getHostName();
+          if (!taskGroup.containsKey(datanode))
+            taskGroup.put(datanode, new HashSet<TaskId>());
+          taskGroup.get(datanode).add(taskEntry.getValue().getID());
+
+          // riza: group task based on mapnode
+          String mapnode = latestMap.getLastDatanodeID().getHostName();
+          if (!taskGroup.containsKey(mapnode))
+            taskGroup.put(mapnode, new HashSet<TaskId>());
+          taskGroup.get(mapnode).add(taskEntry.getValue().getID());
+        }
+      }
+      
+      // riza: second pass to find path group having transfer rate under average
+      // globalTransferRate
+      double threshold = globalTransferRate.mean() * slowTransferRateThreshold;
+      String slowestGroup = "";
+      double slowestTransferRate = globalTransferRate.mean();
+      for (Map.Entry<String, DataStatistics> pathGroup : hostStatistics.entrySet()) {
+        if (pathGroup.getValue().mean() < threshold
+            && pathGroup.getValue().mean() < slowestTransferRate) {
+          slowestGroup = pathGroup.getKey();
+          slowestTransferRate = pathGroup.getValue().mean();
+        } 
+      }
+      
+      if (slowestTransferRate < threshold
+          && taskGroup.size() > 1) {
+        // riza: path group to speculation
+        LOG.info("Speculating " + taskGroup.get(slowestGroup).size()
+            + " tasks on path group "+ slowestGroup);
+
+        for (TaskId taskId : taskGroup.get(slowestGroup)) {
+          addSpeculativeAttempt(taskId);
+          ++successes;
+        }
+      } else if (slowestMap.getMapTransferRate() < threshold) {
+        // riza: individual map speculation
+        LOG.info("Speculating single map " + slowestMap.getID() + " having path ("
+            + slowestMap.getLastDatanodeID() + ","
+            + slowestMap.getNodeId().getHost()+ ")");
+
+        addSpeculativeAttempt(slowestMap.getID().getTaskId());
+        ++successes;
+      }
+    }
+
+    return successes;
   }
 }

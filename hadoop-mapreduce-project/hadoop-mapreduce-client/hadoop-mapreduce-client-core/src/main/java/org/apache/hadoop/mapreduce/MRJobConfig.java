@@ -875,4 +875,16 @@ public interface MRJobConfig {
   public static final int DEFAULT_MR_ENCRYPTED_INTERMEDIATE_DATA_BUFFER_KB =
           128;
 
+
+  // riza: PBSE Configurations
+  public static final String PBSE_MAP_DELAY_INTERVAL_MS =
+      "mapreduce.policy.faread.maximum_speculation_delay";
+
+  public static final String PBSE_MAP_PATH_SPECULATION_ENABLED =
+      "mapreduce.pbse.map.path-speculation.enabled";
+  
+  public static final String PBSE_MAP_SLOW_TRANSFER_THRESHOLD =
+      "mapreduce.pbse.map.path-speculation.threshold";
+  public static final double DEFAULT_PBSE_MAP_SLOW_TRANSFER_THRESHOLD =
+      0.1d;
 }

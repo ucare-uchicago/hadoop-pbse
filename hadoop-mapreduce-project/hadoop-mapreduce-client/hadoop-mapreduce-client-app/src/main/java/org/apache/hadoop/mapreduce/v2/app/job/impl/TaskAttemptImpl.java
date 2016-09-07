@@ -1082,6 +1082,16 @@ public abstract class TaskAttemptImpl implements
       readLock.unlock();
     }
   }
+  
+  // riza: get latest map transfer rate in Mbps
+  public double getMapTransferRate() {
+    readLock.lock();
+    try {
+      return reportedStatus.mapTransferRate;
+    } finally {
+      readLock.unlock();
+    }
+  }
 
   // riza: get child reported
   public String getTag() {
