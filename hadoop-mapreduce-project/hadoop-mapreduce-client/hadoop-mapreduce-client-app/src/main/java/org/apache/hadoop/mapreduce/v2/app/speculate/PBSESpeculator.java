@@ -1191,8 +1191,11 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       if (slowestTransferRate < threshold
           && taskGroup.size() > 1) {
         // riza: path group to speculation
-        LOG.info("Speculating " + taskGroup.get(slowestGroup).size()
-            + " tasks on path group "+ slowestGroup);
+        LOG.info("PBSE-Read-3: Speculating " + taskGroup.get(slowestGroup).size()
+            + " tasks on path group " + slowestGroup
+            + " having avg rate " + slowestTransferRate
+            + " Mbps, global avg rate: " + globalTransferRate.mean()
+            + " Mbps, threshold: " + threshold + " Mbps");
 
         for (TaskId taskId : taskGroup.get(slowestGroup)) {
           addSpeculativeAttempt(taskId);
@@ -1200,9 +1203,12 @@ public class PBSESpeculator extends AbstractService implements Speculator {
         }
       } else if (slowestMap.getMapTransferRate() < threshold) {
         // riza: individual map speculation
-        LOG.info("Speculating single map " + slowestMap.getID() + " having path ("
-            + slowestMap.getLastDatanodeID() + ","
-            + slowestMap.getNodeId().getHost()+ ")");
+        LOG.info("PBSE-Read-3: Speculating single map " + slowestMap.getID()
+            + " having path (" + slowestMap.getLastDatanodeID() + ","
+            + slowestMap.getNodeId().getHost() + ") having avg rate "
+            + slowestTransferRate + " Mbps, global average rate: "
+            + globalTransferRate.mean() + " Mbps, threshold: " + threshold
+            + " Mbps");
 
         addSpeculativeAttempt(slowestMap.getID().getTaskId());
         ++successes;
