@@ -158,6 +158,7 @@ public class DFSOutputStream extends FSOutputSummer
   DatanodeInfo[] PipeNodes=new DatanodeInfo[2];
   private List<String> slowDataNodes=null;
   private List<String> IgnoreInfo=new ArrayList<>();
+  private String MessageHK="";
 
   private String src;
   private final long fileId;
@@ -1352,6 +1353,9 @@ public class DFSOutputStream extends FSOutputSummer
           blockCopy.setNumBytes(blockSize);
 
           boolean[] targetPinnings = getPinnings(nodes, true);
+          //huanke
+          Long StartTime=System.currentTimeMillis();
+
           // send the request
           new Sender(out).writeBlock(blockCopy, nodeStorageTypes[0], accessToken,
               dfsClient.clientName, nodes, nodeStorageTypes, null, bcs, 
@@ -1365,8 +1369,12 @@ public class DFSOutputStream extends FSOutputSummer
           pipelineStatus = resp.getStatus();
           firstBadLink = resp.getFirstBadLink();
           //huanke
-          String message = resp.getMessage();
-          DFSClient.LOG.info("@huanke MessageHK:"+message);
+          Long EndTime=System.currentTimeMillis();
+          String messageHK = resp.getMessage();
+          MessageHK=messageHK;
+          DFSClient.LOG.info("@huanke messageHK:"+messageHK+" TimeHK: "+(EndTime-StartTime)+" MessageHK "+MessageHK);
+
+
           
           // Got an restart OOB ack.
           // If a node is already restarting, this status is not likely from
