@@ -8,7 +8,14 @@ fi
 
 OPS_NODE_SSH=$1
 
-mvn package install -Pdist -DskipTests
+# package entire hadoop-mapreduce-client
+# mvn package install -DskipTests
+
+# package only client-core and client-app
+cd hadoop-mapreduce-client-core
+mvn package install -DskipTests
+cd ../hadoop-mapreduce-client-app
+mvn package install -DskipTests
 
 scp hadoop-mapreduce-client-app/target/hadoop-mapreduce-client-app-2.7.1.jar $OPS_NODE_SSH:~/
 scp hadoop-mapreduce-client-core/target/hadoop-mapreduce-client-core-2.7.1.jar $OPS_NODE_SSH:~/

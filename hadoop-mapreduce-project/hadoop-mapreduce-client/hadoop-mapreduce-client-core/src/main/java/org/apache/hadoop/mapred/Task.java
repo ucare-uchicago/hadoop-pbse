@@ -855,7 +855,7 @@ abstract public class Task implements Writable, Configurable{
 
             if (isMapTask()) {
               // riza: attach lastDatanodeID as additional information
-              double transferRate = hdfsInputStream.getReadStatistics().getMbpsRemoteTransferRate();
+              double transferRate = hdfsInputStream.getReadStatistics().getMbpsTransferRate();
               LOG.info("riza: reporting datanode " + lastDatanodeId.getHostName() + " with rate " + transferRate + " Mbps");
               taskStatus.setLastDatanodeID(lastDatanodeId);
               taskStatus.setMapTransferRate(transferRate);
@@ -1299,7 +1299,7 @@ abstract public class Task implements Writable, Configurable{
         try {
           // riza: attach lastDatanodeID as additional information
           if (this.isMapTask()) {
-            double transferRate = hdfsInputStream.getReadStatistics().getMbpsRemoteTransferRate();
+            double transferRate = hdfsInputStream.getReadStatistics().getMbpsTransferRate();
             LOG.info("riza: extra reporting datanode " + lastDatanodeId.getHostName() + " with rate " + transferRate + " Mbps");
             taskStatus.setLastDatanodeID(lastDatanodeId);
             taskStatus.setMapTransferRate(transferRate);
