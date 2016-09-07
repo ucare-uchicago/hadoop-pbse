@@ -1364,6 +1364,8 @@ public class DFSOutputStream extends FSOutputSummer
               PBHelper.vintPrefixed(blockReplyStream));
           pipelineStatus = resp.getStatus();
           firstBadLink = resp.getFirstBadLink();
+          //huanke
+          message=resp.getMessage();
           
           // Got an restart OOB ack.
           // If a node is already restarting, this status is not likely from
