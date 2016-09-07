@@ -279,6 +279,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
             int speculations = 0;
             int reduceSpeculation = 0;
             int mapSpeculation = 0;
+            
+            long minWait = soonestRetryAfterNoSpeculate;
 
             // riza: prioritize PBSE speculation
             if (reduceIntersectionSpeculationEnabled
@@ -287,9 +289,10 @@ public class PBSESpeculator extends AbstractService implements Speculator {
               int spec = computeReduceIntersectionSpeculation();
               reduceSpeculation += spec;
 
-              nextReduceDiversitySpeculation = backgroundRunStartTime
-                  + (speculations > 0 ? soonestRetryAfterSpeculate
+              long myWait = (spec > 0 ? soonestRetryAfterSpeculate
                       : soonestRetryAfterNoSpeculate);
+              nextReduceDiversitySpeculation = backgroundRunStartTime + myWait;
+              minWait = Math.min(minWait, myWait);
             }
 
             if (fetchRateSpeculationEnabled
@@ -298,8 +301,9 @@ public class PBSESpeculator extends AbstractService implements Speculator {
               int spec = checkFetchRateTable();
               mapSpeculation += spec;
 
-              nextFetchRateSpeculation = backgroundRunStartTime
-                  + soonestRetryAfterNoSpeculate;
+              long myWait = soonestRetryAfterNoSpeculate;
+              nextFetchRateSpeculation = backgroundRunStartTime + myWait;
+              minWait = Math.min(minWait, myWait);
             }
 
             if (mapPathSpeculationEnabled
@@ -308,9 +312,11 @@ public class PBSESpeculator extends AbstractService implements Speculator {
               try {
                 int spec = calculateMapPathSpeculation();
                 mapSpeculation += spec;
-                nextMapPathSpeculation = backgroundRunStartTime
-                    + (spec > 0 ? soonestRetryAfterSpeculate
-                        : soonestRetryAfterNoSpeculate);
+
+                long myWait = (spec > 0 ? soonestRetryAfterSpeculate
+                    : soonestRetryAfterNoSpeculate);
+                nextMapPathSpeculation = backgroundRunStartTime + myWait;
+                minWait = Math.min(minWait, myWait);
               } catch (Exception ex) {
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
@@ -326,14 +332,16 @@ public class PBSESpeculator extends AbstractService implements Speculator {
                 mapSpeculation += maybeScheduleAMapSpeculation();
               if (reduceSpeculation <= 0)
                 reduceSpeculation += maybeScheduleAReduceSpeculation();
-              nextDefaultSpeculation = backgroundRunStartTime
-                  + (mapSpeculation + reduceSpeculation > 0 ? soonestRetryAfterSpeculate
-                      : soonestRetryAfterNoSpeculate);
+
+              long myWait = (mapSpeculation + reduceSpeculation > 0 ? soonestRetryAfterSpeculate
+                  : soonestRetryAfterNoSpeculate);
+              nextDefaultSpeculation = backgroundRunStartTime + myWait;
+              minWait = Math.min(minWait, myWait);
             }
 
             speculations = mapSpeculation + reduceSpeculation;
             // riza: disable backoff for now
-            long mininumRecomp = soonestRetryAfterNoSpeculate;
+            long mininumRecomp = Math.min(soonestRetryAfterNoSpeculate, minWait);
             // long mininumRecomp = speculations > 0 ? soonestRetryAfterSpeculate
             //     : soonestRetryAfterNoSpeculate;
             long wait = Math.max(mininumRecomp, clock.getTime()
