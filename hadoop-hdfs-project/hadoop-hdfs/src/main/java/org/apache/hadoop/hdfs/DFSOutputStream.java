@@ -1366,6 +1366,7 @@ public class DFSOutputStream extends FSOutputSummer
           firstBadLink = resp.getFirstBadLink();
           //huanke
           message=resp.getMessage();
+          DFSClient.LOG.info("@huanke MessageHK:"+message);
           
           // Got an restart OOB ack.
           // If a node is already restarting, this status is not likely from
