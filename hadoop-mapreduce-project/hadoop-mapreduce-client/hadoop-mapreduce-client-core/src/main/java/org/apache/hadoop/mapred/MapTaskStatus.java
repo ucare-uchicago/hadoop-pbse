@@ -29,9 +29,12 @@ class MapTaskStatus extends TaskStatus {
 
   private long mapFinishTime = 0;
 
-  // riza: add attribute to pass last accessed datanode
+  // riza: last datanode accessed by this map
   private DatanodeID lastDatanodeID = DatanodeID.createNullDatanodeID();
   
+  // riza: average transfer rate of this map in Mbps
+  private double transferRate = 0.0D;
+
   public MapTaskStatus() {}
 
   public MapTaskStatus(TaskAttemptID taskid, float progress, int numSlots,
@@ -91,6 +94,17 @@ class MapTaskStatus extends TaskStatus {
     return this.lastDatanodeID;
   }
 
+  // riza: get/set Map transfer rate
+  @Override
+  public void setMapTransferRate(double rate) {
+    this.transferRate = rate;
+  }
+
+  @Override
+  public double getMapTransferRate() {
+    return this.transferRate;
+  }
+
   @Override
   synchronized void statusUpdate(TaskStatus status) {
     super.statusUpdate(status);
@@ -104,6 +118,7 @@ class MapTaskStatus extends TaskStatus {
   public void readFields(DataInput in) throws IOException {
     super.readFields(in);
     mapFinishTime = in.readLong();
+    transferRate = in.readDouble();
     lastDatanodeID.readFields(in);
   }
   
@@ -111,6 +126,7 @@ class MapTaskStatus extends TaskStatus {
   public void write(DataOutput out) throws IOException {
     super.write(out);
     out.writeLong(mapFinishTime);
+    out.writeDouble(transferRate);
     lastDatanodeID.write(out);
   }
 
