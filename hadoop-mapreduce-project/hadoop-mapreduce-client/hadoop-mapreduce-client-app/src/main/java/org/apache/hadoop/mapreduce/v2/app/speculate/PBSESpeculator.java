@@ -303,7 +303,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
               try {
                 int spec = calculateMapPathSpeculation();
                 mapSpeculation += spec;
-                nextFetchRateSpeculation = backgroundRunStartTime
+                nextMapPathSpeculation = backgroundRunStartTime
                     + (spec > 0 ? soonestRetryAfterSpeculate
                         : soonestRetryAfterNoSpeculate);
               } catch (Exception ex) {
@@ -1167,8 +1167,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
           if (latestMap == null
               || map.getID().compareTo(latestMap.getID()) > 0) {
             latestMap = map;
-            if (latestMap.getState() == TaskAttemptState.RUNNING
-                && (slowestMap == null || slowestMap.getMapTransferRate() > latestMap.getMapTransferRate())) {
+            if ((!taskEntry.getValue().isFinished() || (latestMap.getState() == TaskAttemptState.RUNNING))
+                && (slowestMap == null || (slowestMap.getMapTransferRate() > latestMap.getMapTransferRate()))) {
               slowestMap = latestMap;
             }
           }
@@ -1177,7 +1177,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
         if (mySpeculationValue == ALREADY_SPECULATING) {
           // riza: right now, PBSE do not speculate task that has been speculated before
           ++numberSpeculationsAlready;
-        } else if ((latestMap != null) && (mySpeculationValue >= 0)) {
+        } else if (latestMap != null) {
           // riza: group task based on datanode
           String datanode = latestMap.getLastDatanodeID().getHostName();
           if (!taskGroup.containsKey(datanode))
@@ -1236,8 +1236,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
             + globalTransferRate.std() + " Mbps, threshold: " + threshold
             + " Mbps, taskGroup size: " + taskGroup.size() + ", #path seen: "
             + globalTransferRate.count() + ", slowestGroup: " + slowestGroup
-            + ", slowestTransferRate: " + slowestTransferRate + ", has single slow map: "
-            + ((slowestMap != null) && (slowestMap.getMapTransferRate() < threshold)));
+            + ", slowestTransferRate: " + slowestTransferRate + ", slowestMap rate: "
+            + (slowestMap == null ? -1.0 : slowestMap.getMapTransferRate()));
       }
     }
 
