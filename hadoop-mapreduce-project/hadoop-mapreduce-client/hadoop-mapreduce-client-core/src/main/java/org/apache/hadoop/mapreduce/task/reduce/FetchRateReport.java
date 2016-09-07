@@ -13,6 +13,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FetchRateReport implements Serializable{
 	
 	private static final long serialVersionUID = 1L;
+	private static final String TASK_SEPARATOR = "@taskRef=";
+	
+	// @Cesar: Remove the task ref from host name
+	public static final String getHostName(String hostNameWithReference){
+		if(hostNameWithReference != null && hostNameWithReference.contains(TASK_SEPARATOR)){
+			return hostNameWithReference.split(TASK_SEPARATOR)[0];
+		}
+		return hostNameWithReference;
+	}
 	
 	// @Cesar: mapperHost -> <bytes read, nanos took>
 	Map<String, ShuffleData> fetchRateReport = null;	
@@ -22,7 +31,9 @@ public class FetchRateReport implements Serializable{
 	}
 	
 	public void addReport(String mapperHost, ShuffleData shuffleData){
-		fetchRateReport.put(mapperHost, shuffleData);
+		// Cesar: This is quick fix
+		String mappedName = mapperHost + TASK_SEPARATOR + shuffleData.getMapTaskId();
+		fetchRateReport.put(mappedName, shuffleData);
 	}
 		
 	

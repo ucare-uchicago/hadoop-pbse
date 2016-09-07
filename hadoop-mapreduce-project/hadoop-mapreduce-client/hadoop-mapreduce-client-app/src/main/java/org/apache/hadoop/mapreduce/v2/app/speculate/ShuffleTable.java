@@ -5,10 +5,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskId;
 
@@ -20,7 +19,8 @@ public class ShuffleTable {
 	// @Cesar: Remove port from a host
 	public static String parseHost(String host){
 		return host != null? (host.split(":").length == 2? 
-							  host.split(":")[0] : host) : null;
+							  FetchRateReport.getHostName(host.split(":")[0]) : 
+							  FetchRateReport.getHostName(host)) : null;
 	}
 	
 	// @Cesar: This is host -> reports
