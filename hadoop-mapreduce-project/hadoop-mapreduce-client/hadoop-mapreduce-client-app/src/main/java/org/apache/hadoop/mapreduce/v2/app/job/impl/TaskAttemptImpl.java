@@ -1084,6 +1084,26 @@ public abstract class TaskAttemptImpl implements
       readLock.unlock();
     }
   }
+  
+  // riza: get latest map transfer rate in Mbps
+  public double getMapTransferRate() {
+    readLock.lock();
+    try {
+      return reportedStatus.mapTransferRate;
+    } finally {
+      readLock.unlock();
+    }
+  }
+  
+  // riza: get latest map transfer rate in Mbps
+  public String getHostName() {
+    readLock.lock();
+    try {
+      return container == null ? reportedStatus.containerHost : container.getNodeId().getHost();
+    } finally {
+      readLock.unlock();
+    }
+  }
 
   // riza: get child reported
   public String getTag() {
@@ -1597,6 +1617,9 @@ public abstract class TaskAttemptImpl implements
           taskAttempt.remoteTask, taskAttempt.jvmID,
           taskAttempt.container.getNodeId().getHost());
 
+      // riza: assign container host to taskStatus for speculation algorithm
+      taskAttempt.reportedStatus.containerHost = container.getNodeId().getHost();
+
       taskAttempt.computeRackAndLocality();
       
       //launch the container
@@ -1706,6 +1729,11 @@ public abstract class TaskAttemptImpl implements
       taskAttempt.trackerName = nodeHttpInetAddr.getHostName();
       taskAttempt.httpPort = nodeHttpInetAddr.getPort();
       taskAttempt.sendLaunchedEvents();
+
+      // riza: assign container host to taskStatus for speculation algorithm
+      if (taskAttempt.getNodeId() != null)
+        taskAttempt.reportedStatus.containerHost = taskAttempt.getNodeId().getHost();
+
       // @Cesar: Also tell the speculator where this was launched
       if(taskAttempt.getID().getTaskId().getTaskType() == TaskType.MAP && taskAttempt.fetchRateSpeculationEnabled){
     	  taskAttempt.eventHandler.handle
@@ -2044,9 +2072,16 @@ public abstract class TaskAttemptImpl implements
       TaskAttemptStatus newReportedStatus =
           ((TaskAttemptStatusUpdateEvent) event)
               .getReportedTaskAttemptStatus();
+      // riza: backup container host name on task status
+      newReportedStatus.containerHost = taskAttempt.reportedStatus.containerHost;
+
       // Now switch the information in the reportedStatus
       taskAttempt.reportedStatus = newReportedStatus;
       taskAttempt.reportedStatus.taskState = taskAttempt.getState();
+
+      // riza: assign container host to taskStatus for speculation algorithm
+      if (taskAttempt.getNodeId() != null)
+        taskAttempt.reportedStatus.containerHost = taskAttempt.getNodeId().getHost();
 
       //huanke
       ArrayList<DatanodeInfo> DNpath=newReportedStatus.Pipeline;
@@ -2066,14 +2101,17 @@ public abstract class TaskAttemptImpl implements
             		  taskAttempt.getID(),
             		  fetchRateReport, taskAttempt.clock.getTime()));
       }
-      
+
       // riza: update datasource tag
       String dnHostName = newReportedStatus.lastDatanodeID.getHostName();
-      if (!dnHostName.equals("fake-localhost"))
-        taskAttempt.myDatasourceTag = taskAttempt.isNodeSlow(dnHostName) ? "s" : "f";
-      LOG.info("Read from host " + newReportedStatus.lastDatanodeID + " (" +
-          newReportedStatus.lastDatanodeID.getHostName() + ") with tag " +
-          taskAttempt.myDatasourceTag);
+      if (!dnHostName.equals("fake-localhost")) {
+        taskAttempt.myDatasourceTag = taskAttempt.isNodeSlow(dnHostName) ? "s"
+            : "f";
+        LOG.info("Read from host " + newReportedStatus.lastDatanodeID + " ("
+            + newReportedStatus.lastDatanodeID.getHostName() + ") with tag "
+            + taskAttempt.myDatasourceTag + " and rate "
+            + newReportedStatus.mapTransferRate + " Mbps");
+      }
 
       // send event to speculator about the reported status
       taskAttempt.eventHandler.handle
@@ -2119,7 +2157,11 @@ public abstract class TaskAttemptImpl implements
     result.taskState = TaskAttemptState.NEW;
     Counters counters = EMPTY_COUNTERS;
     result.counters = counters;
+
+    // riza: PBSE task status init
+    result.containerHost = "UNKNOWN";
     result.lastDatanodeID = DatanodeID.createNullDatanodeID();
+    result.mapTransferRate = 0.0D;
   }
 
   // riza: check if node is in slow list

@@ -693,6 +693,7 @@ public class MRAppMaster extends CompositeService {
               = conf.getClass(MRJobConfig.MR_AM_JOB_SPECULATOR,
                               DefaultSpeculator.class,
                               Speculator.class);
+          LOG.info("Using speculator "+ speculatorClass);
           Constructor<? extends Speculator> speculatorConstructor
               = speculatorClass.getConstructor
                    (Configuration.class, AppContext.class);

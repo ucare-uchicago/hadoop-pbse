@@ -472,6 +472,17 @@ public abstract class TaskStatus implements Writable, Cloneable {
         "getLastDatanodeID() only supported by MapTask");
   }
 
+  // riza: get/set Map transfer rate
+  public void setMapTransferRate(double rate) {
+    throw new UnsupportedOperationException(
+        "setMapTransferRate() only supported by MapTask");
+  }
+
+  public double getMapTransferRate() {
+    throw new UnsupportedOperationException(
+        "getMapTransferRate() only supported by MapTask");
+  }
+
   public void setTag(String tag){
     this.tag = tag;
   }
