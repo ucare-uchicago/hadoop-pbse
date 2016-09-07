@@ -1034,6 +1034,7 @@ public class DefaultSpeculator extends AbstractService implements
         
         if (mySpeculationValue != NOT_RUNNING) {
           ++numberRunningTasks;
+
         }
 
         //LOG.info("@huanke mySpeculationValue: "+mySpeculationValue+" bestSpeculationValue: "+bestSpeculationValue + " taskEntry.getKey(): "+ taskEntry.getKey());
