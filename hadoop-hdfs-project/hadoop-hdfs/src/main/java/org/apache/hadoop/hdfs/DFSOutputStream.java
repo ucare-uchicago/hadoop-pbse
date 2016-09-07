@@ -1365,7 +1365,7 @@ public class DFSOutputStream extends FSOutputSummer
           pipelineStatus = resp.getStatus();
           firstBadLink = resp.getFirstBadLink();
           //huanke
-          message=resp.getMessage();
+          String message = resp.getMessage();
           DFSClient.LOG.info("@huanke MessageHK:"+message);
           
           // Got an restart OOB ack.
