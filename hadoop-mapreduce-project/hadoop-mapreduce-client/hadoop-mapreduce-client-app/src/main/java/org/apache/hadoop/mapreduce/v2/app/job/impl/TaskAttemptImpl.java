@@ -189,7 +189,8 @@ public abstract class TaskAttemptImpl implements
 
   //@Cesar: Enable or disable fetch rate speculation
   private boolean fetchRateSpeculationEnabled = false;
-  
+  //@Cesar: Check for huans config
+  private boolean hdfsWriteSpeculationEnabled = false;
   // riza: additional field
   protected String myContainerTag = "n";
   protected String myDatasourceTag = "n";
@@ -569,6 +570,7 @@ public abstract class TaskAttemptImpl implements
     stateMachine = stateMachineFactory.make(this);
     // @Cesar: Check if fetch rate speculation is enabled
     fetchRateSpeculationEnabled = conf.getBoolean("mapreduce.experiment.enable_fetch_rate_speculation", false);
+    hdfsWriteSpeculationEnabled = conf.getBoolean("pbse.enable.for.reduce.pipeline", false);
   }
 
   private int getMemoryRequired(Configuration conf, TaskType taskType) {
@@ -1772,14 +1774,21 @@ public abstract class TaskAttemptImpl implements
       taskAttempt.eventHandler.handle(new TaskTAttemptEvent(
           taskAttempt.attemptId,
           TaskEventType.T_ATTEMPT_SUCCEEDED));
-      // @Cesar: Mark as success
+      // @Cesar: Task time since launch to finish
+      long taskTime = taskAttempt.finishTime - taskAttempt.launchTime;
+      // @Cesar: Report completition for map task
       if(taskAttempt.fetchRateSpeculationEnabled && taskAttempt.attemptId.getTaskId().getTaskType().equals(TaskType.MAP)){
-    	  // @Cesar: Get the map duration in here
-    	  long mapTime = taskAttempt.finishTime - taskAttempt.launchTime;
     	  taskAttempt.eventHandler.handle
           (new SpeculatorEvent
-              (taskAttempt.reportedStatus, taskAttempt.clock.getTime(), true, taskAttempt.getNodeId().getHost(), mapTime));
+              (taskAttempt.reportedStatus, taskAttempt.clock.getTime(), true, taskAttempt.getNodeId().getHost(), taskTime));
       }
+      // @Cesar: Report completition for reduce task
+      else if(taskAttempt.hdfsWriteSpeculationEnabled && taskAttempt.attemptId.getTaskId().getTaskType().equals(TaskType.REDUCE)){
+    	  taskAttempt.eventHandler.handle
+          (new SpeculatorEvent
+              (taskAttempt.reportedStatus, taskAttempt.clock.getTime(), true, taskAttempt.getNodeId().getHost(), taskTime));
+      }
+      // @Cesar: Default...
       else{
     	  taskAttempt.eventHandler.handle
           (new SpeculatorEvent

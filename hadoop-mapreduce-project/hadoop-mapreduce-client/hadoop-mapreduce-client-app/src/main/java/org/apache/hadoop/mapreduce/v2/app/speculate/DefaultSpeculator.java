@@ -95,7 +95,7 @@ public class DefaultSpeculator extends AbstractService implements
   
   //huanke
   private Thread speculationIntersectionThread=null;
-  private boolean PBSEenabled=false;
+  private boolean hdfsWriteSpeculationEnabled=false;
   
   // @Cesar: To hold the info about the reported fetch rates
   private ShuffleTable shuffleTable = new ShuffleTable();
@@ -136,7 +136,7 @@ public class DefaultSpeculator extends AbstractService implements
   // @Cesar
   private BlockingQueue<Object> fetchRateScanControl = new LinkedBlockingQueue<Object>();
   // huanke
-  private BlockingQueue<Object> scanControl1 = new LinkedBlockingQueue<Object>();
+  private BlockingQueue<Object> hdfsWriteScanControl = new LinkedBlockingQueue<Object>();
   
   private final Clock clock;
 
@@ -146,8 +146,8 @@ public class DefaultSpeculator extends AbstractService implements
   private int counter1=0;
   private DatanodeInfo ignoreNode;
   private List<ArrayList<DatanodeInfo>> lists = new ArrayList<ArrayList<DatanodeInfo>>();
-  private Map<TaskId, List<DatanodeInfo>> TaskAndPipeline=new ConcurrentHashMap<>();
-  private Set<TaskId> TaskSet=new HashSet<>();
+  private Map<TaskId, List<DatanodeInfo>> taskAndPipeline=new ConcurrentHashMap<>();
+  private Set<TaskId> taskSet = new HashSet<>();
   
   // riza
   private int maxSpeculationDelay = 0;
@@ -231,7 +231,7 @@ public class DefaultSpeculator extends AbstractService implements
     this.smartFetchRateSpeculationEnabled = conf.getBoolean("mapreduce.experiment.smart_fetch_rate_speculation_enabled", false);
     this.smartFetchRateSpeculationFactor = conf.getDouble("mapreduce.experiment.smart_fetch_rate_speculation_factor", 3.0);
     // huanke
-    this.PBSEenabled=conf.getBoolean("pbse.enable.for.reduce.pipeline", false);
+    this.hdfsWriteSpeculationEnabled=conf.getBoolean("pbse.enable.for.reduce.pipeline", false);
     // riza
     this.maxSpeculationDelay = conf.getInt("mapreduce.policy.faread.maximum_speculation_delay", 0) / (int) this.soonestRetryAfterNoSpeculate;
     this.everDelaySpeculation = false;
@@ -246,13 +246,13 @@ public class DefaultSpeculator extends AbstractService implements
   @Override
   protected void serviceStart() throws Exception {
 	//huanke create my own thread to launch a backup reduce task
-    LOG.info("@huanke PBSEenabled "+PBSEenabled);
-    if (PBSEenabled){
+    LOG.info("@huanke PBSEenabled "+hdfsWriteSpeculationEnabled);
+    if (hdfsWriteSpeculationEnabled){
       Runnable speculationIntersection
               = new Runnable() {
         @Override
         public void run() {
-          LOG.info("@huanke MyThread is running!" + TaskAndPipeline + "TaskSet000: " + TaskSet);
+          LOG.info("@huanke MyThread is running!" + taskAndPipeline + "TaskSet000: " + taskSet);
           while (!stopped && !Thread.currentThread().isInterrupted()) {
             long backgroundRunStartTime = clock.getTime();
             try {
@@ -262,7 +262,7 @@ public class DefaultSpeculator extends AbstractService implements
                 //just test to launch a backup reduce task
               } else {
                 LOG.info("@huanke checkIntersection returns ignoreNode :" + ignoreNode);
-                LOG.info("PBSE-Write-Diversity-1 taskId " + TaskAndPipeline.keySet() + " choose-datanode " + TaskAndPipeline+" IntersectedNode "+ignoreNode);
+                LOG.info("PBSE-Write-Diversity-1 taskId " + taskAndPipeline.keySet() + " choose-datanode " + taskAndPipeline+" IntersectedNode "+ignoreNode);
                 relauchReduceTask(ignoreNode);
               }
               long mininumRecomp
@@ -273,7 +273,7 @@ public class DefaultSpeculator extends AbstractService implements
               //LOG.info("@huanke MyThread is waiting for Pipeline info" + wait);
 
               Object pollResult
-                      = scanControl1.poll(wait, TimeUnit.MILLISECONDS);
+                      = hdfsWriteScanControl.poll(wait, TimeUnit.MILLISECONDS);
 
             } catch (InterruptedException e) {
               if (!stopped) {
@@ -375,18 +375,18 @@ public class DefaultSpeculator extends AbstractService implements
 	    //huanke--------------------------------------------------------------
 	    TaskType type=TaskType.REDUCE;
 	//    LOG.info("@huanke TaskSetSize :"+TaskSet+TaskAndPipeline);
-	    if(TaskSet.size()!=0) {
+	    if(taskSet.size()!=0) {
 	//      LOG.info("@huanke TaskSet1 :" + TaskSet);
 	      //huanke TaskSet1 :[task_1471318623508_0001_r_000001]
 	      //huanke TaskSet1 :[task_1471318623508_0001_r_000001, task_1471318623508_0001_r_000000]
-	      Iterator iter = TaskSet.iterator();
+	      Iterator iter = taskSet.iterator();
 	      TaskId Ttmp = (TaskId) iter.next();
 	      Job job = context.getJob(Ttmp.getJobId());
 	      Map<TaskId, Task> tasks = job.getTasks(type);
 	      LOG.info("@huanke taskSize "+tasks.size()+tasks);
 	      for (Map.Entry<TaskId, Task> taskEntry : tasks.entrySet()) {
-	        if(TaskAndPipeline!=null && TaskAndPipeline.size()==tasks.size()) {
-	          List<DatanodeInfo> tmp = TaskAndPipeline.get(taskEntry.getKey());
+	        if(taskAndPipeline!=null && taskAndPipeline.size()==tasks.size()) {
+	          List<DatanodeInfo> tmp = taskAndPipeline.get(taskEntry.getKey());
 	          LOG.info("@huanke TaskAndPipeline for each task" + tmp);
 	//          huanke TaskAndPipeline for each task[10.1.1.4:50010, 10.1.1.7:50010]
 	//          huanke TaskAndPipeline for each task[10.1.1.6:50010, 10.1.1.4:50010]
@@ -443,7 +443,7 @@ public class DefaultSpeculator extends AbstractService implements
 
   //huanke
   private void relauchReduceTask(DatanodeInfo ignoreNode) {
-    TaskId taskID=TaskAndPipeline.keySet().iterator().next();
+    TaskId taskID=taskAndPipeline.keySet().iterator().next();
     LOG.info("@huanke relauchRedueTask" + taskID);
     eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ADD_SPEC_ATTEMPT, ignoreNode));
     mayHaveSpeculated.add(taskID);
@@ -616,6 +616,17 @@ public class DefaultSpeculator extends AbstractService implements
         	LOG.info("@Cesar: Reported successfull map at " + event.getMapperHost()  + " : " + event.getReportedStatus().id);
         	// @Cesar: The event contains the time reported for this map task
         }
+        // @Cesar: Is this a success event? is this a reduce task? is hdfs write spec enabled?
+        /*if(event.isSuccedded() && event.getReportedStatus().id.getTaskId().getTaskType() == TaskType.REDUCE && 
+        	hdfsWriteSpeculationEnabled){
+        	// @Cesar: I need to clean the TaskSet object and the TaskAndPipeline object
+        	taskAndPipeline.remove(event.getReportedStatus().id.getTaskId());
+        	// @Cesar: Also the other one, this one has to be sync
+        	synchronized(taskSet){
+        		taskSet.remove(event.getReportedStatus().id.getTaskId());
+        	}
+        	LOG.info("@Cesar: Reported successfull reduce at " + event.getMapperHost()  + " : " + event.getReportedStatus().id);
+        }*/
         break;
       case TASK_CONTAINER_NEED_UPDATE:
       {
@@ -703,25 +714,25 @@ public class DefaultSpeculator extends AbstractService implements
   private void PipelineUpdate(TaskAttemptStatus reportedStatus, ArrayList<DatanodeInfo> dNpath) {
 	    String stateString = reportedStatus.taskState.toString();
 
-	    LOG.info("@huanke at the beginning"+TaskAndPipeline+" size: "+TaskAndPipeline.size()+dNpath+reportedStatus.Pipeline);
+	    LOG.info("@huanke at the beginning"+taskAndPipeline+" size: "+taskAndPipeline.size()+dNpath+reportedStatus.Pipeline);
 
 	    TaskAttemptId attemptID = reportedStatus.id;
 	    TaskId taskID = attemptID.getTaskId();
 	    Job job = context.getJob(taskID.getJobId());
 
-	    synchronized (TaskAndPipeline) {
+	    synchronized (taskAndPipeline) {
 	      if (taskID.getTaskType() == TaskType.REDUCE) {
 	        if (dNpath.size() == 0) {
 	          LOG.info("@huanke TaskAndPipeline is empty at this moment");
 	        }
 	        else {
-	          if (TaskSet.add(taskID)) {
-	            TaskAndPipeline.put(taskID, dNpath);
+	          if (taskSet.add(taskID)) {
+	            taskAndPipeline.put(taskID, dNpath);
 	          }
 	        }
 	      }
 	    }
-	    LOG.info("@huanke DefaultSpeculator TaskAndPipeline"+TaskAndPipeline+TaskAndPipeline.size());
+	    LOG.info("@huanke DefaultSpeculator TaskAndPipeline"+taskAndPipeline+taskAndPipeline.size());
 	    //DefaultSpeculator TaskAndPipeline{task_1471222182002_0001_r_000000=[10.1.1.2:50010, 10.1.1.7:50010], task_1471222182002_0001_r_000001=[10.1.1.7:50010, 10.1.1.4:50010]}2
 
 
