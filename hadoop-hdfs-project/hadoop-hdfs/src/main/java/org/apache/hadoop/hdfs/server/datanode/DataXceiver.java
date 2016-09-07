@@ -814,6 +814,7 @@ class DataXceiver extends Receiver implements Runnable {
           //huanke
           String message="";
           message=Long.toString(block.getNumBytes())+remoteAddress+localAddress;
+          LOG.info("@huanke MessageHK: "+message);
           writeResponse(SUCCESS, message, replyOut);
 
         }
