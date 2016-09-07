@@ -332,8 +332,10 @@ class Fetcher<K,V> extends Thread {
     List<TaskAttemptID> maps = scheduler.getMapsForHost(host);
 
     // @Cesar: Also input into my list
-    myMaps.clear();
-    myMaps.addAll(maps);
+    synchronized(myMaps){
+    	myMaps.clear();
+    	myMaps.addAll(maps);
+    }
     
     // Sanity check to catch hosts with only 'OBSOLETE' maps, 
     // especially at the tail of large jobs
