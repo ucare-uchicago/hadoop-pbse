@@ -1092,6 +1092,16 @@ public abstract class TaskAttemptImpl implements
       readLock.unlock();
     }
   }
+  
+  // riza: get latest map transfer rate in Mbps
+  public String getHostName() {
+    readLock.lock();
+    try {
+      return container == null ? reportedStatus.containerHost : container.getNodeId().getHost();
+    } finally {
+      readLock.unlock();
+    }
+  }
 
   // riza: get child reported
   public String getTag() {
@@ -1719,7 +1729,8 @@ public abstract class TaskAttemptImpl implements
       taskAttempt.sendLaunchedEvents();
 
       // riza: assign container host to taskStatus for speculation algorithm
-      taskAttempt.reportedStatus.containerHost = taskAttempt.getNodeId().getHost();
+      if (taskAttempt.getNodeId() != null)
+        taskAttempt.reportedStatus.containerHost = taskAttempt.getNodeId().getHost();
 
       // @Cesar: Also tell the speculator where this was launched
       if(taskAttempt.getID().getTaskId().getTaskType() == TaskType.MAP && taskAttempt.fetchRateSpeculationEnabled){
@@ -2052,12 +2063,16 @@ public abstract class TaskAttemptImpl implements
       TaskAttemptStatus newReportedStatus =
           ((TaskAttemptStatusUpdateEvent) event)
               .getReportedTaskAttemptStatus();
+      // riza: backup container host name on task status
+      newReportedStatus.containerHost = taskAttempt.reportedStatus.containerHost;
+
       // Now switch the information in the reportedStatus
       taskAttempt.reportedStatus = newReportedStatus;
       taskAttempt.reportedStatus.taskState = taskAttempt.getState();
 
       // riza: assign container host to taskStatus for speculation algorithm
-      taskAttempt.reportedStatus.containerHost = taskAttempt.getNodeId().getHost();
+      if (taskAttempt.getNodeId() != null)
+        taskAttempt.reportedStatus.containerHost = taskAttempt.getNodeId().getHost();
 
       //huanke
       ArrayList<DatanodeInfo> DNpath=newReportedStatus.Pipeline;
@@ -2135,7 +2150,7 @@ public abstract class TaskAttemptImpl implements
     result.counters = counters;
 
     // riza: PBSE task status init
-    result.containerHost = "unassigned";
+    result.containerHost = "UNKNOWN";
     result.lastDatanodeID = DatanodeID.createNullDatanodeID();
     result.mapTransferRate = 0.0D;
   }

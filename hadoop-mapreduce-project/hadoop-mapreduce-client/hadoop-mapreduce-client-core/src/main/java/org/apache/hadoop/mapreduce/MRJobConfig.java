@@ -886,5 +886,5 @@ public interface MRJobConfig {
   public static final String PBSE_MAP_SLOW_TRANSFER_THRESHOLD =
       "mapreduce.pbse.map.path-speculation.threshold";
   public static final double DEFAULT_PBSE_MAP_SLOW_TRANSFER_THRESHOLD =
-      0.1d;
+      0.2d;
 }

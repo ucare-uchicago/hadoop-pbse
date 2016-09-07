@@ -148,7 +148,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   private boolean hasDelayThisIteration = false;
   // riza: PBSE-Read-3 fields
   private boolean mapPathSpeculationEnabled = false;
-  private double slowTransferRateThreshold = 0.1;
+  private double slowTransferRateThreshold;
 
   public PBSESpeculator(Configuration conf, AppContext context) {
     this(conf, context, context.getClock());
@@ -304,7 +304,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
                 int spec = calculateMapPathSpeculation();
                 mapSpeculation += spec;
                 nextFetchRateSpeculation = backgroundRunStartTime
-                    + (speculations > 0 ? soonestRetryAfterSpeculate
+                    + (spec > 0 ? soonestRetryAfterSpeculate
                         : soonestRetryAfterNoSpeculate);
               } catch (Exception ex) {
                 StringWriter sw = new StringWriter();
@@ -639,6 +639,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
           }
   
           result = estimatedEndTime - estimatedReplacementEndTime;
+        } else {
+          result = 0;
         }
       }
     }
@@ -1144,7 +1146,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
           MapTaskAttemptImpl map = (MapTaskAttemptImpl) attempt;
           if (map.getMapTransferRate() > 0.0d
               && (map.getState() == TaskAttemptState.RUNNING
-                || map.getState() == TaskAttemptState.SUCCEEDED)) {
+                || map.getState() == TaskAttemptState.SUCCEEDED)
+              && (map.getHostName() != map.getLastDatanodeID().getHostName())) {
             //riza: stat for datanode
             if (!hostStatistics.containsKey(map.getLastDatanodeID().getHostName()))
               hostStatistics.put(map.getLastDatanodeID().getHostName(), new DataStatistics());
@@ -1152,9 +1155,9 @@ public class PBSESpeculator extends AbstractService implements Speculator {
             dnStat.add(map.getMapTransferRate());
 
             // riza: stat for mapnode
-            if (!hostStatistics.containsKey(map.getNodeId().getHost()))
-              hostStatistics.put(map.getNodeId().getHost(), new DataStatistics());
-            DataStatistics hostStat = hostStatistics.get(map.getNodeId().getHost());
+            if (!hostStatistics.containsKey(map.getHostName()))
+              hostStatistics.put(map.getHostName(), new DataStatistics());
+            DataStatistics hostStat = hostStatistics.get(map.getHostName());
             hostStat.add(map.getMapTransferRate());
             
             // riza: contribute to globalTransferRate
@@ -1164,8 +1167,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
           if (latestMap == null
               || map.getID().compareTo(latestMap.getID()) > 0) {
             latestMap = map;
-            if (slowestMap == null
-                || slowestMap.getMapTransferRate() > latestMap.getMapTransferRate()) {
+            if (latestMap.getState() == TaskAttemptState.RUNNING
+                && (slowestMap == null || slowestMap.getMapTransferRate() > latestMap.getMapTransferRate())) {
               slowestMap = latestMap;
             }
           }
@@ -1174,7 +1177,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
         if (mySpeculationValue == ALREADY_SPECULATING) {
           // riza: right now, PBSE do not speculate task that has been speculated before
           ++numberSpeculationsAlready;
-        } else if (latestMap != null) {
+        } else if ((latestMap != null) && (mySpeculationValue >= 0)) {
           // riza: group task based on datanode
           String datanode = latestMap.getLastDatanodeID().getHostName();
           if (!taskGroup.containsKey(datanode))
@@ -1182,7 +1185,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
           taskGroup.get(datanode).add(taskEntry.getValue().getID());
 
           // riza: group task based on mapnode
-          String mapnode = latestMap.getLastDatanodeID().getHostName();
+          String mapnode = latestMap.getHostName();
           if (!taskGroup.containsKey(mapnode))
             taskGroup.put(mapnode, new HashSet<TaskId>());
           taskGroup.get(mapnode).add(taskEntry.getValue().getID());
@@ -1195,15 +1198,14 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       String slowestGroup = "";
       double slowestTransferRate = globalTransferRate.mean();
       for (Map.Entry<String, DataStatistics> pathGroup : hostStatistics.entrySet()) {
-        if (pathGroup.getValue().mean() < threshold
-            && pathGroup.getValue().mean() < slowestTransferRate) {
+        if ((pathGroup.getKey() != "UNKNOWN")
+            && (pathGroup.getValue().mean() <= slowestTransferRate)) {
           slowestGroup = pathGroup.getKey();
           slowestTransferRate = pathGroup.getValue().mean();
-        } 
+        }
       }
-      
-      if (slowestTransferRate < threshold
-          && taskGroup.size() > 1) {
+
+      if ((slowestTransferRate < threshold) && (taskGroup.size() > 1)) {
         // riza: path group speculation
         LOG.info("PBSE-Read-3: Speculating " + taskGroup.get(slowestGroup).size()
             + " tasks on path group " + slowestGroup
@@ -1215,13 +1217,12 @@ public class PBSESpeculator extends AbstractService implements Speculator {
           addSpeculativeAttempt(taskId);
           ++successes;
         }
-      } else if (slowestMap != null
-          && slowestMap.getMapTransferRate() < threshold
-          && slowestMap.getState() == TaskAttemptState.RUNNING) {
+      } else if ((slowestMap != null)
+          && (slowestMap.getMapTransferRate() < threshold)) {
         // riza: individual map speculation
         LOG.info("PBSE-Read-3: Speculating single map " + slowestMap.getID()
             + " having path (" + slowestMap.getLastDatanodeID() + ","
-            + slowestMap.getNodeId().getHost() + ") having avg rate "
+            + slowestMap.getHostName() + ") having avg rate "
             + slowestTransferRate + " Mbps, global avg rate: "
             + globalTransferRate.mean() + " Mbps, threshold: " + threshold
             + " Mbps");
@@ -1230,9 +1231,13 @@ public class PBSESpeculator extends AbstractService implements Speculator {
         ++successes;
       } else {
         LOG.info("Nothing to speculate, global avg rate: "
-            + globalTransferRate.mean() + " Mbps, threshold: " + threshold
+            + globalTransferRate.mean() + " Mbps, global var rate: "
+            + globalTransferRate.var() + " Mbps, global stdev rate: "
+            + globalTransferRate.std() + " Mbps, threshold: " + threshold
             + " Mbps, taskGroup size: " + taskGroup.size() + ", #path seen: "
-            + globalTransferRate.count());
+            + globalTransferRate.count() + ", slowestGroup: " + slowestGroup
+            + ", slowestTransferRate: " + slowestTransferRate + ", has single slow map: "
+            + ((slowestMap != null) && (slowestMap.getMapTransferRate() < threshold)));
       }
     }
 
