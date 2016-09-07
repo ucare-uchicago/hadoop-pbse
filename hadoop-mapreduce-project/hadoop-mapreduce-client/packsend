@@ -16,6 +16,7 @@ cd hadoop-mapreduce-client-core
 mvn package install -DskipTests
 cd ../hadoop-mapreduce-client-app
 mvn package install -DskipTests
+cd ..
 
 scp hadoop-mapreduce-client-app/target/hadoop-mapreduce-client-app-2.7.1.jar $OPS_NODE_SSH:~/
 scp hadoop-mapreduce-client-core/target/hadoop-mapreduce-client-core-2.7.1.jar $OPS_NODE_SSH:~/
