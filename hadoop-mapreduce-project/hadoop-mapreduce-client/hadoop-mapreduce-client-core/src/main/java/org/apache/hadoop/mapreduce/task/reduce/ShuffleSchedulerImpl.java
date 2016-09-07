@@ -408,7 +408,10 @@ public class ShuffleSchedulerImpl<K,V> implements ShuffleScheduler<K,V> {
 
 
   public synchronized void obsoleteMapOutput(TaskAttemptID mapId) {
-    obsoleteMaps.add(mapId);
+    // @Cesar: Modified by me
+	synchronized(obsoleteMaps){  
+		obsoleteMaps.add(mapId);
+	}
   }
 
   public synchronized void putBackKnownMapOutput(MapHost host,
