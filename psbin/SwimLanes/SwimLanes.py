@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr//bin/python
 import sys
 import Job
 import Container

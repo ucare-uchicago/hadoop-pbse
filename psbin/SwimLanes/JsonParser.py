@@ -53,7 +53,7 @@ class JsonParser:
              print "Failed to parse container on job " + str(job.jobId) + ": No attempt id!"
            ct.attemptId = str(container['attempt']).split('_')[3] + '_' + str(int(str(container['attempt']).split('_')[4])) + '_' + str(int(str(container['attempt']).split('_')[5]))
            ct.wholeAttemptId = container['attempt']
-           if self.slowNode in container['mapnode']:
+           if (self.slowNode in container['mapnode']) or (self.slowNode in container['reducenode']):
              ct.onSlowNode = True
              # done reading, now add to job list
            if (ct.isMap):
