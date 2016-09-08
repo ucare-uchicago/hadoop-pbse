@@ -315,10 +315,11 @@ public class PBSESpeculator extends AbstractService implements Speculator {
                 && nextMapPathSpeculation <= backgroundRunStartTime) {
               // riza: map path group speculation
               try {
-                int spec = calculateMapPathSpeculation();
+                //int spec = calculateMapPathSpeculation();
+                int spec = agressiveMapPathSpeculation();
                 mapSpeculation += spec;
 
-                long myWait = (spec > 0 ? soonestRetryAfterSpeculate
+                long myWait = (spec > 0 ? soonestRetryAfterNoSpeculate //soonestRetryAfterSpeculate
                     : soonestRetryAfterNoSpeculate);
                 nextMapPathSpeculation = backgroundRunStartTime + myWait;
                 minWait = Math.min(minWait, myWait);
@@ -1136,7 +1137,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     return knownAttempt.get(taskId);
   }
 
-  // riza: map speculation based on mapTransferRate
+  // riza: map path based speculation by grouping
   private int calculateMapPathSpeculation() {
     HashMap<String, DataStatistics> hostStatistics = new HashMap<String, DataStatistics>();
 
@@ -1157,6 +1158,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 
       int numberSpeculationsAlready = 0;
       int numberFinishedAlready = 0;
+      int numberUnknownAttempt = 0;
 
       // loop through the tasks of the kind
       Job job = context.getJob(jobEntry.getKey());
@@ -1170,6 +1172,12 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       for (Map.Entry<TaskId, Task> taskEntry : tasks.entrySet()) {
         TaskId taskId = taskEntry.getKey();
         long mySpeculationValue = speculationValue(taskId, now, true);
+
+        if ((mySpeculationValue == TOO_NEW) || (knownAttempt.get(taskId) == null)) {
+          // riza: no know report has arrive from this attempt
+          ++numberUnknownAttempt;
+          continue;
+        }
         
         if (taskEntry.getValue().isFinished()) {
           numberFinishedAlready++;
@@ -1182,9 +1190,12 @@ public class PBSESpeculator extends AbstractService implements Speculator {
           ++numberSpeculationsAlready;
           continue;
         }
-        
-        // riza: if we got to this point, it means the task is still running
 
+        // riza: Not all map in path statistic still running. If we got to
+        // speculate a path, we want to speculate only tasks of that path
+        // group that actually still running.
+        // If we got to this point, it means the task is still running
+        
         TaskAttemptStatus latestMap = null;
         for (TaskAttemptId attemptId : getKnownAttempt(taskId)) {
 
@@ -1195,8 +1206,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
           if (map.mapTransferRate > 0.0d) {
             
             // riza: We build map path statistic from all transferring
-            // MapTaskAttempt regardless of their status, as long as they have
-            // rate > 0.0 Mbps
+            // MapTaskAttempt that still running, having rate > 0.0 Mbps
       
             // riza: stat for datanode
             if (!hostStatistics.containsKey(map.lastDatanodeID
@@ -1223,10 +1233,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 
         if (latestMap != null) {
           if (latestMap.containerHost != latestMap.lastDatanodeID.getHostName()) {
-            // riza: Not all map in path statistic still running. If we got to
-            // speculate a path, we want to speculate only tasks of that path
-            // group that actually still running.
-            // We also only interested in speculating non-local task.
+            // riza: We also only interested in speculating non-local task.
   
             // riza: group task based on datanode
             String datanode = latestMap.lastDatanodeID.getHostName();
@@ -1242,15 +1249,13 @@ public class PBSESpeculator extends AbstractService implements Speculator {
           }
 
           // riza: memorize one slowest map from task that not finished yet. If
-          // path group algorithm fail to detect stragling path and this slowmap
+          // path group algorithm fail to detect straggling path and this slow map
           // has rate below the threshold, we speculate this single task.
 
           if ((slowestMap == null)
               || (slowestMap.mapTransferRate > latestMap.mapTransferRate)) {
               slowestMap = latestMap;
             }
-
-          
         }
       }
       
@@ -1298,18 +1303,143 @@ public class PBSESpeculator extends AbstractService implements Speculator {
         ++successes;
       } else {
         LOG.info("Nothing to speculate, global rate: " + globalTransferRate
-            + " threshold: " + threshold + " Mbps, taskGroup size: "
+            + " threshold: " + threshold + " Mbps taskGroup size: "
             + taskGroup.size() + " slowestHost: " + slowestHost
             + " slowestTransferRate: " + slowestTransferRate
             + " already speculated " + numberSpeculationsAlready
             + " already finished " + numberFinishedAlready
+            + " unknown attempt " + numberUnknownAttempt
             + " slowestMap rate: "
             + (slowestMap == null ? -1.0 : slowestMap.mapTransferRate));
 
-        if (hostStatistics.containsKey("pc831.emulab.net")) {
-          DataStatistics ds = hostStatistics.get("pc831.emulab.net");
-          LOG.info("pc831 " + ds + ", and taskGroup: " + (taskGroup.get("pc831.emulab.net")));
+//        if (hostStatistics.containsKey("pc831.emulab.net")) {
+//          DataStatistics ds = hostStatistics.get("pc831.emulab.net");
+//          LOG.info("pc831 " + ds + ", and taskGroup: " + (taskGroup.get("pc831.emulab.net")));
+//        }
+      }
+    }
+
+    return successes;
+  }
+
+  // riza: immediately speculate any slow paths
+  private int agressiveMapPathSpeculation() {
+    List<TaskId> toSPeculate = new ArrayList<TaskId>();
+    
+    double threshold = Math.max(slowTransferRateThreshold,
+        globalTransferRate.mean() * slowTransferRateRatio);
+    double slowestTransferRate = threshold;
+    double fastestRate = 0.0d;
+
+    int successes = 0;
+
+    long now = clock.getTime();
+
+    ConcurrentMap<JobId, AtomicInteger> containerNeeds = mapContainerNeeds;
+
+    for (ConcurrentMap.Entry<JobId, AtomicInteger> jobEntry : containerNeeds.entrySet()) {
+      // riza: follow maybeScheduleASpeculation. Skip speculating job that still
+      // requesting container
+      if (jobEntry.getValue().get() > 0) {
+        continue;
+      }
+
+      int numberSpeculationsAlready = 0;
+      int numberFinishedAlready = 0;
+      int numberUnknownAttempt = 0;
+
+      // loop through the tasks of the kind
+      Job job = context.getJob(jobEntry.getKey());
+
+      Map<TaskId, Task> tasks = job.getTasks(TaskType.MAP);
+
+      TaskAttemptStatus slowestMap = null;
+
+      // riza: first pass to build up path statistic, grouping, and find attempt
+      // having least transferRate
+      for (Map.Entry<TaskId, Task> taskEntry : tasks.entrySet()) {
+        TaskId taskId = taskEntry.getKey();
+        long mySpeculationValue = speculationValue(taskId, now, true);
+
+        if ((mySpeculationValue == TOO_NEW) || (knownAttempt.get(taskId) == null)) {
+          // riza: no know report has arrive from this attempt
+          ++numberUnknownAttempt;
+          continue;
         }
+        
+        if (taskEntry.getValue().isFinished()) {
+          numberFinishedAlready++;
+          continue;
+        }
+
+        if (mySpeculationValue == ALREADY_SPECULATING) {
+          // riza: should we speculate task that has been speculated already?
+          // speculated before
+          ++numberSpeculationsAlready;
+          continue;
+        }
+
+        // riza: Not all map in path statistic still running. If we got to
+        // speculate a path, we want to speculate only tasks of that path
+        // group that actually still running.
+        // If we got to this point, it means the task is still running
+
+        TaskAttemptStatus latestMap = null;
+        for (TaskAttemptId attemptId : getKnownAttempt(taskId)) {
+
+          TaskAttemptStatus map = recentAttemptStatus.get(attemptId);
+          if (map == null) {
+            continue;
+          }
+          if (map.mapTransferRate > 0.0d) {
+            // riza: only check the latest running map
+
+            if ((latestMap == null) || (map.id.compareTo(latestMap.id) > 0)) {
+              latestMap = map;
+//              LOG.info("Got latest map " + latestMap.id + ", rate: "
+//                  + latestMap.mapTransferRate + ", state: "
+//                  + latestMap.taskState);
+            }
+          }
+        }
+
+        if (latestMap != null) {
+          if (latestMap.containerHost != latestMap.lastDatanodeID.getHostName()) {
+            // riza: We also only interested in speculating non-local task.
+
+            if (latestMap.mapTransferRate < threshold) {
+              // riza: the path is slower than threshold. Speculate!
+              toSPeculate.add(latestMap.id.getTaskId());
+              fastestRate = Math.max(fastestRate, latestMap.mapTransferRate);
+            }
+          }
+
+          if ((slowestMap == null)
+              || (slowestMap.mapTransferRate > latestMap.mapTransferRate)) {
+              slowestMap = latestMap;
+            }
+        }
+      }
+
+      if (!toSPeculate.isEmpty()) {
+        // riza: path group speculation
+        LOG.info("PBSE-Read-3: Speculating " + toSPeculate.size()
+            + " tasks, fastest rate " + fastestRate + " threshold " + threshold
+            + " global avg rate " + globalTransferRate);
+
+        for (TaskId taskId : toSPeculate) {
+          addSpeculativeAttempt(taskId);
+          ++successes;
+        }
+      } else {
+        LOG.info("Nothing to speculate, global rate: " + globalTransferRate
+            + " threshold: " + threshold + " Mbps"
+            + " slowestTransferRate: " + slowestTransferRate
+            + " already speculated " + numberSpeculationsAlready
+            + " already finished " + numberFinishedAlready
+            + " unknown attempt " + numberUnknownAttempt
+            + " slowestMap rate: "
+            + (slowestMap == null ? -1.0 : slowestMap.mapTransferRate));
       }
     }
 
