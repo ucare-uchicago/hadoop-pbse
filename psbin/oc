@@ -81,17 +81,20 @@ class JobCount:
 def getJobs():
   global JOB_FIRST, JOB_LAST
   jobs = []
+  jct = 0
   fct = 0
   for root, dirnames, filenames in os.walk(os.getcwd()):
     for inf in sorted(filenames):
       if inf.startswith("job-"):
-        fct += 1
+        jct += 1
         jc = JobCount(inf)
         if (jc.time_stop):
           jobs.append(jc)
         else:
           print "%s has not finish yet..." % inf
-  print "%d/%d job output read" % (len(jobs),fct)
+        if (jc.jobcountfound):
+          fct += 1
+  print "%d/%d job output read" % (fct,jct)
   return jobs
 
 def getJobCount(jobs):
