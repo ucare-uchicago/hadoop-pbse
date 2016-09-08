@@ -247,7 +247,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
         conf.getInt(MRJobConfig.PBSE_MAP_DELAY_INTERVAL_MS, 0) 
         / (int) this.soonestRetryAfterNoSpeculate;
     this.mapPathSpeculationEnabled =
-        conf.getBoolean(MRJobConfig.PBSE_MAP_PATH_SPECULATION_ENABLED, true);
+        conf.getBoolean(MRJobConfig.PBSE_MAP_PATH_SPECULATION_ENABLED,
+            MRJobConfig.DEFAULT_PBSE_MAP_PATH_SPECULATION_ENABLED);
     this.slowTransferRateRatio =
         conf.getDouble(MRJobConfig.PBSE_MAP_SLOW_TRANSFER_RATIO,
             MRJobConfig.DEFAULT_PBSE_MAP_SLOW_TRANSFER_RATIO);

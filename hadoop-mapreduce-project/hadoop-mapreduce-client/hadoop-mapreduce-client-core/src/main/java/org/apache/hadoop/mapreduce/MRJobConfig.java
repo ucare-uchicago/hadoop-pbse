@@ -877,11 +877,23 @@ public interface MRJobConfig {
 
 
   // riza: PBSE Configurations
+  public static final String PBSE_MAP_DATANODE_REPORT_INFO =
+      "mapreduce.policy.faread";
+  public static final boolean DEFAULT_PBSE_MAP_DATANODE_REPORT_INFO =
+      false;
+
+  public static final String PBSE_MAP_DATANODE_READ_NEW =
+      "mapreduce.policy.pbse.read_new_datanode";
+  public static final boolean DEFAULT_PBSE_MAP_DATANODE_READ_NEW =
+      false;
+  
   public static final String PBSE_MAP_DELAY_INTERVAL_MS =
       "mapreduce.policy.faread.maximum_speculation_delay";
 
   public static final String PBSE_MAP_PATH_SPECULATION_ENABLED =
       "mapreduce.pbse.map.path-speculation.enabled";
+  public static final boolean DEFAULT_PBSE_MAP_PATH_SPECULATION_ENABLED =
+      false;
   
   public static final String PBSE_MAP_SLOW_TRANSFER_RATIO =
       "mapreduce.pbse.map.path-speculation.threshold";
