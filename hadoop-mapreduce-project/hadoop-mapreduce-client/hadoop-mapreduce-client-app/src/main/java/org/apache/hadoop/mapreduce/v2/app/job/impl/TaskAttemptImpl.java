@@ -2107,10 +2107,10 @@ public abstract class TaskAttemptImpl implements
       if (!dnHostName.equals("fake-localhost")) {
         taskAttempt.myDatasourceTag = taskAttempt.isNodeSlow(dnHostName) ? "s"
             : "f";
-        LOG.info("Read from host " + newReportedStatus.lastDatanodeID + " ("
-            + newReportedStatus.lastDatanodeID.getHostName() + ") with tag "
+        LOG.info("Read from host " + taskAttempt.reportedStatus.lastDatanodeID + " ("
+            + taskAttempt.reportedStatus.lastDatanodeID.getHostName() + ") with tag "
             + taskAttempt.myDatasourceTag + " and rate "
-            + newReportedStatus.mapTransferRate + " Mbps");
+            + taskAttempt.reportedStatus.mapTransferRate + " Mbps");
       }
 
       // send event to speculator about the reported status
@@ -2161,7 +2161,7 @@ public abstract class TaskAttemptImpl implements
     // riza: PBSE task status init
     result.containerHost = "UNKNOWN";
     result.lastDatanodeID = DatanodeID.createNullDatanodeID();
-    result.mapTransferRate = 0.0D;
+    result.mapTransferRate = -1.0D;
   }
 
   // riza: check if node is in slow list
