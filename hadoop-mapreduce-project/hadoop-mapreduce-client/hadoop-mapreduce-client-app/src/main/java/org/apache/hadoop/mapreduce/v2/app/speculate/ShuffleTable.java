@@ -1,5 +1,6 @@
 package org.apache.hadoop.mapreduce.v2.app.speculate;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -214,7 +215,8 @@ public class ShuffleTable {
 	// ctime > reruntime + shuffletime + delta (delat will be zero here)
 	public synchronized Set<TaskAttemptId> getCompliantSuccessfullMapTaskAttemptsFromHost(String badHost,
 																						  double slownessFactor){
-		Set<TaskAttemptId> allAttempts = new TreeSet<>();
+		// @Cesar: The approach is: If there is one that complies, then all comply
+		boolean oneComplies = false;
 		SpeculationUtilInfo bestOnOtherHost = this.getBestMapAttempt(badHost);
 		if(bestOnOtherHost != null){	
 			double bestAvgRateOnOtherHost = this.getHostShuffleRate(bestOnOtherHost.getHost());
@@ -232,7 +234,7 @@ public class ShuffleTable {
 								", betterTime=" + betterTime + ", bestOnOtherHost.getTaskTime()=" + bestOnOtherHost.getTaskTime()/1000 + 
 								", betterRate=" + bestAvgRateOnOtherHost + "MBITS PER SEC, totalMegaBits=" + ((double)nfo.getTotalBytes() * 8.0 / 1024.0 / 1024.0) + 
 								", slownessFactor=" + slownessFactor);
-						allAttempts.add(nfo.getMapTaskAttempId());
+						oneComplies = true;
 					}
 					else{
 						LOG.info("@Cesar: NOT Relaunching " + nfo.getMapTaskAttempId() + ". remainingTime=" + remainingTime + 
@@ -247,7 +249,24 @@ public class ShuffleTable {
 			LOG.info("@Cesar: We are going to return all map tasks of this host, no better was found...");
 			return getAllSuccessfullMapTaskAttemptsFromHost(badHost);
 		}
-		return allAttempts;
+		if(oneComplies){
+			// we are going to get all tasks whose transfer is NOT finished
+			Set<TaskAttemptId> all = getAllSuccessfullMapTaskAttemptsFromHost(badHost);
+			Set<ShuffleRateInfo> hostNfo = shuffleReports.get(new ShuffleHost(badHost));
+			for(ShuffleRateInfo nfo : hostNfo){
+				if(nfo.getShuffledBytes() == nfo.getTotalBytes()){
+					all.remove(nfo.getMapTaskAttempId());
+					LOG.info("@Cesar: Not going to consider " + nfo.getMapTaskAttempId() + 
+							" since transfer is finished.");
+				}
+			}
+			return all;
+		}
+		else{
+			// @Cesar: No one complies
+			LOG.info("@Cesar: No task comply with the requirements");
+			return new HashSet<TaskAttemptId>();
+		}
 	}
 	
 	// @Cesar: Count the number of different successful attempts in a given host
