@@ -17,7 +17,7 @@ SLOWNODE=100
 SLOWHOST="VOID"
 SLOWIP="10.1.1."+str(SLOWNODE+2)
 
-VERSION="3.0"
+VERSION="3.1"
 DATE_FORMAT="%Y-%m-%d %H:%M:%S.%f"
 
 pp = pprint.PrettyPrinter(indent=2)
@@ -104,6 +104,8 @@ def initMasterStats():
     "time_start" : currentTimeString(),
     "time_stop" : currentTimeString(),
     "job_duration" : 0,
+    "launch_duration" : 0,
+    "commit_duration" : 0,
     "ct_PendingReds" : -1,
     "ct_ScheduledMaps" : -1,
     "ct_ScheduledReds" : -1,
@@ -400,6 +402,21 @@ def getTopology():
          or master["slowNodeInvolvedInMap"] \
          or master["slowNodeInvolvedInReduce"] \
          or master["slowNodeInvolvedInDatawrite"]
+
+       # compute commit duration
+       minStart = strToDate(master["time_stop"])
+       maxStop = strToDate(master["time_start"])
+       for cname,ct in app["containers"].items():
+         if (not ct["isKilled"]) and (ct["isSuccessful"]):
+           ctStart = strToDate(ct["time_start"])
+           ctStop = strToDate(ct["time_stop"])
+           if ctStart < minStart:
+             minStart = ctStart
+           if ctStop > maxStop:
+             maxStop = ctStop
+       master["commit_duration"] = (strToDate(master["time_stop"]) - maxStop).total_seconds()
+       master["launch_duration"] = (minStart - strToDate(master["time_start"])).total_seconds()
+
     except Exception as e:
        print 'One container failed with : ' + str(e)
   getJobClientStats(apps)
