@@ -638,17 +638,6 @@ abstract public class Task implements Writable, Configurable{
       pTree.updateProcessTree();
       initCpuCumulativeTime = pTree.getCumulativeCpuTime();
     }
-    
-    // riza: PBSE init
-    this.sendDatanodeInfo =
-        conf.getBoolean(MRJobConfig.PBSE_MAP_DATANODE_SEND_REPORT,
-            MRJobConfig.DEFAULT_PBSE_MAP_DATANODE_SEND_REPORT);
-    this.avoidSingleSource =
-        conf.getBoolean(MRJobConfig.PBSE_MAP_AVOID_SINGLE_SOURCE,
-            MRJobConfig.DEFAULT_PBSE_MAP_AVOID_SINGLE_SOURCE);
-    this.sendPipelineInfo =
-        conf.getBoolean(MRJobConfig.PBSE_REDUCE_PIPELINE_SEND_REPORT,
-            MRJobConfig.DEFAULT_PBSE_REDUCE_PIPELINE_SEND_REPORT);
   }
 
   public static String normalizeStatus(String status, Configuration conf) {
@@ -785,6 +774,17 @@ abstract public class Task implements Writable, Configurable{
      * let the parent know that it's alive. It also pings the parent to see if it's alive.
      */
     public void run() {
+      // riza: PBSE init
+      sendDatanodeInfo =
+          conf.getBoolean(MRJobConfig.PBSE_MAP_DATANODE_SEND_REPORT,
+              MRJobConfig.DEFAULT_PBSE_MAP_DATANODE_SEND_REPORT);
+      avoidSingleSource =
+          conf.getBoolean(MRJobConfig.PBSE_MAP_AVOID_SINGLE_SOURCE,
+              MRJobConfig.DEFAULT_PBSE_MAP_AVOID_SINGLE_SOURCE);
+      sendPipelineInfo =
+          conf.getBoolean(MRJobConfig.PBSE_REDUCE_PIPELINE_SEND_REPORT,
+              MRJobConfig.DEFAULT_PBSE_REDUCE_PIPELINE_SEND_REPORT);
+      
       final int MAX_RETRIES = 3;
       int remainingRetries = MAX_RETRIES;
       final int proginterval = conf.getInt(MRJobConfig.PBSE_HACK_MAP_PROGRESS_INTERVAL,
@@ -822,7 +822,9 @@ abstract public class Task implements Writable, Configurable{
                 switchHappened = false;
                 waitTime = 0;
                 LOG.debug("riza: just switch datanode! Skip HB waiting, sendProgress: " + sendProgress);
-              } else if (!hasSendInitialBW) {
+              }
+              
+              if (!hasSendInitialBW) {
                 if (getMapTransferRate() > 0.0d) {
                   waitTime = 0;
                   hasSendInitialBW = true;
