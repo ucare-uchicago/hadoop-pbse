@@ -98,6 +98,8 @@ public class MapTask extends Task {
   private Progress mapPhase;
   private Progress sortPhase;
   
+  private boolean sendDatanodeInfo;
+  
   {   // set phase for this task
     setPhase(TaskStatus.Phase.MAP); 
     getProgress().setStatus("map");
@@ -320,6 +322,10 @@ public class MapTask extends Task {
     throws IOException, ClassNotFoundException, InterruptedException {
     this.umbilical = umbilical;
 
+    this.sendDatanodeInfo =
+        job.getBoolean(MRJobConfig.PBSE_MAP_DATANODE_REPORT_INFO,
+            MRJobConfig.DEFAULT_PBSE_MAP_DATANODE_REPORT_INFO);
+
     if (isMapTask()) {
       // If there are no reducers then there won't be any sort. Hence the map 
       // phase will govern the entire attempt's progress.
@@ -371,8 +377,8 @@ public class MapTask extends Task {
 
    // riza: insert ignored datanode to HdfsDataInputStream at beginning
    try{
-     if (conf.getBoolean("mapreduce.policy.faread", false)){
-       LOG.info("running policy: mapreduce.policy.faread");
+     if (sendDatanodeInfo){
+       LOG.info("Initiating PBSE datanode reporting");
        if (inFile instanceof HdfsDataInputStream) {
          switchDatanode((HdfsDataInputStream) inFile, null);
        } else {
@@ -481,8 +487,8 @@ public class MapTask extends Task {
               + splitIndex.getLastDatanodeID());
 
           if ((inputS instanceof HdfsDataInputStream)
-              && conf.getBoolean("mapreduce.policy.faread", false)) {
-            LOG.info("running policy: mapreduce.policy.faread");
+              && sendDatanodeInfo) {
+            LOG.info("Initiating PBSE datanode reporting");
             switchDatanode((HdfsDataInputStream) inputS, reporter);
           } else {
             LOG.warn("no faread or input stream is not instance of HdfsDataInputStream "
@@ -872,7 +878,7 @@ public class MapTask extends Task {
               + splitIndex.getLastDatanodeID());
 
           if ((inputS instanceof HdfsDataInputStream)
-              && conf.getBoolean("mapreduce.policy.faread", false)){
+              && sendDatanodeInfo){
             LOG.info("running policy: mapreduce.policy.faread");
             switchDatanode((HdfsDataInputStream) inputS, reporter);
           } else {

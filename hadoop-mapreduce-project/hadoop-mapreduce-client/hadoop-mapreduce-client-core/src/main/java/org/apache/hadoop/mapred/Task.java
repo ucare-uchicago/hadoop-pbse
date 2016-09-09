@@ -98,6 +98,7 @@ abstract public class Task implements Writable, Configurable{
 
   // riza: PBSE fields
   private HdfsDataInputStream hdfsInputStream = null;
+  private boolean sendDatanodeInfo;
 
   // huanke
   private HdfsDataOutputStream hdfsOutputStream = null;
@@ -634,6 +635,11 @@ abstract public class Task implements Writable, Configurable{
       pTree.updateProcessTree();
       initCpuCumulativeTime = pTree.getCumulativeCpuTime();
     }
+    
+    // riza: PBSE init
+    this.sendDatanodeInfo =
+        conf.getBoolean(MRJobConfig.PBSE_MAP_DATANODE_REPORT_INFO,
+            MRJobConfig.DEFAULT_PBSE_MAP_DATANODE_REPORT_INFO);
   }
 
   public static String normalizeStatus(String status, Configuration conf) {
@@ -811,7 +817,7 @@ abstract public class Task implements Writable, Configurable{
           }
           
           // riza: heartbeat delaying here
-          if (datanodeRetries > 0 && isMapTask()) {
+          if (sendDatanodeInfo && (datanodeRetries > 0) && isMapTask()) {
             // riza: MapTask delaying
             if (hdfsInputStream == null) {
               datanodeRetries -= 1;
@@ -854,11 +860,14 @@ abstract public class Task implements Writable, Configurable{
                     counters);
 
             if (isMapTask()) {
-              // riza: attach lastDatanodeID as additional information
-              double transferRate = hdfsInputStream.getReadStatistics().getMbpsTransferRate();
-              LOG.info("riza: reporting datanode " + lastDatanodeId.getHostName() + " with rate " + transferRate + " Mbps");
-              taskStatus.setLastDatanodeID(lastDatanodeId);
-              taskStatus.setMapTransferRate(transferRate);
+              if (sendDatanodeInfo) {
+                // riza: attach lastDatanodeID as additional information
+                double transferRate = getMapTransferRate();
+                LOG.info("riza: reporting datanode " + lastDatanodeId.getHostName()
+                    + " with rate " + transferRate + " Mbps");
+                taskStatus.setLastDatanodeID(lastDatanodeId);
+                taskStatus.setMapTransferRate(transferRate);
+              }
             } else {
               // riza: piggyback PBSE reduce information
               String[] hostnames = new String[DNPath.length];
@@ -1299,10 +1308,13 @@ abstract public class Task implements Writable, Configurable{
         try {
           // riza: attach lastDatanodeID as additional information
           if (this.isMapTask()) {
-            double transferRate = hdfsInputStream.getReadStatistics().getMbpsTransferRate();
-            LOG.info("riza: extra reporting datanode " + lastDatanodeId.getHostName() + " with rate " + transferRate + " Mbps");
-            taskStatus.setLastDatanodeID(lastDatanodeId);
-            taskStatus.setMapTransferRate(transferRate);
+            if (sendDatanodeInfo) {
+              double transferRate = getMapTransferRate();
+              LOG.info("riza: extra reporting datanode " + lastDatanodeId.getHostName()
+                  + " with rate " + transferRate + " Mbps");
+              taskStatus.setLastDatanodeID(lastDatanodeId);
+              taskStatus.setMapTransferRate(transferRate);
+            }
           } else {
             String[] hostnames = new String[DNPath.length];
             for (int i = 0; i < DNPath.length; i++) {
@@ -1911,5 +1923,12 @@ abstract public class Task implements Writable, Configurable{
 
   void setExtraData(BytesWritable extraData) {
     this.extraData = extraData;
+  }
+  
+  private double getMapTransferRate() {
+    if (hdfsInputStream != null)
+      return hdfsInputStream.getReadStatistics().getMbpsTransferRate();
+    else
+      return 0.0d;
   }
 }
