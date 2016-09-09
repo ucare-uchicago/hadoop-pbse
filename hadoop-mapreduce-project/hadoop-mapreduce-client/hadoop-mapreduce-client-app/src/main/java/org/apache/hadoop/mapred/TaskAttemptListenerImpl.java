@@ -93,6 +93,10 @@ public class TaskAttemptListenerImpl extends CompositeService
   private JobTokenSecretManager jobTokenSecretManager = null;
 
   private byte[] encryptedSpillKey;
+  
+  // riza: PBSE-Read-Diversity-1 fields
+  private boolean avoidSingleSource;
+  private AtomicInteger shallSwitch = new AtomicInteger(0);
 
   public TaskAttemptListenerImpl(AppContext context,
       JobTokenSecretManager jobTokenSecretManager,
@@ -113,8 +117,9 @@ public class TaskAttemptListenerImpl extends CompositeService
    super.serviceInit(conf);
 
    // riza: datanode switch initialization
-   shallSwitch.set(conf.getBoolean(
-       "mapreduce.policy.faread.avoid_single_readpath", false) ? 0 : 2);
+   avoidSingleSource = conf.getBoolean(MRJobConfig.PBSE_MAP_AVOID_SINGLE_SOURCE,
+       MRJobConfig.DEFAULT_PBSE_MAP_AVOID_SINGLE_SOURCE);
+   shallSwitch.set(avoidSingleSource ? 0 : 2);
   }
 
   @Override
@@ -555,8 +560,6 @@ public class TaskAttemptListenerImpl extends CompositeService
     return ProtocolSignature.getProtocolSignature(this, 
         protocol, clientVersion, clientMethodsHash);
   }
-
-  AtomicInteger shallSwitch = new AtomicInteger(0);
 
   // riza: map ask here if need to switch datanode
   @Override

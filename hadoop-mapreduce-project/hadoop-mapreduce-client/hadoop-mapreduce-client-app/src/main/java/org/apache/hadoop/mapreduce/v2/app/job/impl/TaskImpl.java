@@ -39,6 +39,7 @@ import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.Counters;
 import org.apache.hadoop.mapreduce.MRConfig;
+import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.TypeConverter;
 import org.apache.hadoop.mapreduce.jobhistory.JobHistoryEvent;
@@ -132,6 +133,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
   private TaskAttemptId successfulAttempt;
 
   // riza: first & last attempt
+  private boolean readNewDatanode;
   protected TaskAttemptId firstAttemptId;
   protected TaskAttemptId lastAttemptId;
 
@@ -341,6 +343,11 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     // over-step the current one. This assumes that a task won't have more
     // than 1000 attempts in its single generation, which is very reasonable.
     nextAttemptNumber = (appAttemptId - 1) * 1000;
+    
+    // riza: PBSE init
+    this.readNewDatanode =
+        conf.getBoolean(MRJobConfig.PBSE_MAP_DATANODE_READ_NEW,
+            MRJobConfig.DEFAULT_PBSE_MAP_DATANODE_READ_NEW);
   }
 
   @Override
@@ -617,7 +624,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     }	
 	// riza: if map, check lastDatanodeID
     if ((this instanceof MapTaskImpl)
-        && conf.getBoolean("mapreduce.policy.pbse.read_new_datanode", false)) {
+        && readNewDatanode) {
       LOG.debug("Updating MapTaskImpl.taskSplitMetaInfo");
       ((MapTaskImpl) this).updateTaskSplitMetaInfo();
     }else if ((this instanceof ReduceTaskImpl)

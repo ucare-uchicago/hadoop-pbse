@@ -904,4 +904,14 @@ public interface MRJobConfig {
       "mapreduce.pbse.map.path-speculation.fixed-threshold";
   public static final double DEFAULT_PBSE_MAP_SLOW_TRANSFER_FIXED_THRESHOLD =
       50.0d;
+  
+  public static final String PBSE_MAP_AVOID_SINGLE_WORKER =
+      "mapreduce.policy.faread.avoid_single_assignpath";
+  public static final boolean DEFAULT_PBSE_MAP_AVOID_SINGLE_WORKER =
+      false;
+  
+  public static final String PBSE_MAP_AVOID_SINGLE_SOURCE =
+      "mapreduce.policy.faread.avoid_single_readpath";
+  public static final boolean DEFAULT_PBSE_MAP_AVOID_SINGLE_SOURCE =
+      false;
 }

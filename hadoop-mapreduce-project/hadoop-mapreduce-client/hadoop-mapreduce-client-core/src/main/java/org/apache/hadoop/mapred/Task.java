@@ -99,6 +99,7 @@ abstract public class Task implements Writable, Configurable{
   // riza: PBSE fields
   private HdfsDataInputStream hdfsInputStream = null;
   private boolean sendDatanodeInfo;
+  private boolean avoidSingleSource;
 
   // huanke
   private HdfsDataOutputStream hdfsOutputStream = null;
@@ -640,6 +641,9 @@ abstract public class Task implements Writable, Configurable{
     this.sendDatanodeInfo =
         conf.getBoolean(MRJobConfig.PBSE_MAP_DATANODE_REPORT_INFO,
             MRJobConfig.DEFAULT_PBSE_MAP_DATANODE_REPORT_INFO);
+    this.avoidSingleSource =
+        conf.getBoolean(MRJobConfig.PBSE_MAP_AVOID_SINGLE_SOURCE,
+            MRJobConfig.DEFAULT_PBSE_MAP_AVOID_SINGLE_SOURCE);
   }
 
   public static String normalizeStatus(String status, Configuration conf) {
@@ -784,8 +788,7 @@ abstract public class Task implements Writable, Configurable{
       // riza: wait 3 times until lastDatanodeID set
       int datanodeRetries = isMapTask() ? 60000 / proginterval : 0;
       // riza: shall we query for switch instruction?
-      boolean askForSwitch = isMapTask() && conf.getBoolean("mapreduce.policy.faread.avoid_single_readpath",
-              false);
+      boolean askForSwitch = isMapTask() && avoidSingleSource;
       // riza: if datanode or DNPath switched, then immediately report back
       boolean switchHappened = false;
       
