@@ -323,8 +323,8 @@ public class MapTask extends Task {
     this.umbilical = umbilical;
 
     this.sendDatanodeInfo =
-        job.getBoolean(MRJobConfig.PBSE_MAP_DATANODE_REPORT_INFO,
-            MRJobConfig.DEFAULT_PBSE_MAP_DATANODE_REPORT_INFO);
+        job.getBoolean(MRJobConfig.PBSE_MAP_DATANODE_SEND_REPORT,
+            MRJobConfig.DEFAULT_PBSE_MAP_DATANODE_SEND_REPORT);
 
     if (isMapTask()) {
       // If there are no reducers then there won't be any sort. Hence the map 

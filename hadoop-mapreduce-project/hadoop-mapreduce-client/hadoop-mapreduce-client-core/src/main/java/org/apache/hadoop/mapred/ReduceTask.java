@@ -56,6 +56,7 @@ import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.mapred.SortedRanges.SkipRangeIterator;
 import org.apache.hadoop.mapreduce.MRConfig;
+import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskCounter;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormatCounter;
@@ -482,7 +483,8 @@ public class ReduceTask extends Task {
         } else {
           LOG.info("@huanke output is null");
         }
-        flag = job.getBoolean("reduce.get.pipenodes.flag", false);
+        flag = job.getBoolean(MRJobConfig.PBSE_REDUCE_PIPELINE_SEND_REPORT,
+            MRJobConfig.DEFAULT_PBSE_REDUCE_PIPELINE_SEND_REPORT);
         //huanke .. it seems not work here.
       }
     } catch(Exception e) {
@@ -744,7 +746,8 @@ public class ReduceTask extends Task {
         } else {
           LOG.info("@huanke output is null");
         }
-        boolean flag=job.getBoolean("reduce.get.pipenodes.flag", false);
+        boolean flag = job.getBoolean(MRJobConfig.PBSE_REDUCE_PIPELINE_SEND_REPORT,
+            MRJobConfig.DEFAULT_PBSE_REDUCE_PIPELINE_SEND_REPORT);
         //huanke .. it seems not work here.
         reducer.run(reducerContext,output, reporter, flag);
       }
