@@ -817,7 +817,7 @@ abstract public class Task implements Writable, Configurable{
 
             // riza: how long should we wait??
             long waitTime = proginterval;
-            if (sendDatanodeInfo) {
+            if (isMapTask() && sendDatanodeInfo) {
               if (switchHappened) {
                 switchHappened = false;
                 waitTime = 0;
