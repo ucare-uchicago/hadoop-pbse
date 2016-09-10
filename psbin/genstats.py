@@ -50,7 +50,10 @@ def getTaskId(ct):
   return att[8:35]
 
 def getLogTime(line):
-  datestr = re_date.search(line).group(0)
+  match = re_date.search(line)
+  if not match:
+    return currentTimeString()
+  datestr = match.group(0)
   thedate = datetime.datetime.now()
   if "-" in datestr:
     thedate = datetime.datetime.strptime(datestr, "%Y-%m-%d %H:%M:%S,%f")
