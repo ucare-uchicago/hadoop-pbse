@@ -98,6 +98,7 @@ abstract public class Task implements Writable, Configurable{
 
   // riza: PBSE fields
   private static final long PROGRESS_INTERVAL_BEFORE_READ = 500;
+  private static final long PROGRESS_INTERVAL_BEFORE_FIRST_HEARTBEAT = 100;
   private HdfsDataInputStream hdfsInputStream = null;
   private boolean sendDatanodeInfo;
   private boolean avoidSingleSource;
@@ -796,7 +797,7 @@ abstract public class Task implements Writable, Configurable{
       boolean askForSwitch = isMapTask() && avoidSingleSource;
       // riza: if datanode or DNPath switched, then immediately report back
       boolean switchHappened = false;
-      boolean hasSendInitialBW = false;
+      boolean hasSendInitialHB = false;
       
       // 1 minute retry for reduce progress
       int sendReduceProgress = !isMapTask() ? 60000 / proginterval : 0;
@@ -824,11 +825,18 @@ abstract public class Task implements Writable, Configurable{
                 LOG.debug("riza: just switch datanode! Skip HB waiting, sendProgress: " + sendProgress);
               }
               
-              if (!hasSendInitialBW) {
-                if (getMapTransferRate() > 0.0d) {
+              if (!hasSendInitialHB) {
+                if (hasEnoughStats()) {
                   waitTime = 0;
-                  hasSendInitialBW = true;
-                  LOG.debug("riza: just start reading! Skip HB waiting, sendProgress: " + sendProgress);
+                  hasSendInitialHB = true;
+                  LOG.debug("riza: just have enough read! Waiting for 100ms, sendProgress: "
+                      + sendProgress + " total byte "
+                      + hdfsInputStream.getReadStatistics().getTotalBytesRead()
+                      + " total time "
+                      + hdfsInputStream.getReadStatistics().getTotalReadTime()
+                      + " total counter "
+                      + hdfsInputStream.getReadStatistics().getCounter());
+                  waitTime = PROGRESS_INTERVAL_BEFORE_FIRST_HEARTBEAT;
                 } else {
                   waitTime = PROGRESS_INTERVAL_BEFORE_READ;
                 }
@@ -843,7 +851,7 @@ abstract public class Task implements Writable, Configurable{
           }
           
           // riza: heartbeat delaying here
-          if (isMapTask() && sendDatanodeInfo && (mapRetriesTime > 0)) {
+          if (isMapTask() && sendDatanodeInfo && !hasSendInitialHB && (mapRetriesTime > 0)) {
             // riza: MapTask delaying
             boolean delaying = false;
             String delayMessage = "";
@@ -853,9 +861,9 @@ abstract public class Task implements Writable, Configurable{
             } else if (DatanodeID.nullDatanodeID.equals(lastDatanodeId)) {
               delaying = true;
               delayMessage = "riza: datanodeid still null";
-            } else if (getMapTransferRate() <= 0.0d) {
+            } else if (!hasEnoughStats()) {
               delaying = true;
-              delayMessage = "riza: map has not read and does not have BW info";
+              delayMessage = "riza: map has not read enough and does not have accurate BW info";
             }
             
             if (delaying) {
@@ -915,6 +923,7 @@ abstract public class Task implements Writable, Configurable{
 
             taskFound = umbilical.statusUpdate(taskId, taskStatus);
             taskStatus.clearStatus();
+            hasSendInitialHB = true;
 
             // riza: datanode switch query
             if (askForSwitch && (hdfsInputStream != null)) {
@@ -955,10 +964,6 @@ abstract public class Task implements Writable, Configurable{
               setProgressFlag();
               switchHappened = true;
               LOG.debug("riza: datanode switched on TaskReporter");
-            }
-            
-            if (!hasSendInitialBW && (getMapTransferRate() > 0.0d)) {
-              setProgressFlag();
             }
           }
 
@@ -1971,5 +1976,16 @@ abstract public class Task implements Writable, Configurable{
       return hdfsInputStream.getReadStatistics().getMbpsTransferRate();
     else
       return 0.0d;
+  }
+  
+  private long getMapStatCounter() {
+    if (hdfsInputStream != null)
+      return hdfsInputStream.getReadStatistics().getCounter();
+    else
+      return 0;
+  }
+  
+  private boolean hasEnoughStats() {
+    return getMapTransferRate() > 0.0d;
   }
 }
