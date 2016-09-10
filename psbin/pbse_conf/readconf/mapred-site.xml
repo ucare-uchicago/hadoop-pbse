@@ -163,13 +163,13 @@
 
   <property>
     <name>mapreduce.pbse.map.path-speculation.threshold</name>
-    <value>0.2</value>
+    <value>0.1</value>
     <description>UCARE: avoid read from same datanode as original task</description>
   </property>
 
   <property>
     <name>mapreduce.pbse.map.path-speculation.fixed-threshold</name>
-    <value>50.0</value>
+    <value>0.0</value>
     <description>UCARE: avoid read from same datanode as original task</description>
   </property>
 
