@@ -1434,14 +1434,19 @@ class BlockReceiver implements Closeable {
         long totalAckTimeNanos, long offsetInBlock, int myHeader)
         throws IOException {
       final int[] replies;
+      // @Cesar: save ack time
+      final long[] ackTime;
       if (ack == null) {
         // A new OOB response is being sent from this node. Regardless of
         // downstream nodes, reply should contain one reply.
         replies = new int[] { myHeader };
+        ackTime = new long[] {System.currentTimeMillis()};
       } else if (mirrorError) { // ack read error
         int h = PipelineAck.combineHeader(datanode.getECN(), Status.SUCCESS);
         int h1 = PipelineAck.combineHeader(datanode.getECN(), Status.ERROR);
         replies = new int[] {h, h1};
+        // @Cesar: THis wont pass, so no problem
+        ackTime = new long[]{-1};
       } else {
         short ackLen = type == PacketResponderType.LAST_IN_PIPELINE ? 0 : ack
             .getNumOfReplies();
@@ -1449,6 +1454,12 @@ class BlockReceiver implements Closeable {
         replies[0] = myHeader;
         for (int i = 0; i < ackLen; ++i) {
           replies[i + 1] = ack.getHeaderFlag(i);
+        }
+        // @Cesar: Set the ack times
+        ackTime = new long[ackLen + 1];
+        ackTime[0] = System.currentTimeMillis();
+        for (int i = 0; i < ackLen; ++i) {
+        	ackTime[i + 1] = ack.getTimeStamp(i);
         }
         // If the mirror has reported that it received a corrupt packet,
         // do self-destruct to mark myself bad, instead of making the
@@ -1461,7 +1472,8 @@ class BlockReceiver implements Closeable {
               + "thread is corrupt");
         }
       }
-      PipelineAck replyAck = new PipelineAck(seqno, replies,
+      // @Cesar: Use my own constructor here
+      PipelineAck replyAck = new PipelineAck(seqno, replies, ackTime,
           totalAckTimeNanos);
       if (replyAck.isSuccess()
           && offsetInBlock > replicaInfo.getBytesAcked()) {

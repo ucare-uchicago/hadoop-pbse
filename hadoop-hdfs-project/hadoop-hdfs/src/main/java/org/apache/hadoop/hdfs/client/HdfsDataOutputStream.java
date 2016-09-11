@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.nio.channels.Pipe;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Map;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
@@ -30,6 +31,7 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DFSOutputStream;
+import org.apache.hadoop.hdfs.HdfsWriteData;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
@@ -103,7 +105,15 @@ public class HdfsDataOutputStream extends FSDataOutputStream {
     return PipeNodes;
   }
 
+  //@Cesar: This are the transfer rates
+  public Map<String, HdfsWriteData> getPipeTranferRates() {
+	 return getDFSOutputStream().getPipeTranferRates();
+  }
 
+  //@Cesar: This are the pipe nodes ordered by position
+  public Map<Integer, String> getPipeOrderedNodes() {
+	 return getDFSOutputStream().getOrderedPipeNodes();
+  }
 
   /**
    * Sync buffered data to DataNodes (flush to disk devices).

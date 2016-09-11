@@ -33,6 +33,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
+import org.apache.hadoop.mapreduce.task.reduce.PipelineWriteRateReport;
 import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 import org.apache.hadoop.util.StringInterner;
 import org.apache.hadoop.util.StringUtils;
@@ -513,6 +514,15 @@ public abstract class TaskStatus implements Writable, Cloneable {
 	  // @Cesar: Nothing by default
   }
 
+  // Cesar: write transfer rates
+  public PipelineWriteRateReport getPipelineWriteRateReport(){
+	  return null;
+  }
+  
+  public void setPipelineWriteRateReport(PipelineWriteRateReport newReport){
+	// @Cesar: Nothing by default
+  }
+  
   //////////////////////////////////////////////
   // Writable
   //////////////////////////////////////////////

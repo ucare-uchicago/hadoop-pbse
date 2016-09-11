@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
+import org.apache.hadoop.mapreduce.task.reduce.PipelineWriteRateReport;
 import org.apache.hadoop.mapreduce.v2.api.records.JobId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskId;
@@ -39,6 +40,8 @@ public class SpeculatorEvent extends AbstractEvent<Speculator.EventType> {
   private String mapperHost = null;
   private double progress = 0.0;
   private long time = 0L;
+  // @Cesar: ATTEMPT_PIPE_RATE_UPDATE
+  private PipelineWriteRateReport pipelineWriteRateReport = null;
   
   // valid for ATTEMPT_STATUS_UPDATE
   private TaskAttemptStatus reportedStatus;
@@ -105,6 +108,18 @@ public class SpeculatorEvent extends AbstractEvent<Speculator.EventType> {
 	    this.reportedStatus = reportedStatus;
 	    this.reducerNode = reducerNode;
 	    this.report = fetchRateReport;
+	    this.reduceTaskId = reduceTaskId;
+  }
+  
+  //@Cesar: This was added by me to handle this fetch status update report
+  public SpeculatorEvent(TaskAttemptStatus reportedStatus, String reducerNode, 
+		  				 TaskAttemptId reduceTaskId,
+		  				 PipelineWriteRateReport pipelineWriteRateReport, 
+		  				 long timestamp) {
+	    super(Speculator.EventType.ATTEMPT_PIPE_RATE_UPDATE, timestamp);
+	    this.reportedStatus = reportedStatus;
+	    this.reducerNode = reducerNode;
+	    this.pipelineWriteRateReport = pipelineWriteRateReport;
 	    this.reduceTaskId = reduceTaskId;
   }
   
@@ -191,7 +206,15 @@ public class SpeculatorEvent extends AbstractEvent<Speculator.EventType> {
 	public void setTime(long time) {
 		this.time = time;
 	}
+
+	public PipelineWriteRateReport getPipelineWriteRateReport() {
+		return pipelineWriteRateReport;
+	}
+
+	public void setPipelineWriteRateReport(PipelineWriteRateReport pipelineWriteRateReport) {
+		this.pipelineWriteRateReport = pipelineWriteRateReport;
+	}
   
-  
+	
   
 }

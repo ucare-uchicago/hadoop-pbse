@@ -27,6 +27,7 @@ import java.util.List;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo.AdminStates;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
+import org.apache.hadoop.mapreduce.task.reduce.PipelineWriteRateReport;
 import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 
 
@@ -41,6 +42,7 @@ class ReduceTaskStatus extends TaskStatus {
   private int dnPathCount = 0;
   private DatanodeInfo[] DNpath = DatanodeInfo.createDatanodeInfo();
 
+  
   //huanke
   @Override
   public void setDNpath(DatanodeInfo[] DNpath) {
@@ -60,6 +62,9 @@ class ReduceTaskStatus extends TaskStatus {
   
   //@Cesar: Keep shuffle info here
   private FetchRateReport reportedFetchRates = new FetchRateReport();
+  //@Cesar: Pipeline transfer rates
+  private PipelineWriteRateReport pipelineWriteRateReport = new PipelineWriteRateReport();
+ 
   
   public ReduceTaskStatus() {}
 
@@ -174,6 +179,20 @@ class ReduceTaskStatus extends TaskStatus {
 	  this.reportedFetchRates.addReport(mapperHost, shuffleData);
   }
 
+  //Cesar: write transfer rates
+  @Override
+  public PipelineWriteRateReport getPipelineWriteRateReport(){
+	  return pipelineWriteRateReport;
+  }
+  
+  @Override
+  public void setPipelineWriteRateReport(PipelineWriteRateReport newReport){
+	  pipelineWriteRateReport.getPipeTransferRates().clear();
+	  pipelineWriteRateReport.getPipeTransferRates().putAll(newReport.getPipeTransferRates());
+	  pipelineWriteRateReport.getPipeOrderedNodes().clear();
+	  pipelineWriteRateReport.getPipeOrderedNodes().putAll(newReport.getPipeOrderedNodes());
+  }
+  
   @Override
   public void readFields(DataInput in) throws IOException {
     super.readFields(in);
@@ -199,6 +218,9 @@ class ReduceTaskStatus extends TaskStatus {
     
     // @Cesar: Read fetch rate report
     reportedFetchRates = FetchRateReport.readFrom(in);
+    
+    // @Cesar: Read pipe transfer rate report
+    pipelineWriteRateReport = PipelineWriteRateReport.readFrom(in);
   }
 
   @Override
@@ -220,7 +242,10 @@ class ReduceTaskStatus extends TaskStatus {
 
     // @Cesar: Add fetch rate reports
     reportedFetchRates.writeTo(out);
-  
+
+    // @Cesar: Add write transfer rate reports
+    pipelineWriteRateReport.writeTo(out);
+    
   }
   
 }

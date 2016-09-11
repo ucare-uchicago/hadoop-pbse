@@ -26,6 +26,7 @@ import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.mapreduce.Counters;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
+import org.apache.hadoop.mapreduce.task.reduce.PipelineWriteRateReport;
 import org.apache.hadoop.mapreduce.v2.api.records.Phase;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptState;
@@ -70,5 +71,7 @@ public class TaskAttemptStatusUpdateEvent extends TaskAttemptEvent {
     public String info="MaMa";
     public DatanodeInfo[] DNpath=new DatanodeInfo[2];
     public ArrayList<DatanodeInfo> Pipeline=new ArrayList<DatanodeInfo>();
+    // @Cesar: Pipe write rate reports
+    public  PipelineWriteRateReport pipelineWriteRateReport = new PipelineWriteRateReport();
   }
 }

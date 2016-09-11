@@ -66,6 +66,7 @@ import org.apache.hadoop.mapreduce.MRConfig;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.lib.reduce.WrappedReducer;
 import org.apache.hadoop.mapreduce.task.ReduceContextImpl;
+import org.apache.hadoop.mapreduce.task.reduce.PipelineWriteRateReport;
 import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 import org.apache.hadoop.yarn.util.ResourceCalculatorProcessTree;
 import org.apache.hadoop.net.NetUtils;
@@ -860,13 +861,17 @@ abstract public class Task implements Writable, Configurable{
               taskStatus.setLastDatanodeID(lastDatanodeId);
               taskStatus.setMapTransferRate(transferRate);
             } else {
-              // riza: piggyback PBSE reduce information
-              String[] hostnames = new String[DNPath.length];
-              for (int i = 0; i < DNPath.length; i++) {
-                hostnames[i] = DNPath[i].getHostName();
+              // @Cesar: Add transfer rates for pipes on this task
+              if(hdfsOutputStream != null){
+            	  PipelineWriteRateReport report = new PipelineWriteRateReport();
+            	  // @Cesar: It can be null, but the class can handle that
+            	  report.setPipeTransferRates(hdfsOutputStream.getPipeTranferRates());
+            	  report.setPipeOrderedNodes(hdfsOutputStream.getPipeOrderedNodes());
+            	  // @Cesar: Set report
+            	  taskStatus.setPipelineWriteRateReport(report);
+            	  LOG.info("@Cesar: Reporting write transfer rates: " + taskStatus.getPipelineWriteRateReport());
+            	  LOG.info("@Cesar: Original is: " + report);
               }
-              LOG.info("@huanke reporting pipeline info " + Arrays.toString(hostnames));
-              taskStatus.setDNpath(DNPath);
             }
 
             taskFound = umbilical.statusUpdate(taskId, taskStatus);
@@ -915,7 +920,7 @@ abstract public class Task implements Writable, Configurable{
           }
 
           //huanke
-          if (hdfsOutputStream != null) {
+          /*if (hdfsOutputStream != null) {
             if (hdfsOutputStream.getPipeNodes() != null && !DNPath.equals(hdfsOutputStream.getPipeNodes())) {
               LOG.info("@huanke switching DNPath " + Arrays.toString(DNPath)
                   + " to new DNPath "
@@ -926,7 +931,7 @@ abstract public class Task implements Writable, Configurable{
               switchHappened = true;
               LOG.info("riza: DNPath switched on TaskReporter");
             }
-          }
+          }*/
 
           sendProgress = resetProgressFlag();
           remainingRetries = MAX_RETRIES;
@@ -1003,9 +1008,14 @@ abstract public class Task implements Writable, Configurable{
       }
     }
 
-
-    //huanke
+    // @Cesar: Just set the output stream
     public void setOutputStream(OutputStream outputStream) {
+    	hdfsOutputStream = (HdfsDataOutputStream)outputStream;
+    	setProgressFlag();
+    }
+    
+    //huanke
+    /*public void setOutputStream(OutputStream outputStream) {
       synchronized (DNPath) {
         if ((hdfsOutputStream instanceof HdfsDataOutputStream) && (outputStream != hdfsOutputStream)) {
           hdfsOutputStream = (HdfsDataOutputStream) outputStream;
@@ -1019,7 +1029,7 @@ abstract public class Task implements Writable, Configurable{
           }
         }
       }
-    }
+    }*/
 
   }
 

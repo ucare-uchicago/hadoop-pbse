@@ -39,7 +39,9 @@ public class TaskEvent extends AbstractEvent<TaskEventType> {
   private TaskAttemptId slowMapperAttemptId = null;
   // huanke
   private DatanodeInfo ignoreNode;
-  
+  // @Cesar
+  private List<String> badPipe = null;
+  private String badHost = null;
   
   public TaskEvent(TaskId taskID, TaskEventType type) {
     super(type);
@@ -52,6 +54,14 @@ public class TaskEvent extends AbstractEvent<TaskEventType> {
     this.taskID = taskID;
     this.slowMapper = slowMapper;
     this.slowMapperAttemptId = attemptId;
+  }
+
+  //@Cesar: construct a new TaskEvent with bad pipeline
+  public TaskEvent(TaskId taskID, TaskEventType type, List<String> badPipe, String badHost) {
+    super(type);
+    this.taskID = taskID;
+    this.badPipe = badPipe;
+    this.badHost = badHost;
   }
   
   //huanke construct a new TaskEvent with ignore Datanode
@@ -77,6 +87,20 @@ public class TaskEvent extends AbstractEvent<TaskEventType> {
 	  return slowMapperAttemptId;
   }
 
-  
-  
+	public List<String> getBadPipe() {
+		return badPipe;
+	}
+	
+	public void setBadPipe(List<String> badPipe) {
+		this.badPipe = badPipe;
+	}
+
+	public String getBadHost() {
+		return badHost;
+	}
+
+	public void setBadHost(String badHost) {
+		this.badHost = badHost;
+	}
+
 }

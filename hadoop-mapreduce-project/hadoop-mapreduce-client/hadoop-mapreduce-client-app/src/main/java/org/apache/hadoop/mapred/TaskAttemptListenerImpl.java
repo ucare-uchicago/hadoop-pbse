@@ -372,7 +372,7 @@ public class TaskAttemptListenerImpl extends CompositeService
     }
 
     //huanke
-    if(!taskStatus.getIsMap()&& taskStatus.getDNpath()!=null){
+    /*if(!taskStatus.getIsMap()&& taskStatus.getDNpath()!=null){
       LOG.info("@huanke received DNpath: "+Arrays.toString(taskStatus.getDNpath()));
       //huanke DNpath[0]: 0.0.0.0:0 DNpath[1]:0.0.0.0:0
       taskAttemptStatus.DNpath=taskStatus.getDNpath();
@@ -388,7 +388,7 @@ public class TaskAttemptListenerImpl extends CompositeService
     }else{
       taskAttemptStatus.DNpath=DatanodeInfo.createDatanodeInfo();
     }
-    LOG.info("@huanke taskAttemptStatus.Pipeline "+taskAttemptStatus.Pipeline);
+    LOG.info("@huanke taskAttemptStatus.Pipeline "+taskAttemptStatus.Pipeline);*/
     
     
     // Map Finish time set by the task (map only)
@@ -406,10 +406,14 @@ public class TaskAttemptListenerImpl extends CompositeService
       taskAttemptStatus.sortFinishTime = taskStatus.getSortFinishTime();
     }
 
-    // @Cesar: Get fetch rate report
-    taskAttemptStatus.fetchRateReport = taskStatus.getReportedFetchRates();
+    if(!taskStatus.getIsMap()){
+    	// @Cesar: Get fetch rate report
+    	taskAttemptStatus.fetchRateReport = taskStatus.getReportedFetchRates();
 
-    // Not Setting the task state. Used by speculation - will be set in TaskAttemptImpl
+    	// @Cesar: Get the pipe write rate report too
+    	taskAttemptStatus.pipelineWriteRateReport = taskStatus.getPipelineWriteRateReport();
+    }
+    // Not Setting the task state. Used by speculation - will be set in Tas}kAttemptImpl
     //taskAttemptStatus.taskState =  TypeConverter.toYarn(taskStatus.getRunState());
     
     //set the fetch failures

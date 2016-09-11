@@ -44,7 +44,10 @@ class DFSPacket {
   private final int maxChunks; // max chunks in packet
   private byte[] buf;
   private final boolean lastPacketInBlock; // is this the last packet in block?
-
+  // @Cesar: How many bytes where written in the last writeTo(OS) call?
+  private long currentByteWritten = 0L;
+  
+  
   /**
    * buf is pointed into like follows:
    *  (C is checksum data, D is payload data)
@@ -132,6 +135,11 @@ class DFSPacket {
     checksumPos += len;
   }
 
+  // @Cesar: Last call to writeTo(OS) wrote how many bytes??
+  public synchronized long getCurrentBytesWritten(){
+	  return currentByteWritten;
+  }
+  
   /**
    * Write the full packet, including the header, to the given output stream.
    *
@@ -145,6 +153,9 @@ class DFSPacket {
     final int checksumLen = checksumPos - checksumStart;
     final int pktLen = HdfsConstants.BYTES_IN_INTEGER + dataLen + checksumLen;
 
+    // @Cesar: Store in here
+    currentByteWritten = pktLen;
+    
     PacketHeader header = new PacketHeader(
         pktLen, offsetInBlock, seqno, lastPacketInBlock, dataLen, syncBlock);
 

@@ -18,6 +18,8 @@
 
 package org.apache.hadoop.mapred;
 
+import java.util.List;
+
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.TypeConverter;
@@ -53,7 +55,36 @@ public class ReduceTaskAttemptImpl extends TaskAttemptImpl {
 
   }
 
-  // huanke
+  private List<String> badPipe = null;
+  private String badHost = null;
+  
+  // @Cesar: Override
+  public ReduceTaskAttemptImpl(TaskId id, int attempt,
+          EventHandler eventHandler, Path jobFile, int partition,
+          int numMapTasks, JobConf conf,
+          TaskAttemptListener taskAttemptListener,
+          Token<JobTokenIdentifier> jobToken,
+          Credentials credentials, Clock clock,
+          AppContext appContext, List<String> badPipe, String badHost) {
+	super(id, attempt, eventHandler, taskAttemptListener, jobFile, partition,
+	conf, new String[] {}, jobToken, credentials, clock,
+	appContext);
+	this.badPipe = badPipe;
+	this.badHost = badHost;
+	this.numMapTasks = numMapTasks;
+	
+  }
+  
+  public List<String> getBadPipe() {
+	return badPipe;
+  }
+  
+  public String getBadHost() {
+	return badHost;
+  }
+
+
+// huanke
   @Override
   public Task createRemoteTask() {
   //job file name is set in TaskAttempt, setting it null here
@@ -65,4 +96,14 @@ public class ReduceTaskAttemptImpl extends TaskAttemptImpl {
     return reduceTask;
   }
 
+  public Task createRemoteTask(List<String> badPipe, String badHost) {
+	  //job file name is set in TaskAttempt, setting it null here
+	    ReduceTask reduceTask =
+	      new ReduceTask("", TypeConverter.fromYarn(getID()), partition,
+	          numMapTasks, 1, badPipe, badHost); // YARN doesn't have the concept of slots per task, set it as 1.
+	  reduceTask.setUser(conf.get(MRJobConfig.USER_NAME));
+	  reduceTask.setConf(conf);
+	    return reduceTask;
+	  }
+  
 }

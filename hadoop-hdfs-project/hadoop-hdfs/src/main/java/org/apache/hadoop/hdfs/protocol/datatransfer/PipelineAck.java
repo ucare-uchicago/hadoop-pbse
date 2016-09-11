@@ -161,6 +161,51 @@ public class PipelineAck {
   }
   
   /**
+   * Get the number of timestamps
+   * @return the number of timestamps
+   */
+  public short getNumOfTimeStamps() {
+	    return (short)proto.getAckTimeCount();
+  }
+  
+  /**
+   * get the ith ack timestamp
+   */
+  public long getTimeStamp(int i) {
+    if (proto.getAckTimeCount() > 0) {
+      return proto.getAckTime(i);
+    } else 
+    	return -1L;
+  }
+  
+  /**
+   * Constructor
+   * @param seqno sequence number
+   * @param replies an array of replies
+   * @param downstreamAckTimeNanos ack RTT in nanoseconds, 0 if no next DN in pipeline
+   */
+  public PipelineAck(long seqno, int[] replies, 
+		  			 long [] ackTime, long downstreamAckTimeNanos) {
+    ArrayList<Status> statusList = Lists.newArrayList();
+    ArrayList<Integer> flagList = Lists.newArrayList();
+    ArrayList<Long> ackTimeList = Lists.newArrayList();
+    for (int r : replies) {
+      statusList.add(StatusFormat.getStatus(r));
+      flagList.add(r);
+    }
+    for(long a : ackTime){
+    	ackTimeList.add(a);
+    }
+    proto = PipelineAckProto.newBuilder()
+      .setSeqno(seqno)
+      .addAllReply(statusList)
+      .addAllFlag(flagList)
+      .addAllAckTime(ackTimeList)
+      .setDownstreamAckTimeNanos(downstreamAckTimeNanos)
+      .build();
+  }
+  
+  /**
    * get the header flag of ith reply
    */
   public int getHeaderFlag(int i) {

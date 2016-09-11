@@ -246,8 +246,8 @@ public class ShuffleTable {
 			}
 		}
 		else{
-			LOG.info("@Cesar: We are going to return all map tasks of this host, no better was found...");
-			return getAllSuccessfullMapTaskAttemptsFromHost(badHost);
+			LOG.info("@Cesar: We are not ging to return any map tasks of this host, no better was found...");
+			return new HashSet<TaskAttemptId>();
 		}
 		if(oneComplies){
 			// we are going to get all tasks whose transfer is NOT finished

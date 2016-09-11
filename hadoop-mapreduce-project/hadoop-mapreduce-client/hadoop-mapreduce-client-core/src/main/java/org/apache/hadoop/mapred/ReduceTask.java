@@ -94,6 +94,10 @@ public class ReduceTask extends Task {
   // private ArrayList<String> strArray = new ArrayList<String>();
   //  private DatanodeInfo[] PathInfo = new HashMap<TaskAttemptID, ArrayList<String>>();
 
+  // @Cesar: This fields come from AM
+  private List<String> badPipe = null;
+  private String badHost = null;
+  
   { 
     getProgress().setStatus("reduce"); 
     setPhase(TaskStatus.Phase.SHUFFLE);        // phase to start with 
@@ -146,13 +150,22 @@ public class ReduceTask extends Task {
     super();
   }
 
-
+  // @Cesar: Override here
   public ReduceTask(String jobFile, TaskAttemptID taskId,
-                    int partition, int numMaps, int numSlotsRequired, AMtoReduceTask AMtask) {
+                    int partition, int numMaps, int numSlotsRequired, List<String> badPipe,
+                    String badHost) {
     super(jobFile, taskId, partition, numSlotsRequired);
     this.numMaps = numMaps;
-    this.AMtask=AMtask;
+    this.badPipe = badPipe;
+    this.badHost = badHost;
   }
+  
+  public ReduceTask(String jobFile, TaskAttemptID taskId,
+          int partition, int numMaps, int numSlotsRequired, AMtoReduceTask AMtask) {
+	super(jobFile, taskId, partition, numSlotsRequired);
+	this.numMaps = numMaps;
+	this.AMtask=AMtask;
+}
   
 
   /**
@@ -197,6 +210,22 @@ public class ReduceTask extends Task {
     super.write(out);
     AMtask.write(out);
     out.writeInt(numMaps);                        // write the number of maps
+    // @Cesar: write my fields
+    if(badPipe != null && badPipe.size() > 0){
+    	out.writeInt(badPipe.size());
+    	for(int i = 0; i < badPipe.size(); ++i){
+    		out.writeUTF(badPipe.get(i));
+    	}
+    }
+    else{
+    	out.writeInt(0);
+    }
+    if(badHost != null){
+    	out.writeUTF(badHost);
+    }
+    else{
+    	out.writeUTF("-");
+    }
   }
 
   @Override
@@ -204,6 +233,14 @@ public class ReduceTask extends Task {
     super.readFields(in);
     AMtask.readFields(in);
     numMaps = in.readInt();
+    // @Cesar: Read in here
+    int numInBadPipe = in.readInt();
+    List<String> readPipe = new ArrayList<>();
+    for(int i = 0; i < numInBadPipe; ++i){
+    	readPipe.add(in.readUTF());
+    }
+    this.badPipe = readPipe;
+    this.badHost = in.readUTF();
   }
   
   // Get the input files for the reducer (for local jobs).
@@ -394,7 +431,6 @@ public class ReduceTask extends Task {
     long sortStarted = System.nanoTime();
     // free up the data structures
     mapOutputFilesOnDisk.clear();
-    
     sortPhase.complete();                         // sort is complete
     long sorFinished = System.nanoTime();
     // @Cesar: Log sort finish time
@@ -475,7 +511,7 @@ public class ReduceTask extends Task {
           LOG.info("@huanke output!=null " + output.getClass() + output.toString());
           //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
           if (output instanceof HdfsDataOutputStream) {
-            switchPipeline((HdfsDataOutputStream) output);
+            // switchPipeline((HdfsDataOutputStream) output);
           } else {
             LOG.info("@huanke output is not HdfsDataOutputStream" + output.toString());
           }
@@ -493,6 +529,8 @@ public class ReduceTask extends Task {
       LOG.error(sw.toString());
     }
 
+    LOG.info("@Cesar: badPipe=" + badPipe + ", badHost=" + badHost);
+    
         // apply reduce function
         try {
           //increment processed counter only if skipping feature is enabled
@@ -507,24 +545,18 @@ public class ReduceTask extends Task {
                           job.getOutputValueGroupingComparator(), keyClass, valueClass,
                           job, reporter);
           values.informReduceProgress();
+          // @Cesar: We set output stream here
+          if (output != null) {
+              LOG.info("@huanke output!=null runReducer" + out.getClass() + out.toString());
+              if (output instanceof HdfsDataOutputStream) {
+                  LOG.info("@huanke yes, it is!" + out.getClass());
+                  reporter.setOutputStream(output);
+                  LOG.info("@Cesar: At this point, " + ((HdfsDataOutputStream)output).getPipeTranferRates());
+              }
+          }
           while (values.more()) {
             reduceInputKeyCounter.increment(1);
             reducer.reduce(values.getKey(), values, collector, reporter);
-            // LOG.info("@huanke flagR :" + flag);
-            if (flag && output != null) {
-              // LOG.info("@huanke output!=null runReducer" + out.getClass() + out.toString());
-              //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
-              if (output instanceof HdfsDataOutputStream) {
-                // LOG.info("@huanke yes, it is!" + out.getClass());
-//                if (((HdfsDataOutputStream) output).getPipeNodes() != null) {
-                  //LOG.info("@huanke Myfirst time to get pipeNodes from stream" + Arrays.toString(((HdfsDataOutputStream) out).getPipeNodes()));
-                  reporter.setOutputStream(output);
-                  flag = false;
-//                } else {
-//                  // LOG.info("@huanke I haven't get the pipeNods from stream yet ");
-//                }
-              }
-            }
             if (incrProcCount) {
               reporter.incrCounter(SkipBadRecords.COUNTER_GROUP,
                       SkipBadRecords.COUNTER_REDUCE_PROCESSED_GROUPS, 1);

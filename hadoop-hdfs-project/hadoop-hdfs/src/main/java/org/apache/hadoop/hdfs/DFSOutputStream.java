@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -34,12 +35,19 @@ import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.hadoop.HadoopIllegalArgumentException;
@@ -236,7 +244,29 @@ public class DFSOutputStream extends FSOutputSummer
 
   }
 
-
+  // @Cesar: A class to store packet send info
+  private class PacketSendInfo{
+	private long packetStartSendTime = 0L;
+	private long packetLenghtBytes = 0L;
+	
+	public long getPacketStartSendTime() {
+		return packetStartSendTime;
+	}
+	
+	public void setPacketStartSendTime(long packetStartSendTime) {
+		this.packetStartSendTime = packetStartSendTime;
+	}
+	
+	public long getPacketLenghtBytes() {
+		return packetLenghtBytes;
+	}
+	
+	public void setPacketLenghtBytes(long packetLenghtBytes) {
+		this.packetLenghtBytes = packetLenghtBytes;
+	}  
+	  
+  }
+  
   //
   // The DataStreamer class is responsible for sending data packets to the
   // datanodes in the pipeline. It retrieves a new blockid and block locations
@@ -246,6 +276,34 @@ public class DFSOutputStream extends FSOutputSummer
   // if them are received, the DataStreamer closes the current block.
   //
   class DataStreamer extends Daemon {
+	// @Cesar: Record the amount of bytes sent in
+	// the last packet and the time when it started sending
+	// this is seqNumber -> info  
+	private Map<Long, PacketSendInfo> sentPackets = new ConcurrentHashMap<>();
+	// @Cesar: In here, im going to save the transfer rate.
+    // This is PER BLOCK
+    private Map<String, HdfsWriteData> pipeTransferRates =
+  		  new ConcurrentHashMap<>();
+    // @Cesar: I also record the order of the nodes in the pipeline
+    private Map<Integer, String> orderedPipeNodes = 
+    		new ConcurrentHashMap<>();
+    // @Cesar: Just utility method to get transfer rates
+    public Map<String, HdfsWriteData> getReportedTransferRates(){
+    	// @Cesar: I prefer to copy.
+    	Map<String, HdfsWriteData> copy = new HashMap<>();
+    	copy.putAll(pipeTransferRates);
+    	return copy;
+    	
+    }
+    // @Cesar: Just utility method to get the ordered nodes
+    public Map<Integer, String> getOrderedPipeNodes(){
+    	// @Cesar: I prefer to copy.
+    	Map<Integer, String> copy = new HashMap<>();
+    	copy.putAll(orderedPipeNodes);
+    	return copy;
+    	
+    }
+    
     private volatile boolean streamerClosed = false;
     private ExtendedBlock block; // its length is number of bytes acked
     private Token<BlockTokenIdentifier> accessToken;
@@ -379,9 +437,22 @@ public class DFSOutputStream extends FSOutputSummer
     private void initDataStreaming() {
       this.setName("DataStreamer for file " + src +
           " block " + block);
-      response = new ResponseProcessor(nodes);
+      // @Cesar: Init response processor with reference
+      response = new ResponseProcessor(nodes, this);
       response.start();
       stage = BlockConstructionStage.DATA_STREAMING;
+      // @Cesar: We started a new block, lets clean all
+      // structures
+      this.pipeTransferRates.clear();
+      this.sentPackets.clear();
+      // @Also, record ordering of nodes
+      orderedPipeNodes.clear();
+      int order = 0;
+      for(DatanodeInfo no : nodes){
+    	  orderedPipeNodes.put(order, no.getHostName());
+    	  ++order;
+      }
+      DFSClient.LOG.info("@Cesar: Pipe nodes are " + orderedPipeNodes.toString());
     }
     
     private void endBlock() {
@@ -452,7 +523,7 @@ public class DFSOutputStream extends FSOutputSummer
             if (dataQueue.isEmpty()) {
               one = createHeartbeatPacket();
               assert one != null;
-            } else {
+            } else {	
               one = dataQueue.getFirst(); // regular data packet
               long parents[] = one.getTraceParents();
               if (parents.length > 0) {
@@ -552,7 +623,19 @@ public class DFSOutputStream extends FSOutputSummer
           // write out data to remote datanode
           TraceScope writeScope = Trace.startSpan("writeTo", span);
           try {
+        	// @Cesar: In here, we write the packet to first node
+        	// in pipeline. So we need to measure the time start from here
+        	long startSend = System.currentTimeMillis();
             one.writeTo(blockStream);
+            // @Cesar: add bytes sent in this block
+            if(!one.isHeartbeatPacket()){
+            	PacketSendInfo info = new PacketSendInfo();
+            	info.setPacketStartSendTime(startSend); 
+            	info.setPacketLenghtBytes(one.getCurrentBytesWritten());
+            	// @Cesar: now store
+                this.sentPackets.put(one.getSeqno(), info);
+            }
+            
             blockStream.flush();   
           } catch (IOException e) {
             // HDFS-3398 treat primary DN is down since client is unable to 
@@ -621,6 +704,9 @@ public class DFSOutputStream extends FSOutputSummer
       closeInternal();
     }
 
+    // @Cesar: Utility methods to get variables in here
+    
+    
     private void closeInternal() {
       closeResponder();       // close and join
       closeStream();
@@ -751,7 +837,7 @@ public class DFSOutputStream extends FSOutputSummer
       }
       return false;
     }
-
+    
     //
     // Processes responses from the datanodes.  A packet is removed
     // from the ackQueue when its response arrives.
@@ -761,17 +847,29 @@ public class DFSOutputStream extends FSOutputSummer
       private volatile boolean responderClosed = false;
       private DatanodeInfo[] targets = null;
       private boolean isLastPacketInBlock = false;
-
+      private DataStreamer streamer = null;
+      
       ResponseProcessor (DatanodeInfo[] targets) {
         this.targets = targets;
       }
 
+      // @Cesar: Added by me to get a reference to
+      // current dataStreamer
+      
+      ResponseProcessor (DatanodeInfo[] targets, DataStreamer streamer) {
+          this.targets = targets;
+          this.streamer = streamer;
+      }
+     
+      // @Cesar: Which packets are acked by which hosts
+      private Map<String, Set<Long>> ackedPacketsByHost = new HashMap<>();
+      
       @Override
       public void run() {
 
         setName("ResponseProcessor for block " + block);
         PipelineAck ack = new PipelineAck();
-
+        
         TraceScope scope = NullScope.INSTANCE;
         while (!responderClosed && dfsClient.clientRunning && !isLastPacketInBlock) {
           // process responses from datanodes.
@@ -789,12 +887,81 @@ public class DFSOutputStream extends FSOutputSummer
             } else if (DFSClient.LOG.isDebugEnabled()) {
               DFSClient.LOG.debug("DFSClient " + ack);
             }
-
             long seqno = ack.getSeqno();
+            // @Cesar: I added this whole loop just to look
+            // for pipe transfer rates
+            DFSClient.LOG.info("@Cesar: Processing ack " + ack.toString() + 
+            					" containing " + ack.getNumOfTimeStamps() + " timestamps");
+            for (int i = ack.getNumOfReplies()-1; i >=0  && dfsClient.clientRunning; i--) {
+            	final Status reply = PipelineAck.getStatusFromHeader(ack
+                        .getHeaderFlag(i));
+            	// @Cesar: This is the piggybacked time
+            	final long ackTime = ack.getTimeStamp(i);
+            	DFSClient.LOG
+                .info("@Cesar: Processing packet " + seqno + " on " + targets[i] +
+                		" with status: " + reply + " and timestamp " + ackTime);
+            	if(reply == SUCCESS){
+            		// @Cesar: So, target[i] ack, so record time
+            		Log.info("@Cesar: Streamer is " + this.streamer);
+            		if(this.streamer != null){
+            			PacketSendInfo packetInfo = this.streamer.sentPackets.get(seqno);
+            			if(packetInfo != null){
+            				long totalTimeForAck = ackTime - packetInfo.getPacketStartSendTime();
+            				// look up for this host
+            				if(targets[i] != null){
+            					String hostName = targets[i].getHostName();
+            					// @Cesar: List of acked packets by this host, no double counting
+            					Set<Long> ackedPackets = ackedPacketsByHost.get(hostName);
+            					// @Cesar: First time is going to be null, look out
+            					if(ackedPackets == null) ackedPackets = new HashSet<Long>();
+            					if(!ackedPackets.contains(seqno)){
+	            					// @Cesar: Look out
+	            					if(this.streamer.pipeTransferRates.containsKey(hostName)){
+	            						// @Cesar: I already have info for this host and this packet
+	            						// is not acked, so add
+	            						HdfsWriteData oldData = this.streamer.pipeTransferRates.get(hostName);
+	            						HdfsWriteData newData = new HdfsWriteData();
+	            						newData.setBytesWritten(
+	            								packetInfo.getPacketLenghtBytes() + oldData.getBytesWritten());
+	            						newData.setElapsedTime(
+	            								totalTimeForAck + oldData.getElapsedTime());
+	            						this.streamer.pipeTransferRates.put(hostName, newData);
+	            					}
+	            					else{
+	            						// @Cesar: Is new, just store
+	            						HdfsWriteData writeData = new HdfsWriteData();
+	            						writeData.setBytesWritten(packetInfo.getPacketLenghtBytes());
+	            						writeData.setElapsedTime(totalTimeForAck);
+	            						this.streamer.pipeTransferRates.put(hostName, writeData);
+	            					}
+	            					// @Cesar: Mark the packet as acked
+	            					ackedPackets.add(seqno);
+	            					ackedPacketsByHost.put(hostName, ackedPackets);
+            					}
+            					else{
+            						// @Cesar: This host already acked this packet, so we dont care
+            						// @Nothing here!
+            					}
+            				}
+            				else{
+            					// @Cesar: Can this happen?
+            					DFSClient.LOG.error("@Cesar: One of the nodes in the pipeline is null...[" + i + "]");
+            				}
+            			}
+            			else{
+            				DFSClient.LOG.error("@Cesar: Got ack for unexpected packet...");
+            			}
+            		}
+            		else{
+            			DFSClient.LOG.error("@Cesar: Streamer is null, cannot set transfer rates...");
+            		}
+            	}
+            }
             // processes response status from datanodes.
             for (int i = ack.getNumOfReplies()-1; i >=0  && dfsClient.clientRunning; i--) {
               final Status reply = PipelineAck.getStatusFromHeader(ack
                 .getHeaderFlag(i));
+              
               // Restart will not be treated differently unless it is
               // the local node or the only one in the pipeline.
               if (PipelineAck.isRestartOOBStatus(reply) &&
@@ -1625,6 +1792,22 @@ public class DFSOutputStream extends FSOutputSummer
       return null;
   }
 
+  // @Cesar: This are the transfer rates
+  public  Map<String, HdfsWriteData> getPipeTranferRates() {
+    if (streamer != null)
+      return streamer.getReportedTransferRates();
+    else
+      return null;
+  }
+  
+  //@Cesar: This are the transfer rates
+  public  Map<Integer, String> getOrderedPipeNodes() {
+   if (streamer != null)
+     return streamer.getOrderedPipeNodes();
+   else
+     return null;
+ }
+  
   // @Cesar: Get nodes as list
   public synchronized List<String> getAllPipeNodes(){
     if(streamer.getNodes() != null){

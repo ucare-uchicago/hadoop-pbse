@@ -50,6 +50,7 @@ import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.JobContext;
 import org.apache.hadoop.mapred.MapReduceChildJVM;
+import org.apache.hadoop.mapred.ReduceTaskAttemptImpl;
 import org.apache.hadoop.mapred.ShuffleHandler;
 import org.apache.hadoop.mapred.Task;
 import org.apache.hadoop.mapred.TaskAttemptContextImpl;
@@ -72,6 +73,7 @@ import org.apache.hadoop.mapreduce.jobhistory.TaskAttemptUnsuccessfulCompletionE
 import org.apache.hadoop.mapreduce.security.TokenCache;
 import org.apache.hadoop.mapreduce.security.token.JobTokenIdentifier;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
+import org.apache.hadoop.mapreduce.task.reduce.PipelineWriteRateReport;
 import org.apache.hadoop.mapreduce.v2.api.records.Avataar;
 import org.apache.hadoop.mapreduce.v2.api.records.Locality;
 import org.apache.hadoop.mapreduce.v2.api.records.Phase;
@@ -570,7 +572,8 @@ public abstract class TaskAttemptImpl implements
     stateMachine = stateMachineFactory.make(this);
     // @Cesar: Check if fetch rate speculation is enabled
     fetchRateSpeculationEnabled = conf.getBoolean("mapreduce.experiment.enable_fetch_rate_speculation", false);
-    hdfsWriteSpeculationEnabled = conf.getBoolean("pbse.enable.for.reduce.pipeline", false);
+    // @Cesar: Same for write speculation
+    hdfsWriteSpeculationEnabled = conf.getBoolean("mapreduce.experiment.enable_write_rate_speculation", false);
   }
 
   private int getMemoryRequired(Configuration conf, TaskType taskType) {
@@ -1608,7 +1611,18 @@ public abstract class TaskAttemptImpl implements
       Container container = cEvent.getContainer();
       taskAttempt.container = container;
       // this is a _real_ Task (classic Hadoop mapred flavor):
-      taskAttempt.remoteTask = taskAttempt.createRemoteTask();
+      // @Cesar: In here, i have to check fields
+      if(taskAttempt instanceof ReduceTaskAttemptImpl 
+         && ((ReduceTaskAttemptImpl)taskAttempt).getBadPipe() != null 
+         && ((ReduceTaskAttemptImpl)taskAttempt).getBadHost() != null){
+    	  taskAttempt.remoteTask = ((ReduceTaskAttemptImpl)taskAttempt).createRemoteTask(
+    			  ((ReduceTaskAttemptImpl)taskAttempt).getBadPipe(),
+    			  ((ReduceTaskAttemptImpl)taskAttempt).getBadHost());
+    	  LOG.info("@Cesar: Creating remote task with badPipe and badHost");
+      }
+      else{
+    	  taskAttempt.remoteTask = taskAttempt.createRemoteTask();  
+      }
       taskAttempt.jvmID =
           new WrappedJvmID(taskAttempt.remoteTask.getTaskID().getJobID(),
               taskAttempt.remoteTask.isMapTask(),
@@ -2101,7 +2115,19 @@ public abstract class TaskAttemptImpl implements
             		  taskAttempt.getID(),
             		  fetchRateReport, taskAttempt.clock.getTime()));
       }
-
+      // @Cesar: Pipeline rate report
+      PipelineWriteRateReport pipelineWriteRateReport = taskAttempt.reportedStatus.pipelineWriteRateReport;
+      if(pipelineWriteRateReport != null && taskAttempt.hdfsWriteSpeculationEnabled
+    	 && pipelineWriteRateReport.getPipeTransferRates().size() > 0){
+    	  LOG.info("@Cesar: Got pipe rate report from host " + taskAttempt.getNodeId().getHost() + ": " + 
+				  	pipelineWriteRateReport);
+    	  // @Cesar: Send this info to the speculator to store it
+    	  taskAttempt.eventHandler.handle
+          (new SpeculatorEvent
+              (taskAttempt.reportedStatus, taskAttempt.getNodeId().getHost(), 
+            		  taskAttempt.getID(),
+            		  pipelineWriteRateReport, taskAttempt.clock.getTime()));
+      }
       // riza: update datasource tag
       String dnHostName = newReportedStatus.lastDatanodeID.getHostName();
       if (!dnHostName.equals("fake-localhost")) {

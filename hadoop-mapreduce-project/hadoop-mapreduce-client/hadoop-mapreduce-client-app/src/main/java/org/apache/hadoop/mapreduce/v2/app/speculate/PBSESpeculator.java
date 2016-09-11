@@ -47,7 +47,9 @@ import org.apache.hadoop.mapred.MapTaskAttemptImpl;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.TypeConverter;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
+import org.apache.hadoop.mapreduce.task.reduce.PBSEReduceMessage;
 import org.apache.hadoop.mapreduce.task.reduce.PBSEShuffleMessage;
+import org.apache.hadoop.mapreduce.task.reduce.PipelineWriteRateReport;
 import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 import org.apache.hadoop.mapreduce.v2.api.records.JobId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
@@ -141,7 +143,12 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   private double fetchRateSpeculationSlowProgressThresshold = 0.0;
   // @Cesar: I will keep events in here
   private Map<ShuffleHost, List<ShuffleRateInfo>> fetchRateUpdateEvents = new HashMap<>();
-  
+  // @Cesar: Related to pipe rate reports
+  private PipelineTable pipeTable = new PipelineTable();
+  private boolean hdfsWriteSpeculationEnabled = false;
+  private double hdfsWriteSlowNodeThresshold = 0.0;
+  // @Cesar: Store pipe updates here
+  private Map<HdfsWriteHost, PipelineWriteRateReport> pipeRateUpdateEvents = new HashMap<>();
   // riza: PBSE-Read-2 fields
   private int maxSpeculationDelay = 0;
   private boolean everDelaySpeculation = false;
@@ -238,6 +245,12 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     this.smartFetchRateSpeculationFactor = conf.getDouble(
         "mapreduce.experiment.smart_fetch_rate_speculation_factor", 3.0);
 
+    // @Cesar: Same for write speculation
+    this.hdfsWriteSpeculationEnabled = conf.getBoolean(
+    		"mapreduce.experiment.enable_write_rate_speculation", false);
+    this.hdfsWriteSlowNodeThresshold = conf.getDouble(
+    		"mapreduce.experiment.write_rate_speculation_slow_thresshold", 0.0);
+    
     // huanke
     this.reduceIntersectionSpeculationEnabled = conf.getBoolean(
         "pbse.enable.for.reduce.pipeline", false);
@@ -273,7 +286,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
         = new Runnable() {
       private long nextDefaultSpeculation = 0;
       private long nextFetchRateSpeculation = 0;
-      private long nextReduceDiversitySpeculation = 0;
+      private long nextHdfsWriteRateSpeculation = 0;
       private long nextMapPathSpeculation = 0;
 
       @Override
@@ -289,18 +302,19 @@ public class PBSESpeculator extends AbstractService implements Speculator {
             long minWait = soonestRetryAfterNoSpeculate;
 
             // riza: prioritize PBSE speculation
-            if (reduceIntersectionSpeculationEnabled
-                && nextReduceDiversitySpeculation <= backgroundRunStartTime) {
-              // riza: this is Huan's Reduce Diversity speculation
-              int spec = computeReduceIntersectionSpeculation();
-              reduceSpeculation += spec;
 
-              long myWait = (spec > 0 ? soonestRetryAfterSpeculate
-                      : soonestRetryAfterNoSpeculate);
-              nextReduceDiversitySpeculation = backgroundRunStartTime + myWait;
-              minWait = Math.min(minWait, myWait);
-            }
-
+            if (hdfsWriteSpeculationEnabled
+            	&& nextHdfsWriteRateSpeculation <= backgroundRunStartTime) {
+	          // @Cesar: To speculate reduce tasks based on write transfer rate
+	          int spec = checkPipeTable();
+	          reduceSpeculation += spec;
+	
+	          long myWait = (spec > 0 ? soonestRetryAfterSpeculate
+	                  : soonestRetryAfterNoSpeculate);
+	          nextHdfsWriteRateSpeculation = backgroundRunStartTime + myWait;
+	          minWait = Math.min(minWait, myWait);
+	        }
+            
             if (fetchRateSpeculationEnabled
                 && nextFetchRateSpeculation <= backgroundRunStartTime) {
               // riza: this is Cesar's map speculation based on fetch rate
@@ -433,7 +447,6 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     switch (event.getType()) {
     case ATTEMPT_STATUS_UPDATE:
       statusUpdate(event.getReportedStatus(), event.getTimestamp());
-
       // @Cesar: Is this a success event? is this a map task? is fetch rate spec
       // enabled?
       if (event.isSuccedded()
@@ -445,6 +458,15 @@ public class PBSESpeculator extends AbstractService implements Speculator {
         LOG.info("@Cesar: Reported successfull map at " + event.getMapperHost()
             + " : " + event.getReportedStatus().id);
         // @Cesar: The event contains the time reported for this map task
+      }
+      // @Cesar: Same for reduce tasks
+      if(event.isSuccedded() 
+         && event.getReportedStatus().id.getTaskId().getTaskType() == TaskType.REDUCE 
+    	 && hdfsWriteSpeculationEnabled){
+    	 // @Cesar: Mark as finished
+    	 this.pipeTable.markAsFinished(event.getReportedStatus().id.getTaskId());
+    	 LOG.info("@Cesar: Reported successfull reduce at " + event.getMapperHost()
+         	+ " : " + event.getReportedStatus().id);
       }
       break;
 
@@ -486,6 +508,13 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       break;
     }
 
+    // @Cesar: Handle pipe rate update
+    case ATTEMPT_PIPE_RATE_UPDATE:
+    {
+      processPipeRateUpdate(event);
+      break;
+    }
+    
     case ATTEMPT_PIPELINE_UPDATE:
     {
       processPipelineUpdate(event.getReportedStatus(), event.getDNpath());
@@ -851,6 +880,72 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     return minimumAllowedSpeculativeTasks;
   }
 
+  //@Cesar: Check this table to speculate slow write reducer
+  private int checkPipeTable() {
+  try {
+      // @Cesar: Start by pulling all reports
+      synchronized (pipeRateUpdateEvents){
+        pipeTable.storeFromMap(pipeRateUpdateEvents);
+        pipeRateUpdateEvents.clear();
+      }
+      LOG.info("@Cesar: Starting pipe check");
+      // @Cesar: Num of task speculated
+      int numSpecs = 0;
+      // @Cesar: Now process all entries
+      SimpleSlowHdfsWriteEstimator estimator = new SimpleSlowHdfsWriteEstimator();
+      Map<HdfsWriteHost, PipelineWriteRateReport> reports = pipeTable.getReports();
+      List<HdfsWriteHost> markedForDelete = new ArrayList<>();
+      LOG.info("@Cesar: We have " + reports.size() + " to check");
+      for(Entry<HdfsWriteHost, PipelineWriteRateReport> report : reports.entrySet()){
+    	  LOG.info("@Cesar: Analizing " + report.getKey() + " with " + report.getValue());
+    	  // @Cesar: Analyze all this reports
+    	  if(!pipeTable.isFinished(report.getKey().getReduceTaskAttempt().getTaskId())){
+    		  // @Cesar: Is slow?
+    		  if(estimator.isSlow(
+    				  report.getKey(), 
+    				  report.getValue(), 
+    				  hdfsWriteSlowNodeThresshold)){
+    			  // @Cesar: Count and comply with min nuber of reports sent
+    			  if(pipeTable.canSpeculate(report.getKey(), PipelineTable.MIN_REPORT_COUNT)){
+    				  // @Cesar: I will add an spec attempt for this task, the idea is that it
+        			  // avoids the same pipeline
+        			  ++numSpecs;
+        			  // @Cesar: Banned
+        			  speculateReduceTaskDueToSlowWrite(
+        					  report.getKey().getReduceTaskAttempt(), 
+        					  new ArrayList<String>(
+        							  report.getValue().getPipeTransferRates().keySet()), 
+        					  report.getKey().getReduceHost());
+        			  // @Cesar: Banned
+        			  pipeTable.bannReporter(report.getKey());
+        			  // @Cesar: Im also going to delete this one, dont want it anymore
+        			  markedForDelete.add(report.getKey());
+    			  }
+    			  else{
+    				  LOG.info("@Cesar: The pipe is slow, but we have not received enough reports yet...");
+    			  }
+    			  
+    		  }
+    	  }
+    	  else{
+			  LOG.info("@Cesar: Task " + report.getKey().getReduceTaskAttempt().getTaskId() + 
+			  			 " is already finished, we wont analyze it");
+			  // @Cesar: Also clean...
+			  markedForDelete.add(report.getKey());
+			  
+    	  }
+      }
+      // @Cesar: clean a little
+      pipeTable.cleanReports(markedForDelete);
+      return numSpecs;
+      
+    } catch (Exception exc) {
+      LOG.error("@Cesar: Catching dangerous exception on checkPipeTable: " + exc.getMessage()
+          + " : " + exc.getCause());
+      return 0;
+    }
+  }
+  
   // riza: wrap Huan's algorithm
   private int computeReduceIntersectionSpeculation() {
     DatanodeInfo ignoreNode = checkIntersection();
@@ -922,6 +1017,20 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     mayHaveSpeculated.add(taskID);
   }
 
+  // @Cesar
+  private void speculateReduceTaskDueToSlowWrite(TaskAttemptId attempt, 
+		  										 List<String> badPipe, 
+		  										 String badHost) {
+   LOG.info("@Cesar speculateReduceTask" + attempt.getTaskId());
+   LOG.info(PBSEReduceMessage.createPBSEMessageReduceTaskSpeculated(
+		   		badHost, 
+		   		attempt.toString(), 
+		   		badPipe));
+   eventHandler.handle(new TaskEvent(attempt.getTaskId(), TaskEventType.T_ADD_SPEC_ATTEMPT,
+		   							 badPipe, badHost));
+   mayHaveSpeculated.add(attempt.getTaskId());
+ }
+  
   // riza: Huan's pipeline update handler
   private void processPipelineUpdate(TaskAttemptStatus reportedStatus,
       ArrayList<DatanodeInfo> dNpath) {
@@ -1004,6 +1113,27 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     LOG.info("ATTEMPT_FETCH_RATE_UPDATE " + event.getReduceTaskId());
   }
 
+  //riza: Cesar's pipe rate update handler
+  private void processPipeRateUpdate(SpeculatorEvent event) {
+   PipelineWriteRateReport report = event.getPipelineWriteRateReport();
+   String reduceHost = event.getReducerNode();
+   TaskAttemptId reduceTaskAttempt = event.getReduceTaskId();
+   if (reduceHost != null && reduceTaskAttempt != null) {
+	   // @Cesar: So, lets store this report
+	   synchronized(pipeRateUpdateEvents){
+		   pipeRateUpdateEvents.put(new HdfsWriteHost(reduceHost, reduceTaskAttempt), report);
+		   LOG.info("@Cesar: Report stored for " + reduceHost + 
+				   " and " + reduceTaskAttempt + " : " + report);
+	   }
+   }
+   else{
+	   // @Cesar: Log this error to see if happens
+	   LOG.error("@Cesar: Pipe report contained null field? This cannot happen");
+   }
+   // @Cesar: Log that this event happened
+   LOG.info("ATTEMPT_PIPE_RATE_UPDATE " + event.getReduceTaskId());
+  }
+  
   // @Cesar: Check the table, return num speculations
   private int checkFetchRateTable() {
     try {
@@ -1104,7 +1234,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       LOG.info("@Cesar: Finished fetch rate speculation check");
       return numSpeculatedMapTasks;
     } catch (Exception exc) {
-      LOG.error("@Cesar: Catching dangerous exception: " + exc.getMessage()
+      LOG.error("@Cesar: Catching dangerous exception on checkFetchRateTable: " + exc.getMessage()
           + " : " + exc.getCause());
       return 0;
     }

@@ -19,6 +19,7 @@
 package org.apache.hadoop.mapreduce.v2.app.job.impl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -681,6 +682,23 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
    }
  }
   
+ 	// @Cesar: Lets run reduce task attempt
+ 	private void speculateReduceTaskDueToSloWrite(Avataar avataar,
+ 												 List<String> badPipe,
+ 												 String badHost){
+ 		// @Cesar: This only happens on reduce tasks
+ 		TaskAttempt attempt = createNewReduceAttempt(avataar, badPipe, badHost);
+ 	    inProgressAttempts.add(attempt.getID());
+ 	    //schedule the nextAttemptNumber
+ 	    if (failedAttempts.size() > 0) {
+ 	      eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
+ 	              TaskAttemptEventType.TA_RESCHEDULE));
+ 	    } else {
+ 	      eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
+ 	    		 TaskAttemptEventType.TA_SCHEDULE));
+ 	    }
+ 	}
+ 
   //huanke add ignore node here
   private void addAndScheduleAttempt(Avataar avataar, DatanodeInfo ignoreNode) {
     // @Cesar: Ignore!
@@ -714,14 +732,46 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
       LOG.info("@huanke TA_SCHEDULE"+attempt.getID());
       eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
               TaskAttemptEventType.TA_SCHEDULE));
-		//      huanke TA_SCHEDULEattempt_1471213582087_0002_m_000000_0
-		//      huanke TA_SCHEDULEattempt_1471213582087_0002_m_000001_0
-		//      huanke TA_SCHEDULEattempt_1471213582087_0002_r_000000_0
-		//      huanke TA_SCHEDULEattempt_1471213582087_0002_r_000001_0
-		//      huanke TA_SCHEDULEattempt_1471213582087_0002_r_000001_1
-
     }
   }
+  
+  // @Cesar: Create new reduce attempt
+  private TaskAttemptImpl createNewReduceAttempt(Avataar avataar,
+		  										List<String> badPipe,
+		  										String badNode) {
+	    TaskAttemptImpl attempt = ((ReduceTaskImpl)this).createAttempt(badPipe, badNode);
+	    attempt.setAvataar(avataar);
+	    if (LOG.isDebugEnabled()) {
+	      LOG.debug("@Cesar: Created attempt " + attempt.getID());
+	    }
+	    switch (attempts.size()) {
+	      case 0:
+	        attempts = Collections.singletonMap(attempt.getID(),
+	            (TaskAttempt) attempt);
+	        break;
+	        
+	      case 1:
+	        Map<TaskAttemptId, TaskAttempt> newAttempts
+	            = new LinkedHashMap<TaskAttemptId, TaskAttempt>(maxAttempts);
+	        newAttempts.putAll(attempts);
+	        attempts = newAttempts;
+	        attempts.put(attempt.getID(), attempt);
+	        break;
+
+	      default:
+	        attempts.put(attempt.getID(), attempt);
+	        break;
+	    }
+
+	    ++nextAttemptNumber;
+
+	    // riza: note the first attempt
+	    if (this.firstAttemptId == null)
+	      this.firstAttemptId = attempt.getID();
+	    this.lastAttemptId = attempt.getID();
+
+	    return attempt;
+	  }
   
   private TaskAttemptImpl addAttempt(Avataar avataar) {
     TaskAttemptImpl attempt = createAttempt();
@@ -1065,9 +1115,29 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 		  //huanke Scheduling a redundant attempt for task task_1470006109820_0002_m_000000
 		  //huanke Scheduling a redundant attempt for task task_1470006109820_0002_r_000001
 		  DatanodeInfo ignoreNode = event.getIgnoreNode();
-		  if(ignoreNode!=null&&task.getType()==TaskType.REDUCE){
+		  List<String> badPipe = event.getBadPipe();
+		  String badHost = event.getBadHost();
+		  if(ignoreNode!=null && task.getType()==TaskType.REDUCE){
 			  LOG.info("@huanke SPECULATIVE1 and ignoreNode--"+ignoreNode);
 			  task.addAndScheduleAttempt(Avataar.SPECULATIVE, ignoreNode);
+		  }
+		  else if(badPipe != null && badHost != null){
+			  // @Cesar: In here, we should set the values in the target task
+			  task.speculateReduceTaskDueToSloWrite(Avataar.SPECULATIVE, badPipe, badHost);
+			  // @Cesar: Also, lets add diagnostic to job
+			  task.eventHandler.handle(new JobDiagnosticsUpdateEvent(
+      		  		task.getID().getJobId(), 
+      		  		"Task " + task.getID() + " running at host " + badHost + " was speculated due to slow pipeline on write. "
+      		  				+ "The reported pipeline is " + Arrays.toString(badPipe.toArray())
+					  		+ " and is going to be rerun at another host."));
+			  // @Cesar: Blacklist the bad host. I will blacklist them all for now
+			  for(String no : badPipe) task.appContext.getBlacklistedNodes().add(no);
+	    	  task.appContext.getBlacklistedNodes().add(badHost);
+	    	  if(LOG.isDebugEnabled()){
+	    		  LOG.debug("@Cesar: Blacklisted hosts due to slow hdfs write" + badHost + 
+	    				  	" and " + Arrays.toString(badPipe.toArray()));
+	    	  }
+			  
 		  }else{
 			  LOG.info("@huanke SPECULATIVE2 ");
 			  task.addAndScheduleAttempt(Avataar.SPECULATIVE);

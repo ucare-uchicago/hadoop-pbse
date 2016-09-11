@@ -39,6 +39,8 @@ public interface Speculator
     JOB_CREATE,
     // @Cesar: Added this type to launch fetch rate update events
     ATTEMPT_FETCH_RATE_UPDATE,
+    // @Cesar: Added this type to launch pipe rate update events
+    ATTEMPT_PIPE_RATE_UPDATE,
     // huanke
     ATTEMPT_PIPELINE_UPDATE
   }

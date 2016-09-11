@@ -18,6 +18,8 @@
 
 package org.apache.hadoop.mapreduce.v2.app.job.impl;
 
+import java.util.List;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
@@ -46,6 +48,9 @@ public class ReduceTaskImpl extends TaskImpl {
   private final int numMapTasks;
   private final AMtoReduceTask AMtoReduce;
 
+  private List<String> badPipe = null;
+  private String badHost = null;
+  
   public ReduceTaskImpl(JobId jobId, int partition,
       EventHandler eventHandler, Path jobFile, JobConf conf,
       int numMapTasks, TaskAttemptListener taskAttemptListener,
@@ -58,7 +63,7 @@ public class ReduceTaskImpl extends TaskImpl {
     this.numMapTasks = numMapTasks;
     this.AMtoReduce=AMtoReduce;
   }
-
+  
   @Override
   protected int getMaxAttempts() {
     return conf.getInt(MRJobConfig.REDUCE_MAX_ATTEMPTS, 4);
@@ -72,6 +77,14 @@ public class ReduceTaskImpl extends TaskImpl {
         jobToken, credentials, clock, appContext, AMtoReduce);
   }
 
+  // @Cesar: Do not override, not necessary
+  protected TaskAttemptImpl createAttempt(List<String> badPipe, String badHost) {
+    return new ReduceTaskAttemptImpl(getID(), nextAttemptNumber,
+        eventHandler, jobFile,
+        partition, numMapTasks, conf, taskAttemptListener,
+        jobToken, credentials, clock, appContext, badPipe, badHost);
+  }
+  
   // @Cesar: Same as default
   @Override
   protected TaskAttemptImpl createAttempt(String slowMapHost) {
@@ -83,8 +96,23 @@ public class ReduceTaskImpl extends TaskImpl {
     return TaskType.REDUCE;
   }
 
-  //huanke
+  protected void setBadPipe(List<String> badPipe){
+	  this.badPipe = badPipe;
+  }
+  
+  protected void setBadHost(String badHost){
+	  this.badHost = badHost;
+  }
+  
+  public List<String> getBadPipe() {
+	return badPipe;
+  }
 
+  public String getBadHost() {
+	return badHost;
+  }
+
+//huanke
   protected void updateTaskOutputDN() {
 
     TaskAttempt lastAttempt = getAttempt(this.lastAttemptId);

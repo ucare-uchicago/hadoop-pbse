@@ -375,19 +375,7 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
     final int numOfResults = results.size();
     final int totalReplicasExpected = numOfReplicas + numOfResults;
     LOG.debug("@huanke-----numOfReplicas: "+numOfReplicas+" numOfResults: "+numOfResults+" totalReplicasExpected: "+totalReplicasExpected); //13 times, then above if remove 117 times
-//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
-//    huanke-----numOfReplicas: 4 numOfResults: 2 totalReplicasExpected: 6
-//    huanke-----numOfReplicas: 6 numOfResults: 0 totalReplicasExpected: 6
-//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
-//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
-//    huanke-----numOfReplicas: 1 numOfResults: 5 totalReplicasExpected: 6
-//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
-//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
-//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
-//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
-//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
-//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2
-//    huanke-----numOfReplicas: 2 numOfResults: 0 totalReplicasExpected: 2   //if numOfReplica!=2 (fixReplica) , just remove the case
+
 
     if ((writer == null || !(writer instanceof DatanodeDescriptor)) && !newBlock) {
       writer = results.get(0).getDatanodeDescriptor();
