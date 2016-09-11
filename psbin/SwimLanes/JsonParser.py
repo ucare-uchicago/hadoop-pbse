@@ -31,6 +31,11 @@ class JsonParser:
          job.jobStart = app['master']['time_start']
          job.containersKilledBySlowShuffle = app['master']['killedBySlowShuffle']
          job.slowShuffleDetectionTime = app['master']['slowShuffleDetections']
+
+         # riza: added for query
+         job.launchDuration = float(app["master"]["launch_duration"])
+         job.commitDuration = float(app["master"]["commit_duration"])
+
          # get time for each container
          containers = []
          for ctName, container in app['containers'].items():
@@ -55,12 +60,17 @@ class JsonParser:
            ct.wholeAttemptId = container['attempt']
            if (self.slowNode in container['mapnode']) or (self.slowNode in container['reducenode']):
              ct.onSlowNode = True
-             # done reading, now add to job list
+
+           # added by Riza
            if (ct.isMap):
              ct.touchSlowNode = container['isSlowDatanode']
            else:
              ct.touchSlowNode = container['isSlowPipeline']
+           if container['status_update'] != []:
+             ct.firstHeartbeat = container['status_update'][0]
+
            containers.append(ct)
+         # done reading, now add to job list
          job.containers = job.containers + containers
          allJobs.append(job)
       # done
