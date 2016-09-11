@@ -234,6 +234,19 @@
     <value>false</value>
     <description>UCARE: Shutdown fetcher thread after map relaunch?</description>
   </property>
+
+  <property>
+    <name>mapreduce.experiment.write_rate_speculation_slow_thresshold</name>
+    <value>1</value>
+    <description>UCARE: Slow threshold for hdfs write</description>
+  </property>
+  
+  <property>
+    <name>mapreduce.experiment.enable_write_rate_speculation</name>
+    <value>true</value>
+    <description>UCARE: Enable hdfs write speculation</description>
+  </property>
+
   <!-- @Cesar: end -->
 
   <!-- @huanke: custom begin -->
