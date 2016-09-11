@@ -33,6 +33,8 @@ import java.io.Writer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.Checksum;
 
 import org.apache.commons.logging.Log;
@@ -89,6 +91,43 @@ class BlockReceiver implements Closeable {
   private final int checksumSize;
   
   private final PacketReceiver packetReceiver = new PacketReceiver(false);
+  
+  // @Cesar: Store the packet receive time here
+  // this is seqno -> millis
+  private Map<Long, Long> receivedPackets = 
+		  new ConcurrentHashMap<>();
+  
+  //@Cesar: How much time did it took to send one packet
+  // to the next datanode?
+  // this is seqno -> timeTook
+  private Map<Long, String> timeToSend = 
+		  new ConcurrentHashMap<>();
+  
+  private String buildTimeToSend(long seqno, 
+		  						String source, 
+		  						String me, 
+		  						long millisTook){
+	  return new StringBuilder()
+			 .append(seqno)
+			 .append("$")
+			 .append(source)
+			 .append("$")
+			 .append(me)
+			 .append("$")
+			 .append(millisTook)
+			 .toString();
+  }
+  
+  public long getPacketReceiveTime(long seqno){
+	  if(receivedPackets.containsKey(seqno) == false){
+		  return -1L;
+	  }
+	  return receivedPackets.get(seqno);
+  }
+  
+  public void deletePacket(long seqno){
+	  receivedPackets.remove(seqno);
+  }
   
   protected final String inAddr;
   protected final String myAddr;
@@ -476,7 +515,8 @@ class BlockReceiver implements Closeable {
       LOG.debug("Receiving one packet for block " + block +
                 ": " + header);
     }
-
+    // @Cesar: Store the time when this datanode received this packet
+    receivedPackets.put(header.getSeqno(), System.currentTimeMillis());
     // Sanity check the header
     if (header.getOffsetInBlock() > replicaInfo.getNumBytes()) {
       throw new IOException("Received an out-of-sequence packet for " + block + 
@@ -525,6 +565,12 @@ class BlockReceiver implements Closeable {
           LOG.warn("Slow BlockReceiver write packet to mirror took " + duration
               + "ms (threshold=" + datanodeSlowLogThresholdMs + "ms)");
         }
+        //@Cesar: Valid when there is next
+        String sendString = this.buildTimeToSend(seqno, 
+        									     srcDataNode.getHostName(), 
+        									     datanode.getDatanodeId().getHostName(), 
+        									     duration);
+        timeToSend.put(seqno, sendString);
       } catch (IOException e) {
         handleMirrorOutError(e);
       }
@@ -841,8 +887,11 @@ class BlockReceiver implements Closeable {
 
     try {
       if (isClient && !isTransfer) {
+    	// @Cesar: Add the reference to the constructor  
         responder = new Daemon(datanode.threadGroup, 
-            new PacketResponder(replyOut, mirrIn, downstreams));
+            new PacketResponder(replyOut, mirrIn, downstreams, this));
+        /*responder = new Daemon(datanode.threadGroup, 
+                new PacketResponder(replyOut, mirrIn, downstreams));*/
         responder.start(); // start thread to processes responses
       }
 
@@ -873,11 +922,11 @@ class BlockReceiver implements Closeable {
             // for isDatnode or TRANSFER_FINALIZED
             // Finalize the block.
             datanode.data.finalizeBlock(block);
+           
           }
         }
         datanode.metrics.incrBlocksWritten();
       }
-
     } catch (IOException ioe) {
       replicaInfo.releaseAllBytesReserved();
       if (datanode.isRestarting()) {
@@ -1079,11 +1128,36 @@ class BlockReceiver implements Closeable {
     private final String myString; 
     private boolean sending = false;
 
+    // @Cesar: I will add a reference to check
+    // when a packet was received
+    private BlockReceiver reference = null;
+    
     @Override
     public String toString() {
       return myString;
     }
 
+    // @Cesar: Overload this constructor
+    PacketResponder(final DataOutputStream upstreamOut,
+            final DataInputStream downstreamIn, final DatanodeInfo[] downstreams,
+            BlockReceiver reference) {
+          this.downstreamIn = downstreamIn;
+          this.upstreamOut = upstreamOut;
+
+          this.type = downstreams == null? PacketResponderType.NON_PIPELINE
+              : downstreams.length == 0? PacketResponderType.LAST_IN_PIPELINE
+                  : PacketResponderType.HAS_DOWNSTREAM_IN_PIPELINE;
+
+          final StringBuilder b = new StringBuilder(getClass().getSimpleName())
+              .append(": ").append(block).append(", type=").append(type);
+          if (type != PacketResponderType.HAS_DOWNSTREAM_IN_PIPELINE) {
+            b.append(", downstreams=").append(downstreams.length)
+                .append(":").append(Arrays.asList(downstreams));
+          }
+          this.myString = b.toString();
+          this.reference = reference;
+        }
+    
     PacketResponder(final DataOutputStream upstreamOut,
         final DataInputStream downstreamIn, final DatanodeInfo[] downstreams) {
       this.downstreamIn = downstreamIn;
@@ -1436,30 +1510,55 @@ class BlockReceiver implements Closeable {
       final int[] replies;
       // @Cesar: save ack time
       final long[] ackTime;
+      // @Cesar: Get the receive time
+      long receiveTime = 0;
+      String piggybackedInfo = null;
+      if(this.reference != null){
+      	// @Cesar: Look out
+      	receiveTime = this.reference.getPacketReceiveTime(seqno);
+      	this.reference.deletePacket(seqno);
+      	piggybackedInfo = this.reference.timeToSend.get(seqno);
+      	if(piggybackedInfo == null) piggybackedInfo = "-";
+      	this.reference.timeToSend.remove(seqno);
+      }
+      final String[] piggybackInfo;
       if (ack == null) {
         // A new OOB response is being sent from this node. Regardless of
         // downstream nodes, reply should contain one reply.
         replies = new int[] { myHeader };
-        ackTime = new long[] {System.currentTimeMillis()};
+        // @Cesar: search for my receive time
+        ackTime = new long[] {receiveTime};
+        piggybackInfo = new String[]{piggybackedInfo};
       } else if (mirrorError) { // ack read error
         int h = PipelineAck.combineHeader(datanode.getECN(), Status.SUCCESS);
         int h1 = PipelineAck.combineHeader(datanode.getECN(), Status.ERROR);
         replies = new int[] {h, h1};
         // @Cesar: THis wont pass, so no problem
         ackTime = new long[]{-1};
+        piggybackInfo = new String[]{piggybackedInfo};
       } else {
         short ackLen = type == PacketResponderType.LAST_IN_PIPELINE ? 0 : ack
             .getNumOfReplies();
+        short timeLen = type == PacketResponderType.LAST_IN_PIPELINE ? 0 : ack
+                .getNumOfTimeStamps();
+        short descLen = type == PacketResponderType.LAST_IN_PIPELINE ? 0 : ack
+                .getNumOfDescriptionStrings();
         replies = new int[ackLen + 1];
         replies[0] = myHeader;
         for (int i = 0; i < ackLen; ++i) {
           replies[i + 1] = ack.getHeaderFlag(i);
         }
         // @Cesar: Set the ack times
-        ackTime = new long[ackLen + 1];
-        ackTime[0] = System.currentTimeMillis();
-        for (int i = 0; i < ackLen; ++i) {
+        ackTime = new long[timeLen + 1];
+        ackTime[0] = receiveTime;
+        for (int i = 0; i < timeLen; ++i) {
         	ackTime[i + 1] = ack.getTimeStamp(i);
+        }
+        // @Cesar: also, the more descriptive strings
+        piggybackInfo = new String[descLen + 1];
+        piggybackInfo[0] = piggybackedInfo;
+        for (int i = 0; i < descLen; ++i) {
+        	piggybackInfo[i + 1] = ack.getDescriptionString(i);
         }
         // If the mirror has reported that it received a corrupt packet,
         // do self-destruct to mark myself bad, instead of making the
@@ -1473,7 +1572,7 @@ class BlockReceiver implements Closeable {
         }
       }
       // @Cesar: Use my own constructor here
-      PipelineAck replyAck = new PipelineAck(seqno, replies, ackTime,
+      PipelineAck replyAck = new PipelineAck(seqno, replies, ackTime, piggybackInfo,
           totalAckTimeNanos);
       if (replyAck.isSuccess()
           && offsetInBlock > replicaInfo.getBytesAcked()) {

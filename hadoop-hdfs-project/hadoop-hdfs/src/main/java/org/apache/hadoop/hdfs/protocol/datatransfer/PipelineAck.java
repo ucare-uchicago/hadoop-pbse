@@ -160,6 +160,7 @@ public class PipelineAck {
     return (short)proto.getReplyCount();
   }
   
+  // @Cesar
   /**
    * Get the number of timestamps
    * @return the number of timestamps
@@ -168,6 +169,7 @@ public class PipelineAck {
 	    return (short)proto.getAckTimeCount();
   }
   
+  //@Cesar
   /**
    * get the ith ack timestamp
    */
@@ -178,6 +180,26 @@ public class PipelineAck {
     	return -1L;
   }
   
+  //@Cesar
+ /**
+  * Get the number of desc strings
+  * @return the number of desc strings
+  */
+ public short getNumOfDescriptionStrings() {
+	    return (short)proto.getTransferTimeToNextCount();
+ }
+ 
+ //@Cesar
+ /**
+  * get the ith description string
+  */
+ public String getDescriptionString(int i) {
+   if (proto.getTransferTimeToNextCount() > 0) {
+     return proto.getTransferTimeToNext(i);
+   } else 
+   	return null;
+ }
+  
   /**
    * Constructor
    * @param seqno sequence number
@@ -185,10 +207,12 @@ public class PipelineAck {
    * @param downstreamAckTimeNanos ack RTT in nanoseconds, 0 if no next DN in pipeline
    */
   public PipelineAck(long seqno, int[] replies, 
-		  			 long [] ackTime, long downstreamAckTimeNanos) {
+		  			 long [] ackTime, String [] descStrings, 
+		  			 long downstreamAckTimeNanos) {
     ArrayList<Status> statusList = Lists.newArrayList();
     ArrayList<Integer> flagList = Lists.newArrayList();
     ArrayList<Long> ackTimeList = Lists.newArrayList();
+    ArrayList<String> descStringList = Lists.newArrayList();
     for (int r : replies) {
       statusList.add(StatusFormat.getStatus(r));
       flagList.add(r);
@@ -196,11 +220,15 @@ public class PipelineAck {
     for(long a : ackTime){
     	ackTimeList.add(a);
     }
+    for(String s : descStrings){
+    	descStringList.add(s);
+    }
     proto = PipelineAckProto.newBuilder()
       .setSeqno(seqno)
       .addAllReply(statusList)
       .addAllFlag(flagList)
       .addAllAckTime(ackTimeList)
+      .addAllTransferTimeToNext(descStringList)
       .setDownstreamAckTimeNanos(downstreamAckTimeNanos)
       .build();
   }

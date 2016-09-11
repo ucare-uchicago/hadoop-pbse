@@ -906,20 +906,23 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     				  report.getValue(), 
     				  hdfsWriteSlowNodeThresshold)){
     			  // @Cesar: Count and comply with min nuber of reports sent
-    			  if(pipeTable.canSpeculate(report.getKey(), PipelineTable.MIN_REPORT_COUNT)){
+    			  if(pipeTable.canSpeculate(report.getKey(), PipelineTable.MIN_REPORT_COUNT) 
+    				 && !pipeTable.wasSpeculated(report.getKey().getReduceTaskAttempt().getTaskId())){
     				  // @Cesar: I will add an spec attempt for this task, the idea is that it
         			  // avoids the same pipeline
         			  ++numSpecs;
-        			  // @Cesar: Banned
+        			  // @Cesar: get pipe nodes in order
         			  speculateReduceTaskDueToSlowWrite(
         					  report.getKey().getReduceTaskAttempt(), 
         					  new ArrayList<String>(
-        							  report.getValue().getPipeTransferRates().keySet()), 
+        							  report.getValue().getPipeOrderedNodes().values()), 
         					  report.getKey().getReduceHost());
         			  // @Cesar: Banned
         			  pipeTable.bannReporter(report.getKey());
         			  // @Cesar: Im also going to delete this one, dont want it anymore
         			  markedForDelete.add(report.getKey());
+        			  // @Cesar: Mark as speculated
+        			  pipeTable.markAsSpeculated(report.getKey().getReduceTaskAttempt().getTaskId());
     			  }
     			  else{
     				  LOG.info("@Cesar: The pipe is slow, but we have not received enough reports yet...");
