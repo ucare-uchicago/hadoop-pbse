@@ -892,7 +892,7 @@ public class DFSOutputStream extends FSOutputSummer
             // for pipe transfer rates
             DFSClient.LOG.info("@Cesar: Processing ack " + ack.toString() + 
             					" containing " + ack.getNumOfTimeStamps() + " timestamps");
-            for (int i = ack.getNumOfReplies()-1; i >=0  && dfsClient.clientRunning; i--) {
+            for (int i = 0; i < ack.getNumOfReplies()  && dfsClient.clientRunning; ++i) {
             	final Status reply = PipelineAck.getStatusFromHeader(ack
                         .getHeaderFlag(i));
             	// @Cesar: This is the piggybacked time
@@ -906,7 +906,13 @@ public class DFSOutputStream extends FSOutputSummer
             		if(this.streamer != null){
             			PacketSendInfo packetInfo = this.streamer.sentPackets.get(seqno);
             			if(packetInfo != null){
-            				long totalTimeForAck = ackTime - packetInfo.getPacketStartSendTime();
+            				long totalTimeForAck = -1;
+            				if(i == 0) {
+            					totalTimeForAck = ackTime - packetInfo.getPacketStartSendTime();
+            				}
+            				else{
+            					totalTimeForAck = ackTime - ack.getTimeStamp(i - 1);
+            				}
             				// look up for this host
             				if(targets[i] != null){
             					String hostName = targets[i].getHostName();

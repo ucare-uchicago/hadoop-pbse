@@ -925,7 +925,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
         			  pipeTable.markAsSpeculated(report.getKey().getReduceTaskAttempt().getTaskId());
     			  }
     			  else{
-    				  LOG.info("@Cesar: The pipe is slow, but we have not received enough reports yet...");
+    				  LOG.info("@Cesar: The pipe is slow, but we have not received enough reports yet or"
+    				  		+ " we are trying to speculate something that should not be...");
     			  }
     			  
     		  }
@@ -1562,8 +1563,15 @@ public class PBSESpeculator extends AbstractService implements Speculator {
             + " global avg rate " + globalTransferRate);
 
         for (TaskId taskId : toSPeculate) {
-          addSpeculativeAttempt(taskId);
-          ++successes;
+          // @Cesar: Ommit the tasks killed by slow shuffle here
+          if(!shuffleTable.wasSpeculated(taskId)){	
+        	  addSpeculativeAttempt(taskId);
+        	  ++successes;
+          }
+          else{
+        	  // @Cesar: Just log here
+        	  LOG.warn("@Cesar: Just trying to speculate a map that was already killed by slow shuffle");
+          }
         }
       } else {
         LOG.info("Nothing to speculate, global rate: " + globalTransferRate

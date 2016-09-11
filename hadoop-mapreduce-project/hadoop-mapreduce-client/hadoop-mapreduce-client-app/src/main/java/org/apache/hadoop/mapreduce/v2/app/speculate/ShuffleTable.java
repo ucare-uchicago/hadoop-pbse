@@ -1,11 +1,14 @@
 package org.apache.hadoop.mapreduce.v2.app.speculate;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
@@ -29,7 +32,8 @@ public class ShuffleTable {
 	// @Cesar: Count the number of reports
 	private Map<ShuffleRateInfo, Long> shuffleReportCount = new TreeMap<>();
 	// @Cesar: This map task were speculated
-	private Set<TaskId> alreadySpeculated = new TreeSet<>();
+	private Set<TaskId> alreadySpeculated = Collections.newSetFromMap(
+			new ConcurrentHashMap<TaskId, Boolean>());
 	// @Cesar: This map task attempts were killed
 	private Set<TaskAttemptId> alreadyRelaunched = new TreeSet<>();
 	// @Cesar: Store all attempts for a given host
