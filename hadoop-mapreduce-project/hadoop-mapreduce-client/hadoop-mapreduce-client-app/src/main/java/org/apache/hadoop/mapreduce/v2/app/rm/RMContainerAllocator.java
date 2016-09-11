@@ -210,8 +210,8 @@ public class RMContainerAllocator extends RMContainerRequestor
     retryInterval = getConfig().getLong(MRJobConfig.MR_AM_TO_RM_WAIT_INTERVAL_MS,
                                 MRJobConfig.DEFAULT_MR_AM_TO_RM_WAIT_INTERVAL_MS);
     // riza: PBSE config
-    askDistictHost = getConfig().getBoolean("mapreduce.policy.faread.avoid_single_assignpath",
-        false);
+    askDistictHost = getConfig().getBoolean(MRJobConfig.PBSE_MAP_AVOID_SINGLE_WORKER,
+        MRJobConfig.DEFAULT_PBSE_MAP_AVOID_SINGLE_WORKER);
     // Init startTime to current time. If all goes well, it will be reset after
     // first attempt to contact RM.
     retrystartTime = System.currentTimeMillis();

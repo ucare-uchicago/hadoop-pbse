@@ -157,26 +157,20 @@
 
   <property>
     <name>mapreduce.pbse.map.path-speculation.enabled</name>
-    <value>false</value>
+    <value>true</value>
     <description>UCARE: avoid read from same datanode as original task</description>
   </property>
 
   <property>
     <name>mapreduce.pbse.map.path-speculation.threshold</name>
-    <value>0.2</value>
+    <value>0.1</value>
     <description>UCARE: avoid read from same datanode as original task</description>
   </property>
 
   <property>
     <name>mapreduce.pbse.map.path-speculation.fixed-threshold</name>
-    <value>50.0</value>
+    <value>0.0</value>
     <description>UCARE: avoid read from same datanode as original task</description>
-  </property>
-
-  <property>
-    <name>mapreduce.policy.faread.sort.datanode</name>
-    <value>false</value>
-    <description>UCARE: HACK to always pick the least datanode</description>
   </property>
 
   <property>
@@ -192,15 +186,21 @@
   </property>
 
   <property>
-    <name>mapreduce.policy.faread.progress_interval</name>
-    <value>3000</value>
-    <description>UCARE: HACK to adjust heartbeat interval in ms</description>
-  </property>
-
-  <property>
     <name>mapreduce.policy.faread.maximum_speculation_delay</name>
     <value>60000</value>
     <description>UCARE: maximum time (ms) to delay speculation for task that has not send status update</description>
+  </property>
+
+  <property>
+    <name>mapreduce.policy.faread.sort.datanode</name>
+    <value>false</value>
+    <description>UCARE: HACK to always pick the least datanode</description>
+  </property>
+
+  <property>
+    <name>mapreduce.policy.faread.progress_interval</name>
+    <value>3000</value>
+    <description>UCARE: HACK to adjust heartbeat interval in ms</description>
   </property>
 
   <property>

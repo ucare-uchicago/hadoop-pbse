@@ -877,9 +877,9 @@ public interface MRJobConfig {
 
 
   // riza: PBSE Configurations
-  public static final String PBSE_MAP_DATANODE_REPORT_INFO =
+  public static final String PBSE_MAP_DATANODE_SEND_REPORT =
       "mapreduce.policy.faread";
-  public static final boolean DEFAULT_PBSE_MAP_DATANODE_REPORT_INFO =
+  public static final boolean DEFAULT_PBSE_MAP_DATANODE_SEND_REPORT =
       false;
 
   public static final String PBSE_MAP_DATANODE_READ_NEW =
@@ -904,4 +904,28 @@ public interface MRJobConfig {
       "mapreduce.pbse.map.path-speculation.fixed-threshold";
   public static final double DEFAULT_PBSE_MAP_SLOW_TRANSFER_FIXED_THRESHOLD =
       50.0d;
+  
+  public static final String PBSE_MAP_AVOID_SINGLE_WORKER =
+      "mapreduce.policy.faread.avoid_single_assignpath";
+  public static final boolean DEFAULT_PBSE_MAP_AVOID_SINGLE_WORKER =
+      false;
+  
+  public static final String PBSE_MAP_AVOID_SINGLE_SOURCE =
+      "mapreduce.policy.faread.avoid_single_readpath";
+  public static final boolean DEFAULT_PBSE_MAP_AVOID_SINGLE_SOURCE =
+      false;
+
+  public static final String PBSE_REDUCE_PIPELINE_RATE_SEND_REPORT =
+      "mapreduce.experiment.enable_write_rate_speculation";
+  public static final boolean DEFAULT_PBSE_REDUCE_PIPELINE_RATE_SEND_REPORT =
+      false;
+  
+  public static final String PBSE_REDUCE_PIPELINE_SEND_REPORT =
+	      "reduce.get.pipenodes.flag";
+	  public static final boolean DEFAULT_PBSE_REDUCE_PIPELINE_SEND_REPORT =
+	      false;
+  
+  // riza: list of hack and experiment settings
+  public static final String PBSE_HACK_MAP_PROGRESS_INTERVAL =
+      "mapreduce.policy.faread.progress_interval";
 }

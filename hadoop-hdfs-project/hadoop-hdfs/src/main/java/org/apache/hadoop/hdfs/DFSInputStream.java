@@ -166,6 +166,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       // riza: added field
       this.totalReadTime = rhs.getTotalReadTime();
       this.totalLocalReadTime = rhs.getTotalLocalReadTime();
+      this.counter = rhs.getCounter();
     }
 
     /**
@@ -252,9 +253,14 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
         return 0.0D;
     }
 
+    public long getCounter() {
+      return counter;
+    }
+
     void addRemoteBytes(long amt, long time) {
       this.totalBytesRead += amt;
       this.totalReadTime += time;
+      this.counter++;
     }
 
     void addLocalBytes(long amt, long time) {
@@ -262,6 +268,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       this.totalLocalBytesRead += amt;
       this.totalReadTime += time;
       this.totalLocalReadTime += time;
+      this.counter++;
     }
 
     void addShortCircuitBytes(long amt, long time) {
@@ -270,6 +277,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       this.totalShortCircuitBytesRead += amt;
       this.totalReadTime += time;
       this.totalLocalReadTime += time;
+      this.counter++;
     }
 
     void addZeroCopyBytes(long amt) {
@@ -287,6 +295,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       // riza: added field
       this.totalReadTime = 0;
       this.totalLocalReadTime = 0;
+      this.counter = 0;
     }
     
     private long totalBytesRead;
@@ -300,6 +309,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
     // riza: total read times in milisecond
     private long totalReadTime;
     private long totalLocalReadTime;
+    private long counter;
   }
   
   /**
