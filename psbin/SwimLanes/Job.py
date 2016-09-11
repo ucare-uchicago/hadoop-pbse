@@ -11,3 +11,7 @@ class Job:
    containersKilledBySlowShuffle = []
    # slow shuffle detection time
    slowShuffleDetectionTime = []
+
+   # added by Riza
+   launchDuration = 0
+   commitDuration = 0

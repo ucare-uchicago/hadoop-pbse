@@ -12,4 +12,7 @@ class Container:
     shuffleFinishTime = ''
     sortFinishTime = ''
     reduceFinishTime = ''
+
+    # added by Riza
     touchSlowNode = False
+    firstHeartbeat = ''

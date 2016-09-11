@@ -36,6 +36,11 @@ if __name__ == "__main__":
     jobCount = 0
     # now, iterate jobs
     for job in jobsSortedById:
+      # riza: filter jobs to display here
+#      if job.launchDuration > 8 or job.commitDuration > 5 or job.jobDurationAM < 25 or job.jobDurationAM > 30 :
+#      if job.jobDurationAM > 23:
+#         continue
+
       containersSortedByStartDate = sorted(job.containers, key=lambda x: datetime.datetime.strptime(x.startDate, "%Y-%m-%d %H:%M:%S.%f"))
       print "Found " + str(len(containersSortedByStartDate)) + " containers for job " + job.jobId
       # first container will be up in the graph
@@ -64,7 +69,7 @@ if __name__ == "__main__":
         allY = allY + [firstYCoordinate] * len(containerX)
         allX = allX + containerX
         firstYCoordinate = firstYCoordinate - 1
-        plt.xlim([0, job.jobDurationAM + 5])
+        plt.xlim([0, job.jobDurationAM])
         plt.ylim([0, len(containersSortedByStartDate) + 1])
         # plot, set colors and line styles
         if len(allX) > 1 and len(allY) > 1:
@@ -111,6 +116,12 @@ if __name__ == "__main__":
               reduceX = (jsonParser.strToDate(container.reduceFinishTime) - jsonParser.strToDate(job.jobStart)).total_seconds()
               plt.plot(int(reduceX), allY[-1], color='blue', linestyle='dotted', linewidth=1.0, marker='o')
               # print "::" + str(reduceX)
+          else:
+            # riza: container is map, mark its first heartbeat
+            if (container.firstHeartbeat):
+              firstHB = (jsonParser.strToDate(container.firstHeartbeat) - jsonParser.strToDate(job.jobStart)).total_seconds()
+              plt.plot(int(firstHB), allY[-1], color='cyan', linestyle='dotted', linewidth=1.0, marker='o')      
+
           # in here, we add the slow shuffle detection point
           containerId = container.attemptId.split('_')[0] + "_" + container.attemptId.split('_')[1]
           attemptCount = int(container.attemptId.split('_')[2])
