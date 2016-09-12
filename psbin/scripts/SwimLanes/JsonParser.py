@@ -68,6 +68,7 @@ class JsonParser:
              ct.touchSlowNode = container['isSlowPipeline']
            if container['status_update'] != []:
              ct.firstHeartbeat = container['status_update'][0]
+             ct.statusUpdate = container['status_update']
 
            containers.append(ct)
          # done reading, now add to job list

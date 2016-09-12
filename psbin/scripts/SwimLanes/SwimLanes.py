@@ -118,9 +118,9 @@ if __name__ == "__main__":
               # print "::" + str(reduceX)
           else:
             # riza: container is map, mark its first heartbeat
-            if (container.firstHeartbeat):
-              firstHB = (jsonParser.strToDate(container.firstHeartbeat) - jsonParser.strToDate(job.jobStart)).total_seconds()
-              plt.plot(int(firstHB), allY[-1], color='cyan', linestyle='dotted', linewidth=1.0, marker='o')      
+            for hbTime in container.statusUpdate:
+              updateTime = (jsonParser.strToDate(hbTime) - jsonParser.strToDate(job.jobStart)).total_seconds()
+              plt.plot(int(updateTime), allY[-1], color='cyan', linestyle='dotted', linewidth=1.0, marker='o')
 
           # in here, we add the slow shuffle detection point
           containerId = container.attemptId.split('_')[0] + "_" + container.attemptId.split('_')[1]
