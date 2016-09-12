@@ -1,6 +1,9 @@
 package org.apache.hadoop.mapreduce.task.reduce;
 
+import java.util.ArrayList;
 import java.util.List;
+
+import com.google.common.collect.Lists;
 
 public class PBSEReduceMessage {
 	
@@ -30,7 +33,8 @@ public class PBSEReduceMessage {
 			for(String node : pipeline)
 				bld.append("\"").append(node).append("\"").append(",");
 		// @Cesar: Remove last comma
-		bld.delete(bld.length() - 1, bld.length());
+		if(pipeline.size() > 0)
+			bld.delete(bld.length() - 1, bld.length());
 		bld.append("]")
 		.append("}");
 		return bld.toString();
@@ -58,10 +62,16 @@ public class PBSEReduceMessage {
 				for(String node : pipeline)
 					bld.append("\"").append(node).append("\"").append(",");
 			// @Cesar: Remove last comma
-			bld.delete(bld.length() - 1, bld.length());
+			if(pipeline.size() > 0)
+				bld.delete(bld.length() - 1, bld.length());
 			bld.append("]")
 			.append("}");
 			return bld.toString();
 				     
 		}	
+		
+		public static void main(String... args){
+			System.out.println(createPBSEMessageReduceTaskSpeculatedDueToWriteDiversity
+								("a", "b", (List)Lists.newArrayList()));
+		}
 }

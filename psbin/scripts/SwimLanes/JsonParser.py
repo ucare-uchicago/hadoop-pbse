@@ -31,7 +31,8 @@ class JsonParser:
          job.jobStart = app['master']['time_start']
          job.containersKilledBySlowShuffle = app['master']['killedBySlowShuffle']
          job.slowShuffleDetectionTime = app['master']['slowShuffleDetections']
-
+         job.launchedByWriteDiversity = app['master']['speculatedDueToWriteDiversity']
+         job.writeDiversityDetectionTime = app['master']['writeDiversityDetections']
          # riza: added for query
          job.launchDuration = float(app["master"]["launch_duration"])
          job.commitDuration = float(app["master"]["commit_duration"])

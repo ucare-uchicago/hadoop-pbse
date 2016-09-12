@@ -44,6 +44,7 @@ lookForReduceTime = "\"REDUCE_TIME\""
 re_container_finished = re.compile(".+Task \'(.+)\' done\.")
 re_app_master_node = re.compile(".+Instantiated MRClientService at (.+)/(.+)")
 re_relauch_attempt = re.compile(".+Relaunching attempt (.+) of task (.+) at host (.+)")
+re_write_diversity = re.compile(".+PBSE-Write-Diversity-1\: \{\"type\"\:\"SPECULATE_TASK\",\"ignoreHost\"\:\"(.+)\",\"attempt\"\:\"(.+)\",.+\}")
 
 def getTaskId(ct):
   att = ct["attempt"]
@@ -131,6 +132,8 @@ def initMasterStats():
     "location" : "", # location
     "killedBySlowShuffle" : [], # killed by slow shuffle
     "slowShuffleDetections" : [],   # time where the kill was issued
+    "speculatedDueToWriteDiversity": [], # set of reduce tasks speculated due to write div
+    "writeDiversityDetections": [] # when write diversity was detected
   }
   return master
 
@@ -194,6 +197,10 @@ def getMasterStats(app):
     if match:
       master["killedBySlowShuffle"].append(match.group(1))
       master["slowShuffleDetections"].append(getLogTime(line))
+    match = re_write_diversity.match(line)
+    if match:
+      master["speculatedDueToWriteDiversity"].append(match.group(1))
+      master["writeDiversityDetections"].append(getLogTime(line))
     match = cassign.match(line)
     if match:
       ct = match.group(1)
@@ -293,7 +300,7 @@ def getContainerStats(app):
       if match and match.group(2) == lookForSortTime:
           ct['sortEndTime'] = getLogTime(line)
 
-	  match = re_red_msg.match(line)
+	    match = re_red_msg.match(line)
       if match and match.group(2) == lookForReduceTime:
           ct['reduceEndTime'] = getLogTime(line)			
       

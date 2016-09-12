@@ -11,6 +11,10 @@ class Job:
    containersKilledBySlowShuffle = []
    # slow shuffle detection time
    slowShuffleDetectionTime = []
+   # launched by write diversity
+   launchedByWriteDiversity = []
+   # write diversity detection time
+   writeDiversityDetectionTime = []
 
    # added by Riza
    launchDuration = 0

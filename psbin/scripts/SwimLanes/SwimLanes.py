@@ -53,6 +53,8 @@ if __name__ == "__main__":
         fig = plt.figure(figsize=(12, 10))
       # ids killed by slow shuffle
       killedBySlowShuffle = []
+      # ids launched by write diversity
+      launchedByWriteDiversity = []
       # so, first container is the one that starts everything
       timeZero = ''
       for container in containersSortedByStartDate:
@@ -77,6 +79,9 @@ if __name__ == "__main__":
             plt.plot(allX, allY, color='red', linestyle='-', linewidth=2.0)
           elif container.isReduce == True and container.isSuccessful == False: 
             plt.plot(allX, allY, color='red', linestyle='--', linewidth=1.0)
+          # check detection time in case this reduce was launched due to write diversity
+          if container.isReduce == True and (container.wholeAttemptId in job.launchedByWriteDiversity):
+            launchedByWriteDiversity.append(container.attemptId)
           # maps are special, since they can be killed by slow shuffle
           if container.isMap == True and container.isSuccessful == True and (container.wholeAttemptId in job.containersKilledBySlowShuffle):
             plt.plot(allX, allY, color='green', linestyle='-', linewidth=2.0)
@@ -122,6 +127,27 @@ if __name__ == "__main__":
               updateTime = (jsonParser.strToDate(hbTime) - jsonParser.strToDate(job.jobStart)).total_seconds()
               plt.plot(int(updateTime), allY[-1], color='cyan', linestyle='dotted', linewidth=1.0, marker='o')
 
+          # in here, we add the write diversity detection point
+          containerId = container.attemptId.split('_')[0] + "_" + container.attemptId.split('_')[1]
+          attemptCount = int(container.attemptId.split('_')[2])
+          for killedId in launchedByWriteDiversity:
+            killedContainerId = killedId.split('_')[0] + "_" + killedId.split('_')[1]
+            killedAttemptCount = int(killedId.split('_')[2])
+            if containerId == killedContainerId and  attemptCount > killedAttemptCount:
+              # get the index of the lane
+              index  = 0
+              for killed in job.launchedByWriteDiversity:
+                kId = killed.split('_')[3] + "_" + str(int(killed.split('_')[4]))
+                if containerId == kId:
+                  break
+                else:
+                  index = index + 1
+              # take zero time
+              killedTime = job.writeDiversityDetectionTime[index]
+              # so, we add a point at that y coordinate
+              detectionTime = (jsonParser.strToDate(killedTime) - jsonParser.strToDate(job.jobStart)).total_seconds()
+              plt.plot(int(detectionTime), allY[-1], color='m', linestyle='dotted', linewidth=1.0, marker='o')
+              
           # in here, we add the slow shuffle detection point
           containerId = container.attemptId.split('_')[0] + "_" + container.attemptId.split('_')[1]
           attemptCount = int(container.attemptId.split('_')[2])
@@ -152,6 +178,8 @@ if __name__ == "__main__":
       # done
       plt.close() 
       jobCount = jobCount + 1
+      # if jobCount == 4:
+      #  break
     # done, now print swimlanes  
     with PdfPages('swimLanes.pdf') as pdf:
       ct = 0
