@@ -85,10 +85,12 @@ def printAllRunData(runs):
   printData(runs,dat,"am")
 
 
-def printDiff(d1,d2,filename):
+def printDiff(d1,d2,filename,comp):
   diff = []
   for k,v in d1.items():
-    diff.append(v-d2[k])
+#    print k,v,d2[k],comp(v,d2[k])
+    val = comp(v,d2[k])
+    diff.append(val)
   X,Y = makeCDFPoints(diff)
   f = open(filename, 'w+')
   for i in xrange(0,len(X)):
@@ -102,7 +104,8 @@ def printDiffData(json1,json2,prefix):
          for a in AM(apps) if ("time_start" in a) and ("time_stop" in a)]
   d1 = {k:v for k,v in dat(json1["apps"])}
   d2 = {k:v for k,v in dat(json2["apps"])}
-  printDiff(d1,d2,"spdup-"+prefix+".dat")
+  comp = lambda x,y: (x-y)/x*100
+  printDiff(d1,d2,"spdup-"+prefix+".dat",comp)
   
   
 
