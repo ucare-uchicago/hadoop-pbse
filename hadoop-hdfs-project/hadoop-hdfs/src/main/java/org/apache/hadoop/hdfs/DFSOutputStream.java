@@ -238,9 +238,6 @@ public class DFSOutputStream extends FSOutputSummer
     }else{
       DFSClient.LOG.debug("@huanke ignoreString is: "+tmp);
       IgnoreInfo.add(tmp);}
-//    huanke ignoreString is: pc744.emulab.net
-//    huanke ignoreString is empty
-//    huanke ignoreString is empty
 
   }
 

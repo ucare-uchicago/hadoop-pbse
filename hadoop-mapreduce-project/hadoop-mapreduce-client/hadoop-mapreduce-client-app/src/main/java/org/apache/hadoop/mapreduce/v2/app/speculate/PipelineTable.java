@@ -19,6 +19,9 @@ public class PipelineTable {
 	// @Cesar: Hard code this for now
 	public static final long MIN_REPORT_COUNT = 2; 
 	
+	// @Cesar: does write diversity kicked in?
+	private boolean writeDiversityKickedIn = false;
+	
 	private static final Log LOG = LogFactory.getLog(PipelineTable.class);
 	
 	// @Cesar: We will keep the reports in here, this
@@ -28,7 +31,7 @@ public class PipelineTable {
 	// @Cesar: Reduce tasks that finished
 	private Set<TaskId> finishedReduceTasks = 
 			Collections.newSetFromMap(new ConcurrentHashMap<TaskId, Boolean>());
-	// @Cesar: NOt going to receive more reports from this ones
+	// @Cesar: Not going to receive more reports from this ones
 	private Set<HdfsWriteHost> bannedReports = 
 			Collections.newSetFromMap(new ConcurrentHashMap<HdfsWriteHost, Boolean>());
 	
@@ -39,6 +42,14 @@ public class PipelineTable {
 	private Set<TaskId> alreadySpeculated = 
 			Collections.newSetFromMap(new ConcurrentHashMap<TaskId, Boolean>());
 	
+	public boolean isWriteDiversityKickedIn() {
+		return writeDiversityKickedIn;
+	}
+
+	public void setWriteDiversityKickedIn(boolean writeDiversityKickedIn) {
+		this.writeDiversityKickedIn = writeDiversityKickedIn;
+	}
+
 	public void markAsSpeculated(TaskId task){
 		alreadySpeculated.add(task);
 	}
@@ -84,7 +95,11 @@ public class PipelineTable {
 		if(bannedReports.contains(writeHost)) return false;
 		// @Cesar: Store
 		reports.put(writeHost, report);
-		incrementReportCount(writeHost);
+		// @Cesar: The pipe report could contain only the
+		// reported pipeline, which is fine but in this case
+		// we do not care on incrementing the report count
+		if(report.getPipeTransferRates().size() > 0)
+			incrementReportCount(writeHost);
 		// @Cesar: Some logging
 		LOG.info("@Cesar: Stored pipe report: " + writeHost + " ---> " + report);
 		return true;
@@ -103,5 +118,6 @@ public class PipelineTable {
 	public boolean canSpeculate(HdfsWriteHost writeHost, long minNumberOfReports){
 		return reportCount.get(writeHost).longValue() >= minNumberOfReports;
 	}
+	
 	
 }

@@ -2103,7 +2103,8 @@ public abstract class TaskAttemptImpl implements
       
       // @Cesar: Got the fetch report
       FetchRateReport fetchRateReport = taskAttempt.reportedStatus.fetchRateReport;
-      if(fetchRateReport != null && taskAttempt.fetchRateSpeculationEnabled){
+      if(fetchRateReport != null && taskAttempt.fetchRateSpeculationEnabled
+    	 && taskAttempt.getID().getTaskId().getTaskType() == TaskType.REDUCE){
     	  if(LOG.isDebugEnabled()){
     		  LOG.debug("@Cesar: Got fetch rate report from host " + taskAttempt.getNodeId().getHost() + ": " + 
     				  fetchRateReport);
@@ -2118,7 +2119,8 @@ public abstract class TaskAttemptImpl implements
       // @Cesar: Pipeline rate report
       PipelineWriteRateReport pipelineWriteRateReport = taskAttempt.reportedStatus.pipelineWriteRateReport;
       if(pipelineWriteRateReport != null && taskAttempt.hdfsWriteSpeculationEnabled
-    	 && pipelineWriteRateReport.getPipeTransferRates().size() > 0){
+    	 && taskAttempt.getID().getTaskId().getTaskType() == TaskType.REDUCE
+    	 && pipelineWriteRateReport.getPipeOrderedNodes().size() > 0){
     	  LOG.info("@Cesar: Got pipe rate report from host " + taskAttempt.getNodeId().getHost() + ": " + 
 				  	pipelineWriteRateReport);
     	  // @Cesar: Send this info to the speculator to store it

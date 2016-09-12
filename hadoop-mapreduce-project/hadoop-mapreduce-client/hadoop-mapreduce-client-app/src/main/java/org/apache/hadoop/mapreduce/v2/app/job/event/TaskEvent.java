@@ -42,6 +42,7 @@ public class TaskEvent extends AbstractEvent<TaskEventType> {
   // @Cesar
   private List<String> badPipe = null;
   private String badHost = null;
+  private boolean writeDiversity = false;
   
   public TaskEvent(TaskId taskID, TaskEventType type) {
     super(type);
@@ -57,11 +58,14 @@ public class TaskEvent extends AbstractEvent<TaskEventType> {
   }
 
   //@Cesar: construct a new TaskEvent with bad pipeline
-  public TaskEvent(TaskId taskID, TaskEventType type, List<String> badPipe, String badHost) {
+  public TaskEvent(TaskId taskID, TaskEventType type, 
+		  			List<String> badPipe, String badHost,
+		  			boolean isWriteDiversity) {
     super(type);
     this.taskID = taskID;
     this.badPipe = badPipe;
     this.badHost = badHost;
+    this.writeDiversity = isWriteDiversity;
   }
   
   //huanke construct a new TaskEvent with ignore Datanode
@@ -103,4 +107,8 @@ public class TaskEvent extends AbstractEvent<TaskEventType> {
 		this.badHost = badHost;
 	}
 
+	public boolean isWriteDiversity() {
+		return writeDiversity;
+	}
+	
 }

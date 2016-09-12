@@ -501,7 +501,6 @@ public class ReduceTask extends Task {
             };
 
     //huanke
-    boolean flag = false;
     OutputStream output = null;
     try {	
       if (out instanceof OutputStreamOwner) {
@@ -512,16 +511,13 @@ public class ReduceTask extends Task {
           LOG.info("@huanke output!=null " + output.getClass() + output.toString());
           //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
           if (output instanceof HdfsDataOutputStream) {
-            // switchPipeline((HdfsDataOutputStream) output);
+            switchPipeline((HdfsDataOutputStream) output, badPipe);
           } else {
             LOG.info("@huanke output is not HdfsDataOutputStream" + output.toString());
           }
         } else {
           LOG.info("@huanke output is null");
         }
-        flag = job.getBoolean(MRJobConfig.PBSE_REDUCE_PIPELINE_SEND_REPORT,
-            MRJobConfig.DEFAULT_PBSE_REDUCE_PIPELINE_SEND_REPORT);
-        //huanke .. it seems not work here.
       }
     } catch(Exception e) {
       LOG.error("@huanke : ERROR in reduce task");
@@ -771,7 +767,7 @@ public class ReduceTask extends Task {
           LOG.info("@huanke output!=null " + output.getClass() + output.toString());
           //huanke output!=null class org.apache.hadoop.hdfs.client.HdfsDataOutputStream org.apache.hadoop.hdfs.client.HdfsDataOutputStreamH
           if (output instanceof HdfsDataOutputStream) {
-            switchPipeline((HdfsDataOutputStream) output);
+        	  switchPipeline((HdfsDataOutputStream) output, this.badPipe);
           } else {
             LOG.info("@huanke output is not HdfsDataOutputStream" + output.toString());
           }
@@ -793,23 +789,23 @@ public class ReduceTask extends Task {
     }
   }
 
-  private void switchPipeline(HdfsDataOutputStream output) {
-    String tmp1 = AMtask.getAMtaskInfo();
-    LOG.info("@huanke tmp--"+tmp1);
-//    huanke tmp--
-//    huanke tmp--
-//    huanke tmp--pc744.emulab.net
+  private void switchPipeline(HdfsDataOutputStream output,
+		  					  List<String> badPipe) {
 
-    try{
-      output.switchPipeline(tmp1);
-    }
-    catch(Exception exc){
-      LOG.error("@huanke : ERROR in reduce task");
-      StringWriter sw = new StringWriter();
-      PrintWriter pw = new PrintWriter(sw);
-      exc.printStackTrace(pw);
-      LOG.error(sw.toString());
-    }
+	if(badPipe != null && badPipe.size() > 0){
+		for(String pipeNode : badPipe){
+		    try{
+		      output.switchPipeline(pipeNode);
+		    }
+		    catch(Exception exc){
+		      LOG.error("@huanke : ERROR in reduce task");
+		      StringWriter sw = new StringWriter();
+		      PrintWriter pw = new PrintWriter(sw);
+		      exc.printStackTrace(pw);
+		      LOG.error(sw.toString());
+		    }
+		}
+	}
 
   }
 

@@ -147,7 +147,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   private PipelineTable pipeTable = new PipelineTable();
   private boolean hdfsWriteSpeculationEnabled = false;
   private double hdfsWriteSlowNodeThresshold = 0.0;
-  private int numReduceTasks = 0;
+  private int numReduceTasks = -1;
   // @Cesar: Store pipe updates here
   private Map<HdfsWriteHost, PipelineWriteRateReport> pipeRateUpdateEvents = new HashMap<>();
   // riza: PBSE-Read-2 fields
@@ -491,6 +491,17 @@ public class PBSESpeculator extends AbstractService implements Speculator {
             .reportStartedTask(event.getMapperHost(), event.getTaskID());
         LOG.info("@Cesar: Map task reported at node " + event.getMapperHost()
             + " : " + event.getTaskID());
+      }
+      // @Cesar: Get number of reduce tasks
+      // I need to know the number of reducers in this job
+      // (not the current one, the total one). 
+      if(numReduceTasks < 0){
+    	  // @Cesar: Just set once, i will remove this
+    	  // when i find a cleaner way
+    	  Job job = context.getJob(event.getTaskID().getJobId());
+    	  if(job != null){
+    		  numReduceTasks = job.getTotalReduces();
+    	  }
       }
       break;
     }
@@ -881,6 +892,98 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     return minimumAllowedSpeculativeTasks;
   }
 
+  //@Cesar: In here, we check for write diversity.
+  // The idea is that if the first node in the pipeline
+  // for all the running reduce tasks is the same, then
+  // we will speculate one of them. Which one? the first...
+  // This function will just check if there is intersection
+  // on the current reports, i will ask later who is running and who is 
+  // not
+  public boolean checkWriteDiversity(PipelineTable pipelineTable){
+	  Map<HdfsWriteHost, PipelineWriteRateReport> allReports = 
+			  pipelineTable.getReports();
+	  String reducePipelineFirstNode = null;
+	  Map<Integer, String> ignorePipe = null;
+	  String ignoreHost = null;
+	  TaskAttemptId attemptId = null;
+	  if(allReports.size() == 0){
+		  // @Cesar: No reports, no write diversity needed
+		  return false;
+	  }
+	  else if(allReports.size() == 1){
+		  // @Cesar: Only one report, is this the only reduce task
+		  // on the job? If so, speculate it  
+		  if(numReduceTasks == 1){
+			  // @Cesar: Get the first report
+			  Entry<HdfsWriteHost, PipelineWriteRateReport> report =
+					  allReports.entrySet().iterator().next();
+			  ignoreHost = report.getKey().getReduceHost();
+			  ignorePipe = report.getValue().getPipeOrderedNodes();
+			  attemptId = report.getKey().getReduceTaskAttempt();
+			  pipelineTable.setWriteDiversityKickedIn(true);
+			  List<String> firstInPipe = new ArrayList<String>();
+			  firstInPipe.add(ignorePipe.get(0));
+			  // @Cesar: Speculate
+			  speculateReduceTaskDueToWriteDiversity(
+					  attemptId, 
+					  firstInPipe, 
+					  ignoreHost);
+			  pipelineTable.setWriteDiversityKickedIn(true);
+			  LOG.info("@Cesar: Write diversity kicked in: only one reduce task in job");
+			  return true;
+		  }
+	  }
+	  else{
+		  // @Cesar: Check for diversity, is the first node
+		  // common is all reduce tasks? 
+		  int commonValueCount = 0;
+		  int finishedCount = 0;
+		  for(Entry<HdfsWriteHost, PipelineWriteRateReport> report :
+			  allReports.entrySet()){
+			  	if(!pipelineTable.isFinished(report.getKey()
+			  			.getReduceTaskAttempt().getTaskId())){
+					if(reducePipelineFirstNode == null){
+						// @Cesar: First report
+						reducePipelineFirstNode = report.getValue()
+													.getPipeOrderedNodes().get(0);
+					}
+					else if(report.getValue()
+								.getPipeOrderedNodes().get(0)
+								.compareToIgnoreCase(reducePipelineFirstNode) == 0){
+						// @Cesar: Intersection on first node
+						if(commonValueCount == 0){
+							ignoreHost = report.getKey().getReduceHost();
+							ignorePipe = report.getValue().getPipeOrderedNodes();
+							attemptId = report.getKey().getReduceTaskAttempt();
+						}
+						++commonValueCount;
+					}
+			  	}
+			  	else{
+			  		++finishedCount;
+			  	}
+		  }
+		  // @Cesar: Is there a common value?
+		  if(commonValueCount == (allReports.size() - finishedCount)){
+			  // @Cesar: speculate one reduce task. Which one?
+			  // One that is not finished. So, the first one analyzed
+			  List<String> firstInPipe = new ArrayList<String>();
+			  firstInPipe.add(ignorePipe.get(0));
+			  speculateReduceTaskDueToWriteDiversity(
+					  attemptId, 
+					  firstInPipe, 
+					  ignoreHost);
+			  // @Cesar: Write diversity kicked in so we are fine
+			  pipelineTable.setWriteDiversityKickedIn(true);
+			  LOG.info("@Cesar: Write diversity kicked in: all running have common first node");
+			  return true;
+		  }
+	  }
+	  // @Cesar: Ready, return
+	  LOG.info("@Cesar: No write diversity needed, the reports shows that is not necessary");
+	  return false;
+  }
+  
   //@Cesar: Check this table to speculate slow write reducer
   private int checkPipeTable() {
   try {
@@ -888,6 +991,13 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       synchronized (pipeRateUpdateEvents){
         pipeTable.storeFromMap(pipeRateUpdateEvents);
         pipeRateUpdateEvents.clear();
+      }
+      // @Cesar: Lets first apply diversity check...
+      if(!pipeTable.isWriteDiversityKickedIn()){
+    	  // @Cesar: Only if write div has not kicked in
+    	  // already
+    	  boolean spec = checkWriteDiversity(pipeTable);
+    	  if(spec) return 1;
       }
       LOG.info("@Cesar: Starting pipe check");
       // @Cesar: Num of task speculated
@@ -1026,15 +1136,38 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   private void speculateReduceTaskDueToSlowWrite(TaskAttemptId attempt, 
 		  										 List<String> badPipe, 
 		  										 String badHost) {
-   LOG.info("@Cesar speculateReduceTask" + attempt.getTaskId());
+   LOG.info("@Cesar speculateReduceTaskDueToSlowWrite " + attempt.getTaskId());
    LOG.info(PBSEReduceMessage.createPBSEMessageReduceTaskSpeculated(
 		   		badHost, 
 		   		attempt.toString(), 
 		   		badPipe));
    eventHandler.handle(new TaskEvent(attempt.getTaskId(), TaskEventType.T_ADD_SPEC_ATTEMPT,
-		   							 badPipe, badHost));
+		   							 badPipe, badHost, false));
    mayHaveSpeculated.add(attempt.getTaskId());
  }
+  
+  // @Cesar
+  private void speculateReduceTaskDueToWriteDiversity(TaskAttemptId attempt, 
+		  										 	  List<String> badPipe, 
+		  										 	  String badHost) {
+   // @Cesar: Double check
+   if(!pipeTable.isFinished(attempt.getTaskId())){	  
+	   LOG.info("@Cesar speculateReduceTaskDueToWriteDiversity " + attempt.getTaskId());
+	   LOG.info(PBSEReduceMessage.createPBSEMessageReduceTaskSpeculatedDueToWriteDiversity(
+			   		badHost, 
+			   		attempt.toString(), 
+			   		badPipe));
+	   eventHandler.handle(new TaskEvent(attempt.getTaskId(), TaskEventType.T_ADD_SPEC_ATTEMPT,
+			   							 badPipe, badHost, true));
+	   mayHaveSpeculated.add(attempt.getTaskId());
+   }
+   else{
+	   // @Cesar: This is a potential problem
+	   LOG.error("@Cesar: Trying to speculate a reduce task that is finished while "
+	   			+ " checking for diversity!: " + attempt);
+   }
+ }
+
   
   // riza: Huan's pipeline update handler
   private void processPipelineUpdate(TaskAttemptStatus reportedStatus,
@@ -1483,10 +1616,10 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       int numberSpeculationsAlready = 0;
       int numberFinishedAlready = 0;
       int numberUnknownAttempt = 0;
-
+      
       // loop through the tasks of the kind
       Job job = context.getJob(jobEntry.getKey());
-
+      
       Map<TaskId, Task> tasks = job.getTasks(TaskType.MAP);
 
       TaskAttemptStatus slowestMap = null;

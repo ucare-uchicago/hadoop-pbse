@@ -706,6 +706,23 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
  	    }
  	}
  
+ 	// @Cesar: Lets run reduce task attempt
+  	private void speculateReduceTaskDueToWriteDiversity(Avataar avataar,
+  												 		List<String> badPipe,
+  												 		String badHost){
+  		// @Cesar: This only happens on reduce tasks
+  		TaskAttempt attempt = createNewReduceAttempt(avataar, badPipe, badHost);
+  	    inProgressAttempts.add(attempt.getID());
+  	    //schedule the nextAttemptNumber
+  	    if (failedAttempts.size() > 0) {
+  	      eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
+  	              TaskAttemptEventType.TA_RESCHEDULE));
+  	    } else {
+  	      eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
+  	    		 TaskAttemptEventType.TA_SCHEDULE));
+  	    }
+  	}
+ 	
   //huanke add ignore node here
   private void addAndScheduleAttempt(Avataar avataar, DatanodeInfo ignoreNode) {
     // @Cesar: Ignore!
@@ -1128,7 +1145,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 			  LOG.info("@huanke SPECULATIVE1 and ignoreNode--"+ignoreNode);
 			  task.addAndScheduleAttempt(Avataar.SPECULATIVE, ignoreNode);
 		  }
-		  else if(badPipe != null && badHost != null){
+		  else if(badPipe != null && badHost != null && !event.isWriteDiversity()){
 			  // @Cesar: In here, we should set the values in the target task
 			  task.speculateReduceTaskDueToSloWrite(Avataar.SPECULATIVE, badPipe, badHost);
 			  // @Cesar: Also, lets add diagnostic to job
@@ -1144,6 +1161,18 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 	    		  LOG.debug("@Cesar: Blacklisted hosts due to slow hdfs write" + badHost + 
 	    				  	" and " + Arrays.toString(badPipe.toArray()));
 	    	  }
+			  
+		  }else if(badPipe != null && badHost != null && event.isWriteDiversity()){
+			  // @Cesar: In here, we should set the values in the target task
+			  task.speculateReduceTaskDueToWriteDiversity(Avataar.SPECULATIVE, badPipe, badHost);
+			  // @Cesar: Also, lets add diagnostic to job
+			  task.eventHandler.handle(new JobDiagnosticsUpdateEvent(
+      		  		task.getID().getJobId(), 
+      		  		"Task " + task.getID() + " running at host " + badHost + " was speculated due to pipeline diversity. "
+      		  				+ "The first node on pipeline should be ignored (" + Arrays.toString(badPipe.toArray())
+					  		+ ") in the new attempt."));
+			  // @Cesar: We should not blacklist in here, this is just 
+			  // for diversity purposes
 			  
 		  }else{
 			  LOG.info("@huanke SPECULATIVE2 ");
