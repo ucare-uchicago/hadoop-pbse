@@ -100,6 +100,7 @@ abstract public class Task implements Writable, Configurable{
   // riza: PBSE fields
   private static final long PROGRESS_INTERVAL_BEFORE_READ = 500;
   private static final long PROGRESS_INTERVAL_BEFORE_FIRST_HEARTBEAT = 100;
+  private static final long PROGRESS_INTERVAL_AFTER_DATANODE_SWITCH = 100;
   private HdfsDataInputStream hdfsInputStream = null;
   private boolean sendDatanodeInfo;
   private boolean avoidSingleSource;
@@ -826,22 +827,24 @@ abstract public class Task implements Writable, Configurable{
             if (isMapTask() && sendDatanodeInfo) {
               if (switchHappened) {
                 switchHappened = false;
-                waitTime = 0;
-                LOG.debug("riza: just switch datanode! Skip HB waiting, sendProgress: " + sendProgress);
+                waitTime = PROGRESS_INTERVAL_AFTER_DATANODE_SWITCH;
+                LOG.debug("riza: just switch datanode! Wait for " + waitTime
+                    + "ms to get new BW, sendProgress: " + sendProgress);
               }
               
               if (!hasSendInitialHB) {
                 if (hasEnoughStats()) {
                   waitTime = 0;
                   hasSendInitialHB = true;
-                  LOG.debug("riza: just have enough read! Waiting for 100ms, sendProgress: "
-                      + sendProgress + " total byte "
+                  waitTime = PROGRESS_INTERVAL_BEFORE_FIRST_HEARTBEAT;
+                  LOG.debug("riza: just have enough read! Waiting for "
+                      + waitTime + "ms, sendProgress: " + sendProgress
+                      + " total byte "
                       + hdfsInputStream.getReadStatistics().getTotalBytesRead()
                       + " total time "
                       + hdfsInputStream.getReadStatistics().getTotalReadTime()
                       + " total counter "
                       + hdfsInputStream.getReadStatistics().getCounter());
-                  waitTime = PROGRESS_INTERVAL_BEFORE_FIRST_HEARTBEAT;
                 } else {
                   waitTime = PROGRESS_INTERVAL_BEFORE_READ;
                 }
