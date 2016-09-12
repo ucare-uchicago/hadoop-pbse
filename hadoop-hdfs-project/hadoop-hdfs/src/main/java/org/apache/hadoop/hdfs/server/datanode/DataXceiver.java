@@ -810,12 +810,11 @@ class DataXceiver extends Receiver implements Runnable {
             LOG.trace("TRANSFER: send close-ack");
           }
           //in default
-//          writeResponse(SUCCESS, null, replyOut);
-          //huanke
-          String message="";
-          message=Long.toString(block.getNumBytes())+remoteAddress+localAddress;
-          LOG.info("@huanke MessageHK: "+message);
-          writeResponse(SUCCESS, message, replyOut);
+          writeResponse(SUCCESS, null, replyOut);
+//          //huanke
+//          String message=Long.toString(block.getNumBytes())+remoteAddress+localAddress;
+//          LOG.info("@huanke MessageHK: "+message);
+//          writeResponse(SUCCESS, message, replyOut);
 
         }
 

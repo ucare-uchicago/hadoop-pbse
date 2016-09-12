@@ -450,6 +450,10 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
         if (clusterMap.isOnSameRack(dn0, dn1)) {
           LOG.info("@huanke---case1----");
           //huanke----That's it!
+          if(OutputBoolean.get(1)){
+            chooseRemoteRackHB(1, dn0, excludedNodes, blocksize, maxNodesPerRack,
+                    results, avoidStaleNodes, storageTypes, OutputBoolean);
+          }
           chooseRemoteRack(1, dn0, excludedNodes, blocksize, maxNodesPerRack,
               results, avoidStaleNodes, storageTypes);
         } else if (newBlock){
