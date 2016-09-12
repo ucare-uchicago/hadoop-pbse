@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -108,6 +109,12 @@ public abstract class RMContainerRequestor extends RMCommunicator {
   private final Set<String> blacklistRemovals = Collections
       .newSetFromMap(new ConcurrentHashMap<String, Boolean>());
 
+  // riza: PBSE config
+  protected boolean  askDistictHost = false;
+  // riza: host to blacklist and whitelist for once
+  private String oneTimeBlacklist;
+  private String oneTimeWhitelist;
+
   public RMContainerRequestor(ClientService clientService, AppContext context) {
     super(clientService, context);
   }
@@ -184,14 +191,29 @@ public abstract class RMContainerRequestor extends RMCommunicator {
           + ". Should be an integer between 0 and 100 or -1 to disabled");
     }
     LOG.info("blacklistDisablePercent is " + blacklistDisablePercent);
+
+    // riza: PBSE config
+    askDistictHost = 
+        conf.getBoolean(MRJobConfig.PBSE_MAP_AVOID_SINGLE_WORKER,
+            MRJobConfig.DEFAULT_PBSE_MAP_AVOID_SINGLE_WORKER);
+    LOG.info("riza: " + MRJobConfig.PBSE_MAP_AVOID_SINGLE_WORKER + " : " + askDistictHost);
   }
 
   protected AllocateResponse makeRemoteRequest() throws YarnException,
       IOException {
     applyRequestLimits();
+
+    List<String> toBlacklist = new ArrayList<String>(blacklistAdditions);
+    List<String> toWhitelist = new ArrayList<String>(blacklistAdditions);
+    
+    // riza: ORDER MATTER HERE!!
+    if (askDistictHost) {
+      appendOneTimeWhitelistNode(toWhitelist);
+      appendOneTimeBlacklistNode(toBlacklist);
+    }
+
     ResourceBlacklistRequest blacklistRequest =
-        ResourceBlacklistRequest.newInstance(new ArrayList<String>(blacklistAdditions),
-            new ArrayList<String>(blacklistRemovals));
+        ResourceBlacklistRequest.newInstance(toBlacklist, toWhitelist);
     AllocateRequest allocateRequest =
         AllocateRequest.newInstance(lastResponseID,
           super.getApplicationProgress(), new ArrayList<ResourceRequest>(ask),
@@ -577,5 +599,27 @@ public abstract class RMContainerRequestor extends RMCommunicator {
 
   public Set<String> getBlacklistedNodes() {
     return blacklistedNodes;
+  }
+
+  // riza: PBSE functions
+  public void addOneTimeBlacklistNode(String node) {
+    this.oneTimeBlacklist = node;
+  }
+
+  public void appendOneTimeBlacklistNode(List<String> hosts) {
+    if (this.oneTimeBlacklist != null) {
+      LOG.info("riza: appending " + this.oneTimeBlacklist + " to blacklist for one time.");
+      hosts.add(this.oneTimeBlacklist);
+    }
+    this.oneTimeWhitelist = this.oneTimeBlacklist;
+    this.oneTimeBlacklist = null;
+  }
+
+  public void appendOneTimeWhitelistNode(List<String> hosts) {
+    if (this.oneTimeWhitelist != null) {
+      LOG.info("riza: releasing " + this.oneTimeWhitelist + " from blacklist.");
+      hosts.add(this.oneTimeWhitelist);
+    }
+    this.oneTimeWhitelist = null;
   }
 }

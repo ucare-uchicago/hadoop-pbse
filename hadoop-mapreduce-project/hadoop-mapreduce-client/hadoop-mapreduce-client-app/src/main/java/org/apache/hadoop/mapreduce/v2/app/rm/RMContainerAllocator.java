@@ -172,8 +172,13 @@ public class RMContainerAllocator extends RMContainerRequestor
   private long retryInterval;
   private long retrystartTime;
   private Clock clock;
-  // riza: PBSE config
-  private boolean  askDistictHost = false;
+  
+
+  // riza: PBSE-Read-Diversity-2 fields
+  private Map<String, Set<TaskAttemptId>> hostToAssignedTask =
+      new HashMap<String, Set<TaskAttemptId>>();
+  private int maxretry = PBSE_MAX_CONTAINER_REJECTION;
+  private boolean wasRejecting = false; // for logging
 
   @VisibleForTesting
   protected BlockingQueue<ContainerAllocatorEvent> eventQueue
@@ -209,9 +214,6 @@ public class RMContainerAllocator extends RMContainerRequestor
     RackResolver.init(conf);
     retryInterval = getConfig().getLong(MRJobConfig.MR_AM_TO_RM_WAIT_INTERVAL_MS,
                                 MRJobConfig.DEFAULT_MR_AM_TO_RM_WAIT_INTERVAL_MS);
-    // riza: PBSE config
-    askDistictHost = getConfig().getBoolean(MRJobConfig.PBSE_MAP_AVOID_SINGLE_WORKER,
-        MRJobConfig.DEFAULT_PBSE_MAP_AVOID_SINGLE_WORKER);
     // Init startTime to current time. If all goes well, it will be reset after
     // first attempt to contact RM.
     retrystartTime = System.currentTimeMillis();
@@ -823,13 +825,6 @@ public class RMContainerAllocator extends RMContainerRequestor
         || assignedRequests.maps.size() < maxRunningMaps);
   }
 
-  private Map<String, Set<TaskAttemptId>> hostToAssignedTask =
-      new HashMap<String, Set<TaskAttemptId>>();
-
-  private int maxretry = PBSE_MAX_CONTAINER_REJECTION;
-
-  private int diversity2Status = 0; // for logging
-
   private boolean mayAssignMap(Container allocated, TaskAttemptId tId) {
     if (askDistictHost && (hostToAssignedTask.keySet().size() <=1)){
       if (tId.getId() <= 0){ // riza: check only original task
@@ -845,41 +840,8 @@ public class RMContainerAllocator extends RMContainerRequestor
           if ((getJob().getTotalMaps() > hostedTasks.size()+1) || (maxretry <= 0)) {
             // riza: node do not host all original task
             hostedTasks.add(tId);
-
-            if (diversity2Status == 1) {
-              LOG.info("PBSE-Read-Diversity-2: hostname " + hostname
-                  + " numreject " + (PBSE_MAX_CONTAINER_REJECTION - maxretry)
-                  + " status " + (maxretry > 0 ? "success" : "fail"));
-              diversity2Status = 2;
-            }
           } else {
-            // riza: all original task hosted on the same node, reject!
-            maxretry--;
-            if (diversity2Status == 0)
-              diversity2Status = 1;
-            LOG.info("riza: Allocated container " + allocated + " for task "
-            + tId + " is on the same node. "+ String.valueOf(maxretry)
-            + " rejection chance left.");
-
-            // riza: replace existing container request
-            ContainerRequest toBeReplacedReq =
-                scheduledRequests.getContainerReqToReplace(allocated);
-            if (toBeReplacedReq != null) {
-              LOG.info("riza: Placing a new container request for task attempt "
-                  + toBeReplacedReq.attemptID);
-              ContainerRequest newReq =
-                  getFilteredContainerRequest(toBeReplacedReq, hostname);
-              decContainerReq(toBeReplacedReq);
-              if (toBeReplacedReq.attemptID.getTaskId().getTaskType() ==
-                  TaskType.MAP) {
-                scheduledRequests.maps.put(newReq.attemptID, newReq);
-              }
-              addContainerReq(newReq);
-            }
-            else {
-              LOG.info("riza: Could not map allocated container to a valid request."
-                  + " Releasing allocated container " + allocated);
-            }
+            // last container does not meet diversity requirement. Reject!
 
             return false;
           }
@@ -887,6 +849,29 @@ public class RMContainerAllocator extends RMContainerRequestor
       }
     }
     return true;
+  }
+  
+  private void diversityReplacementRequest(Container allocated) {
+    String hostname = allocated.getNodeId().getHost();
+    ContainerRequest toBeReplacedReq =
+        scheduledRequests.getContainerReqToReplace(allocated);
+    if (toBeReplacedReq != null) {
+      LOG.info("riza: Placing a new container request for task attempt "
+          + toBeReplacedReq.attemptID);
+      ContainerRequest newReq =
+          getFilteredContainerRequest(toBeReplacedReq, hostname);
+      decContainerReq(toBeReplacedReq);
+      if (toBeReplacedReq.attemptID.getTaskId().getTaskType() ==
+          TaskType.MAP) {
+        scheduledRequests.maps.put(newReq.attemptID, newReq);
+      }
+      addOneTimeBlacklistNode(hostname);
+      addContainerReq(newReq);
+    }
+    else {
+      LOG.info("riza: Could not map allocated container to a valid request."
+          + " Releasing allocated container " + allocated);
+    }
   }
 
   private boolean canAssignReduces() {
@@ -1294,6 +1279,9 @@ public class RMContainerAllocator extends RMContainerRequestor
 
     @SuppressWarnings("unchecked")
     private void assignMapsWithLocality(List<Container> allocatedContainers) {
+      // riza: memorize rejected container and replace it later
+      Set<Container> rejected = new HashSet<Container>();
+      
       // try to assign to all nodes first to match node local
       Iterator<Container> it = allocatedContainers.iterator();
       while(it.hasNext() && maps.size() > 0 && canAssignMaps()){
@@ -1309,19 +1297,31 @@ public class RMContainerAllocator extends RMContainerRequestor
             LOG.debug("Host matched to the request list " + host);
           }
           TaskAttemptId tId = list.removeFirst();
-          if (maps.containsKey(tId) && mayAssignMap(allocated,tId)) {
-            ContainerRequest assigned = maps.remove(tId);
-            containerAssigned(allocated, assigned);
-            it.remove();
-            JobCounterUpdateEvent jce =
-              new JobCounterUpdateEvent(assigned.attemptID.getTaskId().getJobId());
-            jce.addCounterUpdate(JobCounter.DATA_LOCAL_MAPS, 1);
-            eventHandler.handle(jce);
-            hostLocalAssigned++;
-            if (LOG.isDebugEnabled()) {
-              LOG.debug("Assigned based on host match " + host);
+          if (maps.containsKey(tId) ) {
+            if (mayAssignMap(allocated,tId)) {
+              ContainerRequest assigned = maps.remove(tId);
+              containerAssigned(allocated, assigned);
+              it.remove();
+              JobCounterUpdateEvent jce =
+                new JobCounterUpdateEvent(assigned.attemptID.getTaskId().getJobId());
+              jce.addCounterUpdate(JobCounter.DATA_LOCAL_MAPS, 1);
+              eventHandler.handle(jce);
+              hostLocalAssigned++;
+              if (LOG.isDebugEnabled()) {
+                LOG.debug("Assigned based on host match " + host);
+              }
+
+              rejected.remove(allocated);
+              break;
+            } else {
+              LOG.info("riza: Container "
+                  + allocated.getId()
+                  + " from "
+                  + allocated.getNodeId()
+                  + " fail diversity assestment when tried to assign to local node match attempt "
+                  + tId);
+              rejected.add(allocated);
             }
-            break;
           }
         }
       }
@@ -1339,19 +1339,31 @@ public class RMContainerAllocator extends RMContainerRequestor
         LinkedList<TaskAttemptId> list = mapsRackMapping.get(rack);
         while (list != null && list.size() > 0) {
           TaskAttemptId tId = list.removeFirst();
-          if (maps.containsKey(tId) && mayAssignMap(allocated,tId)) {
-            ContainerRequest assigned = maps.remove(tId);
-            containerAssigned(allocated, assigned);
-            it.remove();
-            JobCounterUpdateEvent jce =
-              new JobCounterUpdateEvent(assigned.attemptID.getTaskId().getJobId());
-            jce.addCounterUpdate(JobCounter.RACK_LOCAL_MAPS, 1);
-            eventHandler.handle(jce);
-            rackLocalAssigned++;
-            if (LOG.isDebugEnabled()) {
-              LOG.debug("Assigned based on rack match " + rack);
+          if (maps.containsKey(tId)) {
+            if (mayAssignMap(allocated,tId)) {
+              ContainerRequest assigned = maps.remove(tId);
+              containerAssigned(allocated, assigned);
+              it.remove();
+              JobCounterUpdateEvent jce =
+                new JobCounterUpdateEvent(assigned.attemptID.getTaskId().getJobId());
+              jce.addCounterUpdate(JobCounter.RACK_LOCAL_MAPS, 1);
+              eventHandler.handle(jce);
+              rackLocalAssigned++;
+              if (LOG.isDebugEnabled()) {
+                LOG.debug("Assigned based on rack match " + rack);
+              }
+
+              rejected.remove(allocated);
+              break;
+            } else {
+              LOG.info("riza: Container "
+                  + allocated.getId()
+                  + " from "
+                  + allocated.getNodeId()
+                  + " fail diversity assestment when tried to assign to local rack match attempt "
+                  + tId);
+              rejected.add(allocated);
             }
-            break;
           }
         }
       }
@@ -1364,18 +1376,50 @@ public class RMContainerAllocator extends RMContainerRequestor
         assert PRIORITY_MAP.equals(priority);
         TaskAttemptId tId = maps.keySet().iterator().next();
 
-        if (!mayAssignMap(allocated,tId))
-          continue;
+        if (mayAssignMap(allocated,tId)) {
+          ContainerRequest assigned = maps.remove(tId);
+          containerAssigned(allocated, assigned);
+          it.remove();
+          JobCounterUpdateEvent jce =
+            new JobCounterUpdateEvent(assigned.attemptID.getTaskId().getJobId());
+          jce.addCounterUpdate(JobCounter.OTHER_LOCAL_MAPS, 1);
+          eventHandler.handle(jce);
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Assigned based on * match");
+          }
 
-        ContainerRequest assigned = maps.remove(tId);
-        containerAssigned(allocated, assigned);
-        it.remove();
-        JobCounterUpdateEvent jce =
-          new JobCounterUpdateEvent(assigned.attemptID.getTaskId().getJobId());
-        jce.addCounterUpdate(JobCounter.OTHER_LOCAL_MAPS, 1);
-        eventHandler.handle(jce);
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Assigned based on * match");
+          rejected.remove(allocated);
+        } else {
+          LOG.info("riza: Container "
+              + allocated.getId()
+              + " from "
+              + allocated.getNodeId()
+              + " fail diversity assestment when tried to assign to * match attempt "
+              + tId);
+          rejected.add(allocated);
+        }
+      }
+      
+      if (askDistictHost) {
+        if (rejected.isEmpty()) {
+          // riza: all original task hosted on the same node, reject the last!
+          maxretry--;
+          wasRejecting = true;
+          
+          for (Container allocated : rejected) {
+            LOG.info("riza: Allocated container " + allocated
+                + " does not meet diversity requirement and going to be replaced. "
+                + String.valueOf(maxretry) + " rejection chance left.");
+
+            // riza: replace existing container request
+            diversityReplacementRequest(allocated);
+          }
+        } else {
+          if (wasRejecting) {
+            LOG.info("PBSE-Read-Diversity-2:  numreject "
+                + (PBSE_MAX_CONTAINER_REJECTION - maxretry) + " status "
+                + (maxretry > 0 ? "success" : "fail"));
+          }
         }
       }
     }
