@@ -92,6 +92,26 @@ def printDiff(d1,d2,filename,comp):
     val = comp(v,d2[k])
     diff.append(val)
   X,Y = makeCDFPoints(diff)
+
+  f = open(filename, 'w+')
+  for i in xrange(0,len(X)):
+    f.write("%f\t%f\n" % (X[i],Y[i]))
+  f.close()
+
+
+def printPercentileDiff(d1,d2,filename,comp):
+  X1,Y1 = makeCDFPoints(d1.values())
+  X2,Y2 = makeCDFPoints(d2.values())
+  X = []
+  Y = []
+  totalData = len(X1)
+  for x in xrange(0,len(X1)):
+    X.append(100.0 * (x+1) / totalData)
+    Y.append(comp(X1[x],X2[x]))
+#  X.append(100)
+#  Y.append(dat(X1.max(),))
+
+  print X,Y
   f = open(filename, 'w+')
   for i in xrange(0,len(X)):
     f.write("%f\t%f\n" % (X[i],Y[i]))
@@ -104,8 +124,8 @@ def printDiffData(json1,json2,prefix):
          for a in AM(apps) if ("time_start" in a) and ("time_stop" in a)]
   d1 = {k:v for k,v in dat(json1["apps"])}
   d2 = {k:v for k,v in dat(json2["apps"])}
-  comp = lambda x,y: (x-y)/x*100
-  printDiff(d1,d2,"spdup-"+prefix+".dat",comp)
+  comp = lambda x,y: 100.0 * (x-y) / x
+  printPercentileDiff(d1,d2,"spdup-"+prefix+".dat",comp)
   
   
 
