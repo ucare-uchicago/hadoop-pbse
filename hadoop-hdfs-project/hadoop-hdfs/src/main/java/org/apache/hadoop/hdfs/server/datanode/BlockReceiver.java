@@ -96,6 +96,10 @@ class BlockReceiver implements Closeable {
   // this is seqno -> millis
   private Map<Long, Long> receivedPackets = 
 		  new ConcurrentHashMap<>();
+  // @Cesar: How much time do we spent
+  // receiveing packet x?
+  private Map<Long, Long> timeToReceivePacket = 
+		  new ConcurrentHashMap<>();
   
   //@Cesar: How much time did it took to send one packet
   // to the next datanode?
@@ -127,6 +131,17 @@ class BlockReceiver implements Closeable {
   
   public void deletePacket(long seqno){
 	  receivedPackets.remove(seqno);
+  }
+  
+  public long getPacketAcumulatedTime(long seqno){
+	  if(timeToReceivePacket.containsKey(seqno) == false){
+		  return -1L;
+	  }
+	  return timeToReceivePacket.get(seqno);
+  }
+  
+  public void deletePacketAcumulatedTime(long seqno){
+	  this.timeToReceivePacket.remove(seqno);
   }
   
   protected final String inAddr;
@@ -508,8 +523,11 @@ class BlockReceiver implements Closeable {
    */
   private int receivePacket() throws IOException {
     // read the next packet
+	// @Cesar:
+	long start = System.currentTimeMillis();
     packetReceiver.receiveNextPacket(in);
-
+    long acumulated = System.currentTimeMillis() - start;
+    
     PacketHeader header = packetReceiver.getHeader();
     if (LOG.isDebugEnabled()){
       LOG.debug("Receiving one packet for block " + block +
@@ -517,6 +535,8 @@ class BlockReceiver implements Closeable {
     }
     // @Cesar: Store the time when this datanode received this packet
     receivedPackets.put(header.getSeqno(), System.currentTimeMillis());
+    // @Cesar: Store acumulated time
+    timeToReceivePacket.put(header.getSeqno(), acumulated);
     // Sanity check the header
     if (header.getOffsetInBlock() > replicaInfo.getNumBytes()) {
       throw new IOException("Received an out-of-sequence packet for " + block + 
@@ -1510,13 +1530,19 @@ class BlockReceiver implements Closeable {
       final int[] replies;
       // @Cesar: save ack time
       final long[] ackTime;
+      // @Cesar: The acumulated receiving tome
+      final long[] acumTime;
       // @Cesar: Get the receive time
       long receiveTime = 0;
+      // @Cesar: Get the acum time
+      long acTime = 0;
       String piggybackedInfo = null;
       if(this.reference != null){
       	// @Cesar: Look out
       	receiveTime = this.reference.getPacketReceiveTime(seqno);
       	this.reference.deletePacket(seqno);
+      	acTime = this.reference.getPacketAcumulatedTime(seqno);
+      	this.reference.deletePacketAcumulatedTime(seqno);
       	piggybackedInfo = this.reference.timeToSend.get(seqno);
       	if(piggybackedInfo == null) piggybackedInfo = "-";
       	this.reference.timeToSend.remove(seqno);
@@ -1529,12 +1555,14 @@ class BlockReceiver implements Closeable {
         // @Cesar: search for my receive time
         ackTime = new long[] {receiveTime};
         piggybackInfo = new String[]{piggybackedInfo};
+        acumTime = new long[] {acTime};
       } else if (mirrorError) { // ack read error
         int h = PipelineAck.combineHeader(datanode.getECN(), Status.SUCCESS);
         int h1 = PipelineAck.combineHeader(datanode.getECN(), Status.ERROR);
         replies = new int[] {h, h1};
         // @Cesar: THis wont pass, so no problem
         ackTime = new long[]{-1};
+        acumTime = new long[]{-1};
         piggybackInfo = new String[]{piggybackedInfo};
       } else {
         short ackLen = type == PacketResponderType.LAST_IN_PIPELINE ? 0 : ack
@@ -1543,6 +1571,8 @@ class BlockReceiver implements Closeable {
                 .getNumOfTimeStamps();
         short descLen = type == PacketResponderType.LAST_IN_PIPELINE ? 0 : ack
                 .getNumOfDescriptionStrings();
+        short acLen = type == PacketResponderType.LAST_IN_PIPELINE ? 0 : ack
+                .getNumOfTimeToReceivePacket();
         replies = new int[ackLen + 1];
         replies[0] = myHeader;
         for (int i = 0; i < ackLen; ++i) {
@@ -1560,6 +1590,13 @@ class BlockReceiver implements Closeable {
         for (int i = 0; i < descLen; ++i) {
         	piggybackInfo[i + 1] = ack.getDescriptionString(i);
         }
+        // @Cesar: Finally, the acum time
+        // @Cesar: Set the acum times
+        acumTime = new long[acLen + 1];
+        acumTime[0] = acTime;
+        for (int i = 0; i < acLen; ++i) {
+        	acumTime[i + 1] = ack.getTimeToReceivePacket(i);
+        }
         // If the mirror has reported that it received a corrupt packet,
         // do self-destruct to mark myself bad, instead of making the
         // mirror node bad. The mirror is guaranteed to be good without
@@ -1572,8 +1609,8 @@ class BlockReceiver implements Closeable {
         }
       }
       // @Cesar: Use my own constructor here
-      PipelineAck replyAck = new PipelineAck(seqno, replies, ackTime, piggybackInfo,
-          totalAckTimeNanos);
+      PipelineAck replyAck = new PipelineAck(seqno, replies, ackTime, 
+    		  piggybackInfo, acumTime, totalAckTimeNanos);
       if (replyAck.isSuccess()
           && offsetInBlock > replicaInfo.getBytesAcked()) {
         replicaInfo.setBytesAcked(offsetInBlock);

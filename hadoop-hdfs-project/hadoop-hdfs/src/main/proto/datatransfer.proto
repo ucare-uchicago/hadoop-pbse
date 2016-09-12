@@ -249,6 +249,7 @@ message PipelineAckProto {
   repeated uint32 flag = 4 [packed=true];
   repeated sint64 ackTime = 5;
   repeated string transferTimeToNext = 6;
+  repeated sint64 acumulatedTime = 7;
 }
 
 /**

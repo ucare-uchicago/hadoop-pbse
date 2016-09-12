@@ -147,6 +147,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   private PipelineTable pipeTable = new PipelineTable();
   private boolean hdfsWriteSpeculationEnabled = false;
   private double hdfsWriteSlowNodeThresshold = 0.0;
+  private int numReduceTasks = 0;
   // @Cesar: Store pipe updates here
   private Map<HdfsWriteHost, PipelineWriteRateReport> pipeRateUpdateEvents = new HashMap<>();
   // riza: PBSE-Read-2 fields

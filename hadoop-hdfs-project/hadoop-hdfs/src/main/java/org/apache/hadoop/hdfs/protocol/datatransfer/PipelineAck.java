@@ -180,6 +180,26 @@ public class PipelineAck {
     	return -1L;
   }
   
+	//@Cesar
+	 /**
+	  * Get the number of acum time
+	  * @return the number of acm times
+	  */
+	 public short getNumOfTimeToReceivePacket() {
+		    return (short)proto.getAcumulatedTimeCount();
+	 }
+	 
+	 //@Cesar
+	 /**
+	  * get the ith ack timestamp
+	  */
+	 public long getTimeToReceivePacket(int i) {
+	   if (proto.getAcumulatedTimeCount() > 0) {
+	     return proto.getAcumulatedTime(i);
+	   } else 
+	   	return -1L;
+	 }
+  
   //@Cesar
  /**
   * Get the number of desc strings
@@ -208,11 +228,12 @@ public class PipelineAck {
    */
   public PipelineAck(long seqno, int[] replies, 
 		  			 long [] ackTime, String [] descStrings, 
-		  			 long downstreamAckTimeNanos) {
+		  			 long [] acumTime, long downstreamAckTimeNanos) {
     ArrayList<Status> statusList = Lists.newArrayList();
     ArrayList<Integer> flagList = Lists.newArrayList();
     ArrayList<Long> ackTimeList = Lists.newArrayList();
     ArrayList<String> descStringList = Lists.newArrayList();
+    ArrayList<Long> acumTimeList = Lists.newArrayList();
     for (int r : replies) {
       statusList.add(StatusFormat.getStatus(r));
       flagList.add(r);
@@ -223,12 +244,16 @@ public class PipelineAck {
     for(String s : descStrings){
     	descStringList.add(s);
     }
+    for(long ac : acumTime){
+    	acumTimeList.add(ac);
+    }
     proto = PipelineAckProto.newBuilder()
       .setSeqno(seqno)
       .addAllReply(statusList)
       .addAllFlag(flagList)
       .addAllAckTime(ackTimeList)
       .addAllTransferTimeToNext(descStringList)
+      .addAllAcumulatedTime(acumTimeList)
       .setDownstreamAckTimeNanos(downstreamAckTimeNanos)
       .build();
   }

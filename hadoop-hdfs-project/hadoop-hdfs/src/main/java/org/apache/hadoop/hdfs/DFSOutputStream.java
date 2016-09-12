@@ -287,11 +287,24 @@ public class DFSOutputStream extends FSOutputSummer
     // @Cesar: I also record the order of the nodes in the pipeline
     private Map<Integer, String> orderedPipeNodes = 
     		new ConcurrentHashMap<>();
+    // @Cesar: This is an alternative way to calcultae transfer rate
+    // i will kee both for now
+    private Map<String, HdfsWriteData> hostAcumulatedTime =
+    		new ConcurrentHashMap<>();
+    
     // @Cesar: Just utility method to get transfer rates
     public Map<String, HdfsWriteData> getReportedTransferRates(){
     	// @Cesar: I prefer to copy.
     	Map<String, HdfsWriteData> copy = new HashMap<>();
     	copy.putAll(pipeTransferRates);
+    	return copy;
+    	
+    }
+    // @Cesar: Just utility method to get the transfer acum time
+    public Map<String, HdfsWriteData> getHostAcumulatedTime(){
+    	// @Cesar: I prefer to copy.
+    	Map<String, HdfsWriteData> copy = new HashMap<>();
+    	copy.putAll(hostAcumulatedTime);
     	return copy;
     	
     }
@@ -932,6 +945,14 @@ public class DFSOutputStream extends FSOutputSummer
 	            						newData.setElapsedTime(
 	            								totalTimeForAck + oldData.getElapsedTime());
 	            						this.streamer.pipeTransferRates.put(hostName, newData);
+	            						// @Cesar: Also, put the acumulated times
+	            						HdfsWriteData oldAcum = this.streamer.hostAcumulatedTime.get(hostName);
+	            						HdfsWriteData newAcum = new HdfsWriteData();
+	            						newAcum.setBytesWritten(
+	            								packetInfo.getPacketLenghtBytes() + oldAcum.getBytesWritten());
+	            						newAcum.setElapsedTime(
+	            								ack.getTimeToReceivePacket(i) + oldAcum.getElapsedTime());
+	            						this.streamer.hostAcumulatedTime.put(hostName, newAcum);
 	            					}
 	            					else{
 	            						// @Cesar: Is new, just store
@@ -939,6 +960,11 @@ public class DFSOutputStream extends FSOutputSummer
 	            						writeData.setBytesWritten(packetInfo.getPacketLenghtBytes());
 	            						writeData.setElapsedTime(totalTimeForAck);
 	            						this.streamer.pipeTransferRates.put(hostName, writeData);
+	            						// @Cesar: Also, put the acumulated times
+	            						HdfsWriteData acumData = new HdfsWriteData();
+	            						acumData.setBytesWritten(packetInfo.getPacketLenghtBytes());
+	            						acumData.setElapsedTime(ack.getTimeToReceivePacket(i));
+	            						this.streamer.hostAcumulatedTime.put(hostName, acumData);
 	            					}
 	            					// @Cesar: Mark the packet as acked
 	            					ackedPackets.add(seqno);
@@ -963,6 +989,8 @@ public class DFSOutputStream extends FSOutputSummer
             		}
             	}
             }
+            // @Cesar: Just log to check
+            DFSClient.LOG.info("@Cesar: Acum time: " + (this.streamer != null ? this.streamer.getHostAcumulatedTime() : "NULL"));
             // processes response status from datanodes.
             for (int i = ack.getNumOfReplies()-1; i >=0  && dfsClient.clientRunning; i--) {
               final Status reply = PipelineAck.getStatusFromHeader(ack
@@ -1801,7 +1829,10 @@ public class DFSOutputStream extends FSOutputSummer
   // @Cesar: This are the transfer rates
   public  Map<String, HdfsWriteData> getPipeTranferRates() {
     if (streamer != null)
-      return streamer.getReportedTransferRates();
+      // @Cesar: This is the old way	
+      // return streamer.getReportedTransferRates();
+      // @Cesar: I will use this ones for now
+      return streamer.getHostAcumulatedTime();
     else
       return null;
   }
