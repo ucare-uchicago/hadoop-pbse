@@ -107,7 +107,7 @@ abstract public class Task implements Writable, Configurable{
 
   // huanke
   private HdfsDataOutputStream hdfsOutputStream = null;
-  private boolean sendPipelineInfo;
+  //private boolean sendPipelineInfo;
   private boolean sendPipelineRateInfo;
 
   /**
@@ -785,9 +785,9 @@ abstract public class Task implements Writable, Configurable{
       avoidSingleSource =
           conf.getBoolean(MRJobConfig.PBSE_MAP_AVOID_SINGLE_SOURCE,
               MRJobConfig.DEFAULT_PBSE_MAP_AVOID_SINGLE_SOURCE);
-      sendPipelineInfo =
-          conf.getBoolean(MRJobConfig.PBSE_REDUCE_PIPELINE_SEND_REPORT,
-              MRJobConfig.DEFAULT_PBSE_REDUCE_PIPELINE_SEND_REPORT);
+//      sendPipelineInfo =
+//          conf.getBoolean(MRJobConfig.PBSE_REDUCE_PIPELINE_SEND_REPORT,
+//              MRJobConfig.DEFAULT_PBSE_REDUCE_PIPELINE_SEND_REPORT);
       sendPipelineRateInfo =
               conf.getBoolean(MRJobConfig.PBSE_REDUCE_PIPELINE_RATE_SEND_REPORT,
                   MRJobConfig.DEFAULT_PBSE_REDUCE_PIPELINE_RATE_SEND_REPORT);
@@ -1360,7 +1360,7 @@ abstract public class Task implements Writable, Configurable{
               taskStatus.setMapTransferRate(transferRate);
             }
           } else {
-            if (sendPipelineInfo) {
+            if (sendPipelineRateInfo) {
               String[] hostnames = new String[DNPath.length];
               for (int i = 0; i < DNPath.length; i++) {
                 hostnames[i] = DNPath[i].getHostName();

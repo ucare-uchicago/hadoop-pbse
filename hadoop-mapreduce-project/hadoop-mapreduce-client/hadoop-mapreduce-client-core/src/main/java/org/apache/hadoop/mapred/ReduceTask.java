@@ -774,8 +774,8 @@ public class ReduceTask extends Task {
         } else {
           LOG.info("@huanke output is null");
         }
-        boolean flag = job.getBoolean(MRJobConfig.PBSE_REDUCE_PIPELINE_SEND_REPORT,
-            MRJobConfig.DEFAULT_PBSE_REDUCE_PIPELINE_SEND_REPORT);
+        boolean flag = job.getBoolean(MRJobConfig.PBSE_REDUCE_PIPELINE_RATE_SEND_REPORT,
+            MRJobConfig.DEFAULT_PBSE_REDUCE_PIPELINE_RATE_SEND_REPORT);
         //huanke .. it seems not work here.
         reducer.run(reducerContext,output, reporter, flag);
       }

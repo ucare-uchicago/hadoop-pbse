@@ -919,11 +919,11 @@ public interface MRJobConfig {
       "mapreduce.experiment.enable_write_rate_speculation";
   public static final boolean DEFAULT_PBSE_REDUCE_PIPELINE_RATE_SEND_REPORT =
       false;
-  
-  public static final String PBSE_REDUCE_PIPELINE_SEND_REPORT =
-	      "reduce.get.pipenodes.flag";
-	  public static final boolean DEFAULT_PBSE_REDUCE_PIPELINE_SEND_REPORT =
-	      false;
+
+//  public static final String PBSE_REDUCE_PIPELINE_SEND_REPORT =
+//	      "reduce.get.pipenodes.flag";
+//	  public static final boolean DEFAULT_PBSE_REDUCE_PIPELINE_SEND_REPORT =
+//	      false;
   
   // riza: list of hack and experiment settings
   public static final String PBSE_HACK_MAP_PROGRESS_INTERVAL =
