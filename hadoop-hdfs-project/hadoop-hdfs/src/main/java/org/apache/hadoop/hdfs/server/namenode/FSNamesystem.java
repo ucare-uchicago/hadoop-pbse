@@ -3057,7 +3057,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 //    DatanodeStorageInfo targets[] = getNewBlockTargets(src, fileId,
 //            clientName, previous, excludedNodes, favoredNodes, onRetryBlock);
     //huanke
-    LOG.debug("@huanke IngoreInfo getAdditionalBlockHK "+IgnoreInfo);
+    LOG.info("@huanke IngoreInfo getAdditionalBlockHK "+IgnoreInfo);
     DatanodeStorageInfo targets[] = getNewBlockTargetsHK(src, fileId,
             clientName, previous, excludedNodes, favoredNodes, onRetryBlock,IgnoreInfo);
     if (targets == null) {
@@ -3235,7 +3235,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 //            src, replication, clientNode, excludedNodes, blockSize, favoredNodes,
 //            storagePolicyID);
     //huanke
-    LOG.debug("@huanke IngoreInfo getNewBlockTargetsHK "+IngoreInfo);
+    LOG.info("@huanke IngoreInfo getNewBlockTargetsHK "+IngoreInfo);
     return getBlockManager().chooseTarget4NewBlockHK(
             src, replication, clientNode, excludedNodes, blockSize, favoredNodes,
             storagePolicyID, IngoreInfo, OutputBoolean);

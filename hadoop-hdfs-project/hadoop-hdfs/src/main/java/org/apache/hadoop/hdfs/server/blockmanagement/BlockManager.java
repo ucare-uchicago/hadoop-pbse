@@ -1570,12 +1570,12 @@ public class BlockManager {
 
   //huanke
   public DatanodeStorageInfo[] chooseTarget4NewBlockHK(final String src,
-                                                     final int numOfReplicas, final Node client,
-                                                     final Set<Node> excludedNodes,
-                                                     final long blocksize,
-                                                     final List<String> favoredNodes,
-                                                     final byte storagePolicyID,
-                                                      List<String> IgnoreInfo, List<Boolean> OutputBoolean) throws IOException {
+                                                       final int numOfReplicas, final Node client,
+                                                       final Set<Node> excludedNodes,
+                                                       final long blocksize,
+                                                       final List<String> favoredNodes,
+                                                       final byte storagePolicyID,
+                                                       List<String> IgnoreInfo, List<Boolean> OutputBoolean) throws IOException {
 
     List<DatanodeDescriptor> favoredDatanodeDescriptors =
             getDatanodeDescriptors(favoredNodes);
@@ -1584,7 +1584,7 @@ public class BlockManager {
     final DatanodeStorageInfo[] targets = blockplacement.chooseTargetHK(src,
             numOfReplicas, client, excludedNodes, blocksize,
             favoredDatanodeDescriptors, storagePolicy, IgnoreInfo, OutputBoolean);
-    LOG.debug("@huanke IgnoreInfo chooseTarget4NewBlockHK "+IgnoreInfo+numOfReplicas+targets.length);
+    LOG.info("@huanke IgnoreInfo chooseTarget4NewBlockHK "+IgnoreInfo+numOfReplicas+targets.length);
 //    huanke IgnoreInfo chooseTarget4NewBlockHK null22
 //    huanke IgnoreInfo chooseTarget4NewBlockHK [pc744.emulab.net]22
 

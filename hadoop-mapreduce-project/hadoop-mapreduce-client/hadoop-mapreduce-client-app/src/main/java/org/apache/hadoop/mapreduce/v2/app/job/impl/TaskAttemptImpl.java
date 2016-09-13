@@ -1749,10 +1749,20 @@ public abstract class TaskAttemptImpl implements
         taskAttempt.reportedStatus.containerHost = taskAttempt.getNodeId().getHost();
 
       // @Cesar: Also tell the speculator where this was launched
-      if(taskAttempt.getID().getTaskId().getTaskType() == TaskType.MAP && taskAttempt.fetchRateSpeculationEnabled){
+      if(taskAttempt.getID().getTaskId().getTaskType() == TaskType.MAP 
+    	 && taskAttempt.fetchRateSpeculationEnabled){
     	  taskAttempt.eventHandler.handle
           (new SpeculatorEvent
-              (taskAttempt.attemptId, true, taskAttempt.clock.getTime(), taskAttempt.container.getNodeId().getHost()));  
+              (taskAttempt.attemptId, true, taskAttempt.clock.getTime(), 
+            	taskAttempt.container.getNodeId().getHost()));  
+      }
+      // @Cesar: Same for reduce
+      else if(taskAttempt.getID().getTaskId().getTaskType() == TaskType.REDUCE 
+    		  && taskAttempt.hdfsWriteSpeculationEnabled){
+    	  taskAttempt.eventHandler.handle
+          (new SpeculatorEvent
+              (taskAttempt.attemptId, true, taskAttempt.clock.getTime(), 
+            	taskAttempt.container.getNodeId().getHost()));  
       }
       else{
     	  taskAttempt.eventHandler.handle

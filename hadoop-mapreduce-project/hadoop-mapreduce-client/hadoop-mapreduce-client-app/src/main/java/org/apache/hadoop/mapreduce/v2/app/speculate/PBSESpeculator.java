@@ -36,7 +36,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -147,7 +149,13 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   private PipelineTable pipeTable = new PipelineTable();
   private boolean hdfsWriteSpeculationEnabled = false;
   private double hdfsWriteSlowNodeThresshold = 0.0;
+  // @Cesar: To detect cases when there is only one reduce task
   private int numReduceTasks = -1;
+  private AtomicBoolean singleReduceHostDetected = new AtomicBoolean(false); 
+  private AtomicReference<String> singleReduceHost = new AtomicReference<>(null);
+  private AtomicBoolean singleReduceHostSpeculated = new AtomicBoolean(false);
+  private AtomicReference<TaskAttemptId> singleReduceTaskAttempt = new AtomicReference<>(null);
+  
   // @Cesar: Store pipe updates here
   private Map<HdfsWriteHost, PipelineWriteRateReport> pipeRateUpdateEvents = new HashMap<>();
   // riza: PBSE-Read-2 fields
@@ -501,6 +509,24 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     	  Job job = context.getJob(event.getTaskID().getJobId());
     	  if(job != null){
     		  numReduceTasks = job.getTotalReduces();
+    	  }
+      }
+      // @Cesar: Is this a reduce task?
+      if(event.getTaskID().getTaskType() == TaskType.REDUCE
+    	&& hdfsWriteSpeculationEnabled){
+    	  if(numReduceTasks == 1 
+    		 && singleReduceHostDetected.get() == false
+    		 && event.getMapperHost() != null
+    		 && event.getReportedStatus().id != null){
+    		  // @Cesar: Done, now let the checkWriteDiversityFunction do its thing
+    		  singleReduceHostDetected.set(true);
+    		  singleReduceHost.set(event.getMapperHost());
+    		  singleReduceTaskAttempt.set(event.getReportedStatus().id);
+    		  LOG.info("@Cesar: Detected single reduce host!");
+    	  }
+    	  else{
+    		  LOG.info("@Cesar: No single reducer detected: " + numReduceTasks + ", " + singleReduceHostDetected.get() +
+    				  ", " + event.getMapperHost() + ", " + event.getReportedStatus().id);
     	  }
       }
       break;
@@ -906,23 +932,35 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 	  Map<Integer, String> ignorePipe = null;
 	  String ignoreHost = null;
 	  TaskAttemptId attemptId = null;
-	  if(allReports.size() == 0){
+	  if(allReports.size() == 0 && numReduceTasks > 1){
 		  // @Cesar: No reports, no write diversity needed
 		  return false;
 	  }
-	  else if(allReports.size() == 1){
+	  else if(singleReduceHostDetected.get() == true && singleReduceHostSpeculated.get() == false){
 		  // @Cesar: Only one report, is this the only reduce task
 		  // on the job? If so, speculate it  
-		  if(numReduceTasks == 1){
+		  if(numReduceTasks == 1 && singleReduceHostSpeculated.get() == false){
 			  // @Cesar: Get the first report
-			  Entry<HdfsWriteHost, PipelineWriteRateReport> report =
-					  allReports.entrySet().iterator().next();
-			  ignoreHost = report.getKey().getReduceHost();
-			  ignorePipe = report.getValue().getPipeOrderedNodes();
-			  attemptId = report.getKey().getReduceTaskAttempt();
-			  pipelineTable.setWriteDiversityKickedIn(true);
+			  if(allReports.size() > 0){
+				  Entry<HdfsWriteHost, PipelineWriteRateReport> report =
+						  allReports.entrySet().iterator().next();
+				  ignoreHost = report.getKey().getReduceHost();
+				  ignorePipe = report.getValue().getPipeOrderedNodes();
+				  attemptId = report.getKey().getReduceTaskAttempt();
+			  }
+			  else{
+				  ignoreHost = singleReduceHost.get();
+				  ignorePipe = null;
+				  attemptId = singleReduceTaskAttempt.get();
+			  }
+			  
 			  List<String> firstInPipe = new ArrayList<String>();
-			  firstInPipe.add(ignorePipe.get(0));
+			  if(ignorePipe != null) {
+				  firstInPipe.add(ignorePipe.get(0));
+			  }
+			  else{
+				  firstInPipe.add(ignoreHost);
+			  }
 			  // @Cesar: Speculate
 			  speculateReduceTaskDueToWriteDiversity(
 					  attemptId, 
@@ -930,6 +968,10 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 					  ignoreHost);
 			  pipelineTable.setWriteDiversityKickedIn(true);
 			  LOG.info("@Cesar: Write diversity kicked in: only one reduce task in job");
+			  // @Cesar: almost done
+			  if(singleReduceHostDetected.get() == true){
+				  singleReduceHostSpeculated.set(true);
+			  }
 			  return true;
 		  }
 	  }
@@ -964,7 +1006,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 			  	}
 		  }
 		  // @Cesar: Is there a common value?
-		  if(commonValueCount == (allReports.size() - finishedCount)){
+		  if(commonValueCount == (allReports.size() - finishedCount) && commonValueCount > 0){
 			  // @Cesar: speculate one reduce task. Which one?
 			  // One that is not finished. So, the first one analyzed
 			  List<String> firstInPipe = new ArrayList<String>();
@@ -1057,6 +1099,16 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     } catch (Exception exc) {
       LOG.error("@Cesar: Catching dangerous exception on checkPipeTable: " + exc.getMessage()
           + " : " + exc.getCause());
+      // @Cesar: Print exc
+      try{
+	      StringWriter errors = new StringWriter();
+	      exc.printStackTrace(new PrintWriter(errors));
+	      LOG.error(errors.toString());
+	      errors.close();
+      }
+      catch(Exception e){
+    	  // @Cesar: Nothing to do, dont care
+      }
       return 0;
     }
   }
@@ -1374,6 +1426,16 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     } catch (Exception exc) {
       LOG.error("@Cesar: Catching dangerous exception on checkFetchRateTable: " + exc.getMessage()
           + " : " + exc.getCause());
+      // @Cesar: Print exc
+      try{
+	      StringWriter errors = new StringWriter();
+	      exc.printStackTrace(new PrintWriter(errors));
+	      LOG.error(errors.toString());
+	      errors.close();
+      }
+      catch(Exception e){
+    	  // @Cesar: Nothing to do, dont care
+      }
       return 0;
     }
   }
