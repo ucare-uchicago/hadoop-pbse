@@ -24,11 +24,11 @@ pp = pprint.PrettyPrinter(indent=2)
 
 cassign = re.compile('.+ Assigned container (.+) to (.+)')
 tasknode = re.compile('.+ TaskAttempt: \[(.+)\].+ on NM: \[(.+):.+\]')
-dataread = re.compile('.+ reporting datanode (.+)')
+dataread = re.compile('.+ reporting datanode (.+) with.*')
 re_date = re.compile("..+[-/]..[-/].. ..:..:..(,...)*")
 re_hb = re.compile(".*statusUpdate.*")
 re_tags_pbse = re.compile(".+ (PBSE-[^ :]+).*")
-re_dnpipeline = re.compile(".+ reporting pipeline info \[(.+)\].*")
+re_dnpipeline = re.compile(".+write transfer rates:.*0=(.+), 1=(.+), 2=(.+)\}.*")
 re_am_finalct = re.compile(".+Final Stats: PendingReds:(.+) ScheduledMaps:(.+) ScheduledReds:(.+) AssignedMaps:(.+) AssignedReds:(.+) CompletedMaps:(.+) CompletedReds:(.+) ContAlloc:(.+) ContRel:(.+) HostLocal:(.+) RackLocal:(.+)")
 re_am_specadd = re.compile(".+addSpeculativeAttempt.+")
 re_jc_appid = re.compile(".+Submitted application (.+)")
@@ -306,7 +306,7 @@ def getContainerStats(app):
       
       match = re_dnpipeline.match(line)
       if match:
-        pipes = match.group(1).split(", ")
+        pipes = [match.group(1), match.group(2), match.group(3)]
         ct["dnpipeline"].append(pipes)
         for p in pipes:
           if SLOWHOST in p:
