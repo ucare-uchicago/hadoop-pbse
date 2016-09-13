@@ -108,10 +108,9 @@ def printPercentileDiff(d1,d2,filename,comp):
   for x in xrange(0,len(X1)):
     X.append(100.0 * (x+1) / totalData)
     Y.append(comp(X1[x],X2[x]))
-#  X.append(100)
-#  Y.append(dat(X1.max(),))
+#    print X1[x],X2[x]
+#  print "---------"
 
-  print X,Y
   f = open(filename, 'w+')
   for i in xrange(0,len(X)):
     f.write("%f\t%f\n" % (X[i],Y[i]))
@@ -125,8 +124,11 @@ def printDiffData(json1,json2,prefix):
   d1 = {k:v for k,v in dat(json1["apps"])}
   d2 = {k:v for k,v in dat(json2["apps"])}
   comp = lambda x,y: 100.0 * (x-y) / x
-  printPercentileDiff(d1,d2,"spdup-"+prefix+".dat",comp)
-  
+  printPercentileDiff(d1,d2,"reduct-"+prefix+".dat",comp)
+
+  comp = lambda x,y: x/y
+  printPercentileDiff(d1,d2,"speedup-"+prefix+".dat",comp)
+
   
 
 def loadJson(fname):
