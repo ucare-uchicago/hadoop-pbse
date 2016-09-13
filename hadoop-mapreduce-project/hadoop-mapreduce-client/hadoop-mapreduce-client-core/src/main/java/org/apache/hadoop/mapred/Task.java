@@ -95,7 +95,7 @@ abstract public class Task implements Writable, Configurable{
   private DatanodeID lastDatanodeId = DatanodeID.createNullDatanodeID();
 
   // huan: last known
-  private DatanodeInfo[] DNPath=DatanodeInfo.createDatanodeInfo();
+  // private DatanodeInfo[] DNPath=DatanodeInfo.createDatanodeInfo();
 
   // riza: PBSE fields
   private static final long PROGRESS_INTERVAL_BEFORE_READ = 500;
@@ -1053,8 +1053,10 @@ abstract public class Task implements Writable, Configurable{
 
     // @Cesar: Just set the output stream
     public void setOutputStream(OutputStream outputStream) {
-    	hdfsOutputStream = (HdfsDataOutputStream)outputStream;
-    	setProgressFlag();
+      synchronized (hdfsOutputStream) {
+        hdfsOutputStream = (HdfsDataOutputStream) outputStream;
+        setProgressFlag();
+      }
     }
     
     //huanke
@@ -1360,13 +1362,15 @@ abstract public class Task implements Writable, Configurable{
               taskStatus.setMapTransferRate(transferRate);
             }
           } else {
-            if (sendPipelineRateInfo) {
-              String[] hostnames = new String[DNPath.length];
-              for (int i = 0; i < DNPath.length; i++) {
-                hostnames[i] = DNPath[i].getHostName();
-              }
-              LOG.debug("@huanke extra reporting pipeline info" + Arrays.toString(hostnames));
-              taskStatus.setDNpath(DNPath);
+            if (sendPipelineRateInfo && hdfsOutputStream != null) {
+              PipelineWriteRateReport report = new PipelineWriteRateReport();
+              // @Cesar: It can be null, but the class can handle that
+              report.setPipeTransferRates(hdfsOutputStream.getPipeTranferRates());
+              report.setPipeOrderedNodes(hdfsOutputStream.getPipeOrderedNodes());
+              // @Cesar: Set report
+              taskStatus.setPipelineWriteRateReport(report);
+              LOG.info("@Cesar: Reporting write transfer rates: " + taskStatus.getPipelineWriteRateReport());
+              LOG.info("@Cesar: Original is: " + report);
             }
           }
 
