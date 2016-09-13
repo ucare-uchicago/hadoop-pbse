@@ -1401,7 +1401,7 @@ public class RMContainerAllocator extends RMContainerRequestor
       }
       
       if (askDistictHost) {
-        if (rejected.isEmpty()) {
+        if (!rejected.isEmpty()) {
           // riza: all original task hosted on the same node, reject the last!
           maxretry--;
           wasRejecting = true;
