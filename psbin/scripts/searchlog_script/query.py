@@ -8,14 +8,18 @@ SELECT = lambda map: [map['attempt'], map['mapnode'], map['lastDatanode']] '''
 
 
 ''' Search job that (involve slownode and run for more than 80s) or had PBSE algorithm triggered '''
-print "appid, duration(s), #maps, #reduce, slowDN, slowMap, slowReduce, pbseTags, mapsTopo"
+print "appid, durations(s), launch_dr, commit_dr, #maps, #reduce, slowDN, slowMap, slowReduce, slowWrite, pbseTags, mapsTopo"
 FROM = table.JOBS
-WHERE = lambda job: (job["isInvolveSlownode"] and float(job["job_duration"]) > 120) or job["tags_PBSE"]!=[]
-SELECT = lambda job: [job["appid"][-3:], job["job_duration"], job["ct_CompletedMaps"], job["ct_CompletedReds"],\
+#WHERE = lambda job: (job["isInvolveSlownode"] and float(job["job_duration"]) > 25) or job["tags_PBSE"]!=[]
+WHERE = lambda job: (job["commit_duration"] > 5)
+SELECT = lambda job: [job["appid"][-3:], job["job_duration"], job["launch_duration"], job["commit_duration"], \
+                      job["ct_CompletedMaps"], job["ct_CompletedReds"],\
                       job["slowNodeInvolvedInDataread"], job["slowNodeInvolvedInMap"], job["slowNodeInvolvedInReduce"],\
+                      job["slowNodeInvolvedInDatawrite"],\
                       " ".join(tag[5:] for tag in job["tags_PBSE"]),\
                       " ".join(['%s:%s' % (key, value) for (key, value) in job["mapsTopo"].items()])]
 ORDERBY = lambda job: (job["job_duration"])
+#ORDERBY = lambda job: (job["appid"])
 
 
 
