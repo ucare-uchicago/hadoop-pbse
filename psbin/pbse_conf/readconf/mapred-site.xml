@@ -231,7 +231,7 @@
 
   <property>
     <name>mapreduce.experiment.enable_fetcher_shutdown</name>
-    <value>false</value>
+    <value>true</value>
     <description>UCARE: Shutdown fetcher thread after map relaunch?</description>
   </property>
 

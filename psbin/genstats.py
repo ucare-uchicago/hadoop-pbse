@@ -300,7 +300,7 @@ def getContainerStats(app):
       if match and match.group(2) == lookForSortTime:
           ct['sortEndTime'] = getLogTime(line)
 
-	    match = re_red_msg.match(line)
+      match = re_red_msg.match(line)
       if match and match.group(2) == lookForReduceTime:
           ct['reduceEndTime'] = getLogTime(line)			
       
