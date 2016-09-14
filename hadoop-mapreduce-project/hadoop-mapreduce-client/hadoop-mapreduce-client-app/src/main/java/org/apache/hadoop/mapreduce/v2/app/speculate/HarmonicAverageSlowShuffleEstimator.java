@@ -16,7 +16,7 @@ public class HarmonicAverageSlowShuffleEstimator extends ShuffleEstimator{
 						  double thressholdTransferRate,
 						  double taskProgressLimit){
 		// @Cesar: So, calculate in here. 
-		LOG.info("@Cesar: Analyzing host " + host + " with " + reportedRates.size() + " reports");
+//		LOG.info("@Cesar: Analyzing host " + host + " with " + reportedRates.size() + " reports");
 		int numLocalReduceTasks = 0;
 		int numRemoteReduceTasks = 0;
 		double remoteTransferRateSum = 0.0;
@@ -34,9 +34,9 @@ public class HarmonicAverageSlowShuffleEstimator extends ShuffleEstimator{
 			ShuffleRateInfo report = reportsIterator.next();
 			// @Cesar: If we finished, we continue
 			if(((double)report.getShuffledBytes() / (double)report.getTotalBytes()) >= taskProgressLimit){
-				LOG.info("@Cesar: The progress of this transfer is "  + ((double)report.getShuffledBytes() / (double)report.getTotalBytes()) + 
-						" >= " + taskProgressLimit + ", so it wont be counted [" + report.getMapTaskAttempId() + " <--- " + 
-						report.getReduceTaskAttempId() + "]");
+//				LOG.info("@Cesar: The progress of this transfer is "  + ((double)report.getShuffledBytes() / (double)report.getTotalBytes()) + 
+//						" >= " + taskProgressLimit + ", so it wont be counted [" + report.getMapTaskAttempId() + " <--- " + 
+//						report.getReduceTaskAttempId() + "]");
 				continue;
 			}
 			// @Cesar: True if we entered the loop
@@ -62,25 +62,26 @@ public class HarmonicAverageSlowShuffleEstimator extends ShuffleEstimator{
 				hasRemoteRates = true;
 			}
 		}
-		if(LOG.isDebugEnabled()){
-			LOG.debug("@Cesar: There are " + numLocalReduceTasks + " fetching from node " + host + " and " + 
-					 numRemoteReduceTasks + " fetching from other nodes");
-		}	
+//		if(LOG.isDebugEnabled()){
+//			LOG.debug("@Cesar: There are " + numLocalReduceTasks + " fetching from node " + host + " and " + 
+//					 numRemoteReduceTasks + " fetching from other nodes");
+//		}	
 		// @Cesar: Now, harmonic weighted average to get average transfer rates
 		double harmonicLocalRate = localTransferWeightSum / (localTransferRateSum != 0? localTransferRateSum : 1.0);
 		double harmonicRemoteRate = remoteTransferWeightSum / (remoteTransferRateSum != 0? remoteTransferRateSum : 1.0);
-		if(LOG.isDebugEnabled()){
-			LOG.debug("@Cesar: weighted harmonic local average: "  + localTransferWeightSum + " / " + (localTransferRateSum != 0? localTransferRateSum : 1.0) + 
-					" = " + harmonicLocalRate);
-			LOG.debug("@Cesar: weighted harmonic remote average: "  + remoteTransferWeightSum + " / " + (remoteTransferRateSum != 0? remoteTransferRateSum : 1.0) + 
-					" = " + harmonicRemoteRate);
-		}
+//		if(LOG.isDebugEnabled()){
+//			LOG.debug("@Cesar: weighted harmonic local average: "  + localTransferWeightSum + " / " + (localTransferRateSum != 0? localTransferRateSum : 1.0) + 
+//					" = " + harmonicLocalRate);
+//			LOG.debug("@Cesar: weighted harmonic remote average: "  + remoteTransferWeightSum + " / " + (remoteTransferRateSum != 0? remoteTransferRateSum : 1.0) + 
+//					" = " + harmonicRemoteRate);
+//		}
 		// @Cesar: So, is this node slow? It is so if all remote task report it as slow or all local tasks 
 		// do. Why? Well, if all remote tasks say its slow but local task say the opposite then its ok to
 		// relaunch all its map tasks, since  remote tasks wont finish. The same applies for slow local and fast remote
 		// since the important thing is that all reduce tasks can finish
 		boolean result = enteredLoop && (hasLocalRates && harmonicLocalRate <= thressholdTransferRate ) || 
 				(hasRemoteRates && harmonicRemoteRate <= thressholdTransferRate);
+		if (result)
 		LOG.info("@Cesar: Analisys for host " + host + ": " + "enteredLoop=" + enteredLoop  + " && (hasLocalRates=" + hasLocalRates + " && " + 
 				harmonicLocalRate + " <= " + thressholdTransferRate + ") || (hasRemoteRates=" + hasRemoteRates + 
 				" && " + harmonicRemoteRate + " <= " + thressholdTransferRate +") = " + result);

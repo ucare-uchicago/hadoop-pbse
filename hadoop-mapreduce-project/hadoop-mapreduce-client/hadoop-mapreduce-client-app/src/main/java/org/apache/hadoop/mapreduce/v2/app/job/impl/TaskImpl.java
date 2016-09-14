@@ -631,7 +631,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     }else if ((this instanceof ReduceTaskImpl)
         && conf.getBoolean("mapreduce.policy.pbse.write_new_pipeline", false)){
       //huanke
-      LOG.info("@huanke lauch1 a backup reduce task"+this.getID().getId());
+//      LOG.info("@huanke lauch1 a backup reduce task"+this.getID().getId());
       ((ReduceTaskImpl) this).updateTaskOutputDN();
     }
 
@@ -640,12 +640,12 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     //schedule the nextAttemptNumber
     if (failedAttempts.size() > 0) {
       // huanke
-      LOG.info("@huanke addAndScheduleAttempt[1] TA_RESCHEDULE"+attempt.getID());
+//      LOG.info("@huanke addAndScheduleAttempt[1] TA_RESCHEDULE"+attempt.getID());
       eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
           TaskAttemptEventType.TA_RESCHEDULE));
     } else {
       // huanke	
-      LOG.info("@huanke addAndScheduleAttempt[1] TA_SCHEDULE"+attempt.getID());
+//      LOG.info("@huanke addAndScheduleAttempt[1] TA_SCHEDULE"+attempt.getID());
       eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
           TaskAttemptEventType.TA_SCHEDULE));
     }
@@ -669,7 +669,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
      ((MapTaskImpl) this).updateTaskSplitMetaInfo();
    }else{
      //huanke
-     LOG.info("@huanke lauch1 a backup reduce task"+this.getID().getId());
+//     LOG.info("@huanke lauch1 a backup reduce task"+this.getID().getId());
      ((ReduceTaskImpl) this).updateTaskOutputDN();
    }
 
@@ -739,7 +739,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     }else{
       //huanke
       this.ignoreNode=ignoreNode;
-      LOG.info("@huanke lauch2 a backup reduce task "+this.getID().getId()+ignoreNode+this.ignoreNode);
+//      LOG.info("@huanke lauch2 a backup reduce task "+this.getID().getId()+ignoreNode+this.ignoreNode);
       ((ReduceTaskImpl) this).updateTaskOutputDN();
     }
 
@@ -749,11 +749,11 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     inProgressAttempts.add(attempt.getID());
     //schedule the nextAttemptNumber
     if (failedAttempts.size() > 0) {
-      LOG.info("@huanke TA_RESCHEDULE"+attempt.getID());
+//      LOG.info("@huanke TA_RESCHEDULE"+attempt.getID());
       eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
               TaskAttemptEventType.TA_RESCHEDULE));
     } else {
-      LOG.info("@huanke TA_SCHEDULE"+attempt.getID());
+//      LOG.info("@huanke TA_SCHEDULE"+attempt.getID());
       eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
               TaskAttemptEventType.TA_SCHEDULE));
     }
@@ -1118,7 +1118,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 
     @Override
     public void transition(TaskImpl task, TaskEvent event) {
-      LOG.info("@huanke InitialScheduleTransition"+task.getID());
+//      LOG.info("@huanke InitialScheduleTransition"+task.getID());
       task.addAndScheduleAttempt(Avataar.VIRGIN);
       task.scheduledTime = task.clock.getTime();
       task.sendTaskStartedEvent();
@@ -1135,14 +1135,14 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 
 	  @Override
 	  public void transition(TaskImpl task, TaskEvent event) {
-		  LOG.info("@huanke Scheduling a redundant attempt for task " + task.taskId);
+//		  LOG.info("@huanke Scheduling a redundant attempt for task " + task.taskId);
 		  //huanke Scheduling a redundant attempt for task task_1470006109820_0002_m_000000
 		  //huanke Scheduling a redundant attempt for task task_1470006109820_0002_r_000001
 		  DatanodeInfo ignoreNode = event.getIgnoreNode();
 		  List<String> badPipe = event.getBadPipe();
 		  String badHost = event.getBadHost();
 		  if(ignoreNode!=null && task.getType()==TaskType.REDUCE){
-			  LOG.info("@huanke SPECULATIVE1 and ignoreNode--"+ignoreNode);
+//			  LOG.info("@huanke SPECULATIVE1 and ignoreNode--"+ignoreNode);
 			  task.addAndScheduleAttempt(Avataar.SPECULATIVE, ignoreNode);
 		  }
 		  else if(badPipe != null && badHost != null && !event.isWriteDiversity()){
@@ -1175,7 +1175,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 			  // for diversity purposes
 			  
 		  }else{
-			  LOG.info("@huanke SPECULATIVE2 ");
+//			  LOG.info("@huanke SPECULATIVE2 ");
 			  task.addAndScheduleAttempt(Avataar.SPECULATIVE);
 		  }
 	  }
@@ -1417,7 +1417,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 	  
 	@Override
     public TaskStateInternal transition(TaskImpl task, TaskEvent event) {
-	  LOG.info("@huanke  T_ATTEMPT_KILLED");	
+//	  LOG.info("@huanke  T_ATTEMPT_KILLED");	
       TaskAttemptId attemptId = null;
       if (event instanceof TaskTAttemptEvent) {
         TaskTAttemptEvent castEvent = (TaskTAttemptEvent) event;
