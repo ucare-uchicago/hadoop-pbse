@@ -266,7 +266,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 
     // riza
     this.maxSpeculationDelay =
-        conf.getInt(MRJobConfig.PBSE_MAP_DELAY_INTERVAL_MS, 0) 
+        conf.getInt(MRJobConfig.PBSE_MAP_DELAY_INTERVAL_MS,
+            MRJobConfig.DEFAULT_PBSE_MAP_DELAY_INTERVAL_MS) 
         / (int) this.soonestRetryAfterNoSpeculate;
     this.mapPathSpeculationEnabled =
         conf.getBoolean(MRJobConfig.PBSE_MAP_PATH_SPECULATION_ENABLED,

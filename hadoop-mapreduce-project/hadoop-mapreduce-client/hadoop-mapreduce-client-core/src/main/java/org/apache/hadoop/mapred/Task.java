@@ -101,6 +101,7 @@ abstract public class Task implements Writable, Configurable{
   private static final long PROGRESS_INTERVAL_BEFORE_READ = 500;
   private static final long PROGRESS_INTERVAL_BEFORE_FIRST_HEARTBEAT = 100;
   private static final long PROGRESS_INTERVAL_AFTER_DATANODE_SWITCH = 100;
+  private static final long MAX_HEARTBEAT_DELAY = 12000;
   private HdfsDataInputStream hdfsInputStream = null;
   private boolean sendDatanodeInfo;
   private boolean avoidSingleSource;
@@ -798,7 +799,9 @@ abstract public class Task implements Writable, Configurable{
               PROGRESS_INTERVAL);
 
       // riza: wait 1 minute times until lastDatanodeID set
-      int mapRetriesTime = isMapTask() ? 60000 : 0;
+      int mapRetriesTime = isMapTask() ?
+          conf.getInt(MRJobConfig.PBSE_MAP_DELAY_INTERVAL_MS,
+              MRJobConfig.DEFAULT_PBSE_MAP_DELAY_INTERVAL_MS)  : 0;
       // riza: shall we query for switch instruction?
       boolean askForSwitch = isMapTask() && avoidSingleSource;
       // riza: if datanode or DNPath switched, then immediately report back
@@ -806,7 +809,9 @@ abstract public class Task implements Writable, Configurable{
       boolean hasSendInitialHB = false;
       
       // 1 minute retry for reduce progress
-      int sendReduceProgress = !isMapTask() ? 60000 / proginterval : 0;
+      int sendReduceProgress = !isMapTask() ?
+          conf.getInt(MRJobConfig.PBSE_MAP_DELAY_INTERVAL_MS,
+              MRJobConfig.DEFAULT_PBSE_MAP_DELAY_INTERVAL_MS)  : 0;
       
       // get current flag value and reset it as well
       boolean sendProgress = resetProgressFlag();
@@ -889,11 +894,11 @@ abstract public class Task implements Writable, Configurable{
                 || taskStatus.getReportedFetchRates().getFetchRateReport().size() == 0);
             boolean shouldNotSendHdfsWRiteProgress = (hdfsOutputStream == null);
             if (shouldNotSendHdfsWRiteProgress && shouldNotSendShuffleProgress) {
-              sendReduceProgress -= 1;
+              sendReduceProgress -= PROGRESS_INTERVAL_BEFORE_READ;
               sendProgress = sendProgress || resetProgressFlag();
               LOG.debug("riza: dataoutputstream still null and no shuffle reports to send, wait for next "
                   + sendReduceProgress
-                  + " retry. [shouldNotSendShuffleProgress="
+                  + " ms. [shouldNotSendShuffleProgress="
                   + shouldNotSendShuffleProgress
                   + ", shouldNotSendHdfsWRiteProgress="
                   + shouldNotSendHdfsWRiteProgress + "]");
