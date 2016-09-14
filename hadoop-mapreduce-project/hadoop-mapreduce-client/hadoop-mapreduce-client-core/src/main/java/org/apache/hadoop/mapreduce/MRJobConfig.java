@@ -889,6 +889,8 @@ public interface MRJobConfig {
   
   public static final String PBSE_MAP_DELAY_INTERVAL_MS =
       "mapreduce.policy.faread.maximum_speculation_delay";
+  public static final int DEFAULT_PBSE_MAP_DELAY_INTERVAL_MS =
+      0;
 
   public static final String PBSE_MAP_PATH_SPECULATION_ENABLED =
       "mapreduce.pbse.map.path-speculation.enabled";

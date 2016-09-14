@@ -267,7 +267,7 @@ public class RMContainerAllocator extends RMContainerRequestor
     int completedTasks = completedMaps + getJob().getCompletedReduces();
     if ((lastCompletedTasks != completedTasks) ||
           (scheduledRequests.maps.size() > 0)) {
-      LOG.info("@huanke-->completedMaps: "+completedMaps+"completedReduces: "+getJob().getCompletedReduces());
+//      LOG.info("@huanke-->completedMaps: "+completedMaps+"completedReduces: "+getJob().getCompletedReduces());
 //      huanke-->completedMaps: 0completedReduces: 0
 //      huanke-->completedMaps: 0completedReduces: 0
 //      huanke-->completedMaps: 0completedReduces: 0
@@ -275,7 +275,7 @@ public class RMContainerAllocator extends RMContainerRequestor
 //      huanke-->completedMaps: 2completedReduces: 1
 //      huanke-->completedMaps: 2completedReduces: 2
 
-      LOG.info("@huanke-->lastCompletedTasks: "+lastCompletedTasks+"completedTasks: "+completedTasks);
+//      LOG.info("@huanke-->lastCompletedTasks: "+lastCompletedTasks+"completedTasks: "+completedTasks);
 //      huanke-->lastCompletedTasks: 0completedTasks: 0
 //      huanke-->lastCompletedTasks: 0completedTasks: 0
 //      huanke-->lastCompletedTasks: 0completedTasks: 0
@@ -288,7 +288,7 @@ public class RMContainerAllocator extends RMContainerRequestor
     }
 
     if (recalculateReduceSchedule) {
-      LOG.info("@huanke--> RMContainerAllocator.heartbeat()-->recalculateReduceSchedule? "+recalculateReduceSchedule);
+//      LOG.info("@huanke--> RMContainerAllocator.heartbeat()-->recalculateReduceSchedule? "+recalculateReduceSchedule);
       preemptReducesIfNeeded();
       scheduleReduces(
           getJob().getTotalMaps(), completedMaps,
