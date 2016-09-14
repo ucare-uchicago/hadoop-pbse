@@ -38,7 +38,7 @@
 
   <property>
     <name>dfs.hosts</name>
-    <value>/proj/ucare/riza/hadoop-2.7.1.faread/psbin/pbse_conf/hadoop-etc/hadoop-2.7.1-production</value>
+    <value>/proj/ucare/riza/hadoop-2.7.1.faread/psbin/pbse_conf/hadoop-etc/hadoop-2.7.1-production/slaves</value>
   </property>
 
   <property>
