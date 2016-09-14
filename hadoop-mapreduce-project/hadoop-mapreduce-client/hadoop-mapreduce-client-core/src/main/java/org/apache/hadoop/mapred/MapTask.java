@@ -372,6 +372,7 @@ public class MapTask extends Task {
  @SuppressWarnings("unchecked")
  private <T> T getSplitDetails(Path file, long offset)
   throws IOException {
+   long inputSplitStart = System.currentTimeMillis();
    FileSystem fs = file.getFileSystem(conf);
    FSDataInputStream inFile = fs.open(file);
 
@@ -413,6 +414,8 @@ public class MapTask extends Task {
    getCounters().findCounter(
        TaskCounter.SPLIT_RAW_BYTES).increment(pos - offset);
    inFile.close();
+   long inputSplitStop = System.currentTimeMillis();
+   LOG.info("riza: getSplitDetails took " + (inputSplitStop - inputSplitStart) + " ms");
    return split;
  }
   
@@ -468,9 +471,12 @@ public class MapTask extends Task {
     updateJobWithSplit(job, inputSplit);
     reporter.setInputSplit(inputSplit);
 
+    long recordReaderStart = System.currentTimeMillis();
     RecordReader<INKEY,INVALUE> in = isSkipping() ? 
         new SkippingRecordReader<INKEY,INVALUE>(umbilical, reporter, job) :
           new TrackedRecordReader<INKEY,INVALUE>(reporter, job);
+    long recordReaderStop = System.currentTimeMillis();
+    LOG.info("riza: RecordReader creation took " + (recordReaderStop - recordReaderStart) + " ms");
     job.setBoolean(JobContext.SKIP_RECORDS, isSkipping());
 
     // riza: pass HdfsDataInputStream to TaskReporter
