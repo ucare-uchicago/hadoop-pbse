@@ -1053,9 +1053,15 @@ abstract public class Task implements Writable, Configurable{
 
     // @Cesar: Just set the output stream
     public void setOutputStream(OutputStream outputStream) {
-      synchronized (hdfsOutputStream) {
-        hdfsOutputStream = (HdfsDataOutputStream) outputStream;
-        setProgressFlag();
+      if(hdfsOutputStream != null){
+	      synchronized (hdfsOutputStream) {
+	        hdfsOutputStream = (HdfsDataOutputStream) outputStream;
+	        setProgressFlag();
+	      }
+      }
+      else{
+    	  hdfsOutputStream = (HdfsDataOutputStream) outputStream;
+	      setProgressFlag();
       }
     }
     
