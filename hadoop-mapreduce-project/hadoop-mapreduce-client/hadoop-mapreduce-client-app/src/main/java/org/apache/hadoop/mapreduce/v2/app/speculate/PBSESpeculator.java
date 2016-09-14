@@ -525,8 +525,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     		  LOG.info("@Cesar: Detected single reduce host!");
     	  }
     	  else{
-    		  LOG.info("@Cesar: No single reducer detected: " + numReduceTasks + ", " + singleReduceHostDetected.get() +
-    				  ", " + event.getMapperHost() + ", " + event.getReportedStatus().id);
+//    		  LOG.info("@Cesar: No single reducer detected: " + numReduceTasks + ", " + singleReduceHostDetected.get() +
+//    				  ", " + event.getMapperHost() + ", " + event.getReportedStatus().id);
     	  }
       }
       break;
@@ -642,7 +642,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     synchronized (shuffleTable) {
       if (shuffleTable.wasSpeculated(taskID)) {
         // @Cesar: Return in here, this wont be speculated again
-        LOG.info("@Cesar: Task " + taskID + " wont be speculated again.");
+//        LOG.info("@Cesar: Task " + taskID + " wont be speculated again.");
         return ON_SCHEDULE;
       }
     }
@@ -1022,7 +1022,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 		  }
 	  }
 	  // @Cesar: Ready, return
-	  LOG.info("@Cesar: No write diversity needed, the reports shows that is not necessary");
+//	  LOG.info("@Cesar: No write diversity needed, the reports shows that is not necessary");
 	  return false;
   }
   
@@ -1041,16 +1041,16 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     	  boolean spec = checkWriteDiversity(pipeTable);
     	  if(spec) return 1;
       }
-      LOG.info("@Cesar: Starting pipe check");
+//      LOG.info("@Cesar: Starting pipe check");
       // @Cesar: Num of task speculated
       int numSpecs = 0;
       // @Cesar: Now process all entries
       SimpleSlowHdfsWriteEstimator estimator = new SimpleSlowHdfsWriteEstimator();
       Map<HdfsWriteHost, PipelineWriteRateReport> reports = pipeTable.getReports();
       List<HdfsWriteHost> markedForDelete = new ArrayList<>();
-      LOG.info("@Cesar: We have " + reports.size() + " to check");
+//      LOG.info("@Cesar: We have " + reports.size() + " to check");
       for(Entry<HdfsWriteHost, PipelineWriteRateReport> report : reports.entrySet()){
-    	  LOG.info("@Cesar: Analizing " + report.getKey() + " with " + report.getValue());
+//    	  LOG.info("@Cesar: Analizing " + report.getKey() + " with " + report.getValue());
     	  // @Cesar: Analyze all this reports
     	  if(!pipeTable.isFinished(report.getKey().getReduceTaskAttempt().getTaskId())){
     		  // @Cesar: Is slow?
@@ -1078,15 +1078,15 @@ public class PBSESpeculator extends AbstractService implements Speculator {
         			  pipeTable.markAsSpeculated(report.getKey().getReduceTaskAttempt().getTaskId());
     			  }
     			  else{
-    				  LOG.info("@Cesar: The pipe is slow, but we have not received enough reports yet or"
-    				  		+ " we are trying to speculate something that should not be...");
+//    				  LOG.info("@Cesar: The pipe is slow, but we have not received enough reports yet or"
+//    				  		+ " we are trying to speculate something that should not be...");
     			  }
     			  
     		  }
     	  }
     	  else{
-			  LOG.info("@Cesar: Task " + report.getKey().getReduceTaskAttempt().getTaskId() + 
-			  			 " is already finished, we wont analyze it");
+//			  LOG.info("@Cesar: Task " + report.getKey().getReduceTaskAttempt().getTaskId() + 
+//			  			 " is already finished, we wont analyze it");
 			  // @Cesar: Also clean...
 			  markedForDelete.add(report.getKey());
 			  
@@ -1153,7 +1153,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       if (lists.isEmpty()) {
         return null;
       } else {
-        LOG.info("@huanke lists1: " + lists);
+//        LOG.info("@huanke lists1: " + lists);
         List<DatanodeInfo> commonNodes = new ArrayList<DatanodeInfo>();
         commonNodes.addAll(lists.get(0));
         for (ListIterator<ArrayList<DatanodeInfo>> iter = lists.listIterator(); iter
@@ -1226,8 +1226,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       ArrayList<DatanodeInfo> dNpath) {
     String stateString = reportedStatus.taskState.toString();
 
-    LOG.info("@huanke at the beginning" + TaskAndPipeline + " size: "
-        + TaskAndPipeline.size() + dNpath + reportedStatus.Pipeline);
+//    LOG.info("@huanke at the beginning" + TaskAndPipeline + " size: "
+//        + TaskAndPipeline.size() + dNpath + reportedStatus.Pipeline);
 
     TaskAttemptId attemptID = reportedStatus.id;
     TaskId taskID = attemptID.getTaskId();
@@ -1236,7 +1236,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     synchronized (TaskAndPipeline) {
       if (taskID.getTaskType() == TaskType.REDUCE) {
         if (dNpath.size() == 0) {
-          LOG.info("@huanke TaskAndPipeline is empty at this moment");
+//          LOG.info("@huanke TaskAndPipeline is empty at this moment");
         } else {
           if (TaskSet.add(taskID)) {
             TaskAndPipeline.put(taskID, dNpath);
@@ -1244,8 +1244,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
         }
       }
     }
-    LOG.info("@huanke PBSESpeculator TaskAndPipeline" + TaskAndPipeline
-        + TaskAndPipeline.size());
+//    LOG.info("@huanke PBSESpeculator TaskAndPipeline" + TaskAndPipeline
+//        + TaskAndPipeline.size());
   }
 
   // huanke reduce task does not launch backup task as map task like T_ADD_SPEC_ATTEMPT
@@ -1292,7 +1292,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 
         }
         // @Cesar: Done
-        LOG.info("@Cesar: Stored report with " + info);
+//        LOG.info("@Cesar: Stored report with " + info);
       }
     } else {
       // @Cesar: Small error, just log it. It should never happen
@@ -1312,8 +1312,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 	   // @Cesar: So, lets store this report
 	   synchronized(pipeRateUpdateEvents){
 		   pipeRateUpdateEvents.put(new HdfsWriteHost(reduceHost, reduceTaskAttempt), report);
-		   LOG.info("@Cesar: Report stored for " + reduceHost + 
-				   " and " + reduceTaskAttempt + " : " + report);
+//		   LOG.info("@Cesar: Report stored for " + reduceHost + 
+//				   " and " + reduceTaskAttempt + " : " + report);
 	   }
    }
    else{
@@ -1346,14 +1346,14 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       // one mapper, and choose if we are going to speculate
       // or not
       // @Cesar: So, iterate the fetch rate table
-      LOG.info("@Cesar: Starting fetch rate speculation check");
+//      LOG.info("@Cesar: Starting fetch rate speculation check");
       Map<ShuffleHost, Set<ShuffleRateInfo>> allReports = shuffleTable
           .getReports();
       // @Cesar: Done released object, now go
       // Lets iterate
       if (allReports != null) {
         // @Cesar: Mark this hosts to be checked to delete if no entries
-        LOG.info("@Cesar: We have " + allReports.size() + " map hosts to check");
+//        LOG.info("@Cesar: We have " + allReports.size() + " map hosts to check");
         Iterator<Entry<ShuffleHost, Set<ShuffleRateInfo>>> fetchRateTableIterator = allReports
             .entrySet().iterator();
         while (fetchRateTableIterator.hasNext()) {
@@ -1362,9 +1362,9 @@ public class PBSESpeculator extends AbstractService implements Speculator {
           // @Cesar: Do we have enough reports to speculate something??
           if (!shuffleTable.canSpeculate(nextEntry.getKey().getMapHost())) {
             // @Cesar: Continue loop
-            LOG.info("@Cesar: No speculation possible for host "
-                + nextEntry.getKey().getMapHost()
-                + " since it does not have enough reports");
+//            LOG.info("@Cesar: No speculation possible for host "
+//                + nextEntry.getKey().getMapHost()
+//                + " since it does not have enough reports");
             continue;
           }
           // @Cesar: So, in this row we have one map host.
@@ -1407,9 +1407,9 @@ public class PBSESpeculator extends AbstractService implements Speculator {
                 // @Cesar: This is the real number of speculated map tasks
                 ++numSpeculatedMapTasks;
               } else {
-                LOG.info("@Cesar: Not going to relaunch " + next
-                    + " since task " + next.getTaskId()
-                    + " was speculated already");
+//                LOG.info("@Cesar: Not going to relaunch " + next
+//                    + " since task " + next.getTaskId()
+//                    + " was speculated already");
               }
               // @Cesar: Clean host
               shuffleTable.cleanHost(nextEntry.getKey().getMapHost());
@@ -1421,7 +1421,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
           }
         }
       }
-      LOG.info("@Cesar: Finished fetch rate speculation check");
+//      LOG.info("@Cesar: Finished fetch rate speculation check");
       return numSpeculatedMapTasks;
     } catch (Exception exc) {
       LOG.error("@Cesar: Catching dangerous exception on checkFetchRateTable: " + exc.getMessage()

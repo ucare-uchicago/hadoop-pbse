@@ -2109,7 +2109,7 @@ public abstract class TaskAttemptImpl implements
 
       //huanke
       ArrayList<DatanodeInfo> DNpath=newReportedStatus.Pipeline;
-      LOG.info("@huanke StatusUpdater here, get DNpath from TaskAttemptListenerImpl.java"+DNpath);
+//      LOG.info("@huanke StatusUpdater here, get DNpath from TaskAttemptListenerImpl.java"+DNpath);
       
       // @Cesar: Got the fetch report
       FetchRateReport fetchRateReport = taskAttempt.reportedStatus.fetchRateReport;
