@@ -247,6 +247,12 @@
     <description>UCARE: Enable hdfs write speculation</description>
   </property>
 
+  <property>
+    <name>mapreduce.experiment.enable_single_reducer_speculation</name>
+    <value>false</value>
+    <description>UCARE: When the job only has one reduce, always speculate</description>
+  </property>  
+
   <!-- @Cesar: end -->
 
   <!-- @huanke: custom begin -->

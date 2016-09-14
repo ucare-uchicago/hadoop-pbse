@@ -1154,8 +1154,9 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
       		  		"Task " + task.getID() + " running at host " + badHost + " was speculated due to slow pipeline on write. "
       		  				+ "The reported pipeline is " + Arrays.toString(badPipe.toArray())
 					  		+ " and is going to be rerun at another host."));
-			  // @Cesar: Blacklist the bad host. I will blacklist them all for now
-			  for(String no : badPipe) task.appContext.getBlacklistedNodes().add(no);
+			  // @Cesar: Blacklist the bad host. So, this task will
+			  // run at another host and also the pipeline wont include
+			  // the bad hosts
 	    	  task.appContext.getBlacklistedNodes().add(badHost);
 	    	  if(LOG.isDebugEnabled()){
 	    		  LOG.debug("@Cesar: Blacklisted hosts due to slow hdfs write" + badHost + 
@@ -1171,8 +1172,9 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
       		  		"Task " + task.getID() + " running at host " + badHost + " was speculated due to pipeline diversity. "
       		  				+ "The first node on pipeline should be ignored (" + Arrays.toString(badPipe.toArray())
 					  		+ ") in the new attempt."));
-			  // @Cesar: We should not blacklist in here, this is just 
-			  // for diversity purposes
+			  // @Cesar: In this case i will blacklist, i want the
+			  // spec to run at another node
+			  task.appContext.getBlacklistedNodes().add(badHost);
 			  
 		  }else{
 //			  LOG.info("@huanke SPECULATIVE2 ");

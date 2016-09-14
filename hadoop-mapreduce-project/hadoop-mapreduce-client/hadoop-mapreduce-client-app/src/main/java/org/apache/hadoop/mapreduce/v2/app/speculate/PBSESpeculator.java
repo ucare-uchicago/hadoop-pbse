@@ -155,6 +155,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   private AtomicReference<String> singleReduceHost = new AtomicReference<>(null);
   private AtomicBoolean singleReduceHostSpeculated = new AtomicBoolean(false);
   private AtomicReference<TaskAttemptId> singleReduceTaskAttempt = new AtomicReference<>(null);
+  private boolean enableSingleReduceSpeculation = false;
   
   // @Cesar: Store pipe updates here
   private Map<HdfsWriteHost, PipelineWriteRateReport> pipeRateUpdateEvents = new HashMap<>();
@@ -259,7 +260,9 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     		"mapreduce.experiment.enable_write_rate_speculation", false);
     this.hdfsWriteSlowNodeThresshold = conf.getDouble(
     		"mapreduce.experiment.write_rate_speculation_slow_thresshold", 0.0);
-    
+    this.enableSingleReduceSpeculation = conf.getBoolean(
+    		"mapreduce.experiment.enable_single_reducer_speculation", false);
+    		
     // huanke
     this.reduceIntersectionSpeculationEnabled = conf.getBoolean(
         "pbse.enable.for.reduce.pipeline", false);
@@ -937,7 +940,9 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 		  // @Cesar: No reports, no write diversity needed
 		  return false;
 	  }
-	  else if(singleReduceHostDetected.get() == true && singleReduceHostSpeculated.get() == false){
+	  else if(singleReduceHostDetected.get() == true 
+			  && singleReduceHostSpeculated.get() == false
+			  && enableSingleReduceSpeculation){
 		  // @Cesar: Only one report, is this the only reduce task
 		  // on the job? If so, speculate it  
 		  if(numReduceTasks == 1 && singleReduceHostSpeculated.get() == false){
