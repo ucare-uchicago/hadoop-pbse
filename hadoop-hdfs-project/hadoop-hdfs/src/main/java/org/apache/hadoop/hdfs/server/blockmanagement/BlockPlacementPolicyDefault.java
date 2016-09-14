@@ -798,11 +798,13 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
 //      huanke excluded nodes list: [10.1.1.3:50010, 10.1.1.4:50010, 10.1.1.6:50010, 10.1.1.2:50010]
 //      huanke chosenNodeHK: 10.1.1.5
 
-      boolean flag=false;
+      // boolean flag=false;
 
       DatanodeDescriptor chosenNode =
               (DatanodeDescriptor)clusterMap.chooseRandom(scope);
-      LOG.info("@huanke chosenNodeHK: " + chosenNode.getIpAddr());
+      // @Cesar: Commenting this out, original task can pick any node
+      
+      /*LOG.info("@huanke chosenNodeHK: " + chosenNode.getIpAddr());
         for(String slow: slowDataNodes){
           LOG.info("@huanke continue slow1: "+slow);
           LOG.info("@huanke continue getHostname: "+chosenNode.getHostName());
@@ -811,11 +813,11 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
             flag=true;
             continue;
           }
-      }
+      }*/
 
-      if(flag){
+      /*if(flag){
         continue;
-      }
+      }*/
       LOG.info("@huanke:  final chosenNode: " + chosenNode.getIpAddr());
       if (excludedNodes.add(chosenNode)) { //was not in the excluded list
         LOG.info("@huanke: inside excludedNodes if statement. excluded nodes size: " + excludedNodes.size());
@@ -997,13 +999,6 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
     return firstChosen;
 
   }
-
-
-
-
-
-
-
 
 
   /**
