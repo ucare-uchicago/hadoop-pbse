@@ -904,7 +904,6 @@ public class DFSOutputStream extends FSOutputSummer
             					" containing " + ack.getNumOfTimeStamps() + " timestamps");
             for (int i = 0; i < ack.getNumOfReplies()  
             				&& dfsClient.clientRunning
-            				&& ack.getNumOfDescriptionStrings() == ack.getNumOfReplies()
             				&& ack.getNumOfTimeStamps() == ack.getNumOfReplies()
             				&& ack.getNumOfTimeToReceivePacket() == ack.getNumOfReplies(); ++i) {
             	final Status reply = PipelineAck.getStatusFromHeader(ack
