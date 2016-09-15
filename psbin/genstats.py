@@ -168,6 +168,7 @@ def initContainerStats():
 
 def initJobClientStats():
   jc = {
+    "jc_out_file": "",
     "time_submit": currentTimeString(),
     "time_start": currentTimeString(),
     "time_stop": currentTimeString(),
@@ -360,6 +361,7 @@ def getJobClientStats(apps):
 
       f = open(jcoutput)
       jc = initJobClientStats()
+      jc["jc_out_file"] = fname
       for line in f:
         match = re_jc_appid.match(line)
         if match:
