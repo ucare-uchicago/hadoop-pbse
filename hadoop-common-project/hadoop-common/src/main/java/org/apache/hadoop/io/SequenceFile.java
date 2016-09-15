@@ -1767,6 +1767,51 @@ public class SequenceFile {
       // really set up
       initialize(filename, file, start, len, conf, headerOnly != null);
     }
+    
+    // riza: duplicate constructor to catch input stream early
+    public Reader(Configuration conf, InputStreamFinder finder, Option... opts) throws IOException {
+      // Look up the options, these are null if not set
+      FileOption fileOpt = Options.getOption(FileOption.class, opts);
+      InputStreamOption streamOpt = 
+        Options.getOption(InputStreamOption.class, opts);
+      StartOption startOpt = Options.getOption(StartOption.class, opts);
+      LengthOption lenOpt = Options.getOption(LengthOption.class, opts);
+      BufferSizeOption bufOpt = Options.getOption(BufferSizeOption.class,opts);
+      OnlyHeaderOption headerOnly = 
+        Options.getOption(OnlyHeaderOption.class, opts);
+      // check for consistency
+      if ((fileOpt == null) == (streamOpt == null)) {
+        throw new 
+          IllegalArgumentException("File or stream option must be specified");
+      }
+      if (fileOpt == null && bufOpt != null) {
+        throw new IllegalArgumentException("buffer size can only be set when" +
+                                           " a file is specified.");
+      }
+      // figure out the real values
+      Path filename = null;
+      FSDataInputStream file;
+      final long len;
+      if (fileOpt != null) {
+        filename = fileOpt.getValue();
+        FileSystem fs = filename.getFileSystem(conf);
+        int bufSize = bufOpt == null ? getBufferSize(conf): bufOpt.getValue();
+        len = null == lenOpt
+          ? fs.getFileStatus(filename).getLen()
+          : lenOpt.getValue();
+        file = openFile(fs, filename, bufSize, len);
+      } else {
+        len = null == lenOpt ? Long.MAX_VALUE : lenOpt.getValue();
+        file = streamOpt.getValue();
+      }
+ 
+      // riza: catch the input stream
+      finder.setInputStream(file);
+
+      long start = startOpt == null ? 0 : startOpt.getValue();
+      // really set up
+      initialize(filename, file, start, len, conf, headerOnly != null);
+    }
 
     /**
      * Construct a reader by opening a file from the given file system.
@@ -1780,6 +1825,12 @@ public class SequenceFile {
     public Reader(FileSystem fs, Path file, 
                   Configuration conf) throws IOException {
       this(conf, file(file.makeQualified(fs)));
+    }
+    
+    @Deprecated
+    public Reader(FileSystem fs, Path file, 
+                  Configuration conf, InputStreamFinder finder) throws IOException {
+      this(conf, finder, file(file.makeQualified(fs)));
     }
 
     /**

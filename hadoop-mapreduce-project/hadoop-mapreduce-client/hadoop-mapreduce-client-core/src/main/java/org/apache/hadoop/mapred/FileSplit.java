@@ -26,6 +26,7 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.classification.InterfaceStability.Evolving;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapred.Task.TaskReporter;
 
 /** A section of an input file.  Returned by {@link
  * InputFormat#getSplits(JobConf, int)} and passed to
@@ -35,7 +36,8 @@ import org.apache.hadoop.fs.Path;
 @InterfaceStability.Stable
 public class FileSplit extends org.apache.hadoop.mapreduce.InputSplit 
                        implements InputSplitWithLocationInfo {
-  org.apache.hadoop.mapreduce.lib.input.FileSplit fs; 
+  org.apache.hadoop.mapreduce.lib.input.FileSplit fs;
+  InputStreamInterceptor interceptor;
   protected FileSplit() {
     fs = new org.apache.hadoop.mapreduce.lib.input.FileSplit();
   }
@@ -111,5 +113,14 @@ public class FileSplit extends org.apache.hadoop.mapreduce.InputSplit
   @Evolving
   public SplitLocationInfo[] getLocationInfo() throws IOException {
     return fs.getLocationInfo();
+  }
+  
+  // riza: hack to fish out HDFSInputStream
+  public void setInterceptor(InputStreamInterceptor interceptor) {
+    this.interceptor = interceptor;
+  }
+  
+  public InputStreamInterceptor getInterceptor() {
+    return this.interceptor;
   }
 }

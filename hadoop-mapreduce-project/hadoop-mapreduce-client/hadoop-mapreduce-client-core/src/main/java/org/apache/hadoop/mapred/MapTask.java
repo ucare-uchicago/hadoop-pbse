@@ -468,6 +468,11 @@ public class MapTask extends Task {
     InputSplit inputSplit = getSplitDetails(new Path(splitIndex.getSplitLocation()),
            splitIndex.getStartOffset());
 
+    InputStreamInterceptor interceptor = new InputStreamInterceptor(this, reporter, splitIndex);
+    if (inputSplit instanceof FileSplit) {
+      ((FileSplit) inputSplit).setInterceptor(interceptor);
+    }
+
     updateJobWithSplit(job, inputSplit);
     reporter.setInputSplit(inputSplit);
 
@@ -480,37 +485,37 @@ public class MapTask extends Task {
     job.setBoolean(JobContext.SKIP_RECORDS, isSkipping());
 
     // riza: pass HdfsDataInputStream to TaskReporter
-    try {
-      if (in instanceof InputStreamOwner) {
-        InputStream inputS = ((InputStreamOwner) in).getInputStream();
-
-        // riza: pass to reporter first even though datanode selection might not happen yet
-        reporter.setInputStream(inputS);
-
-        if (inputS != null) {
-          // riza: insert ignored datanode to HdfsDataInputStream at beginning
-          LOG.info("riza: runOldMapper: ignoring datanode "
-              + splitIndex.getLastDatanodeID());
-
-          if ((inputS instanceof HdfsDataInputStream)
-              && sendDatanodeInfo) {
-            LOG.info("Initiating PBSE datanode reporting");
-            switchDatanode((HdfsDataInputStream) inputS, reporter);
-          } else {
-            LOG.warn("no faread or input stream is not instance of HdfsDataInputStream "
-                + inputS.toString());
-          }
-        } else {
-          LOG.warn("input stream is null, unable to set ignored datanode");
-        }
-      } else {
-        LOG.warn("riza: " + in.toString()
-            + " does not implement InputStreamOwner ");
-      }
-    } catch (Exception e) {
-      LOG.error(e.getMessage());
-      LOG.error(e.getStackTrace());
-    }
+//    try {
+//      if (in instanceof InputStreamOwner) {
+//        InputStream inputS = ((InputStreamOwner) in).getInputStream();
+//
+//        // riza: pass to reporter first even though datanode selection might not happen yet
+//        reporter.setInputStream(inputS);
+//
+//        if (inputS != null) {
+//          // riza: insert ignored datanode to HdfsDataInputStream at beginning
+//          LOG.info("riza: runOldMapper: ignoring datanode "
+//              + splitIndex.getLastDatanodeID());
+//
+//          if ((inputS instanceof HdfsDataInputStream)
+//              && sendDatanodeInfo) {
+//            LOG.info("Initiating PBSE datanode reporting");
+//            switchDatanode((HdfsDataInputStream) inputS, reporter);
+//          } else {
+//            LOG.warn("no faread or input stream is not instance of HdfsDataInputStream "
+//                + inputS.toString());
+//          }
+//        } else {
+//          LOG.warn("input stream is null, unable to set ignored datanode");
+//        }
+//      } else {
+//        LOG.warn("riza: " + in.toString()
+//            + " does not implement InputStreamOwner ");
+//      }
+//    } catch (Exception e) {
+//      LOG.error(e.getMessage());
+//      LOG.error(e.getStackTrace());
+//    }
 
     int numReduceTasks = conf.getNumReduceTasks();
     LOG.info("numReduceTasks: " + numReduceTasks);

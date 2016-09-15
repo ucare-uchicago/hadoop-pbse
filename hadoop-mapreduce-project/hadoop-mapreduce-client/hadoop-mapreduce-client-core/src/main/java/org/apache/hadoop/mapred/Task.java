@@ -98,10 +98,10 @@ abstract public class Task implements Writable, Configurable{
   // private DatanodeInfo[] DNPath=DatanodeInfo.createDatanodeInfo();
 
   // riza: PBSE fields
-  private static final long PROGRESS_INTERVAL_BEFORE_READ = 500;
-  private static final long PROGRESS_INTERVAL_BEFORE_FIRST_HEARTBEAT = 100;
-  private static final long PROGRESS_INTERVAL_AFTER_DATANODE_SWITCH = 100;
-  private static final long MAX_HEARTBEAT_DELAY = 12000;
+  private static final int PROGRESS_INTERVAL_BEFORE_READ = 500;
+  private static final int PROGRESS_INTERVAL_BEFORE_FIRST_HEARTBEAT = 100;
+  private static final int PROGRESS_INTERVAL_AFTER_DATANODE_SWITCH = 100;
+  private static final int MAX_RETRY_WHEN_WAITING_BW_ONLY = 5500;
   private HdfsDataInputStream hdfsInputStream = null;
   private boolean sendDatanodeInfo;
   private boolean avoidSingleSource;
@@ -864,6 +864,7 @@ abstract public class Task implements Writable, Configurable{
           }
           
           // riza: heartbeat delaying here
+          boolean mayReport = true;
           if (isMapTask() && sendDatanodeInfo && !hasSendInitialHB && (mapRetriesTime > 0)) {
             // riza: MapTask delaying
             boolean delaying = false;
@@ -876,7 +877,18 @@ abstract public class Task implements Writable, Configurable{
               delayMessage = "riza: datanodeid still null";
             } else if (!hasEnoughStats()) {
               delaying = true;
-              delayMessage = "riza: map has not read enough and does not have accurate BW info";
+              delayMessage = "riza: map has not read enough and does not have accurate BW info,"
+                  + " total byte "
+                  + hdfsInputStream.getReadStatistics().getTotalBytesRead()
+                  + " total time "
+                  + hdfsInputStream.getReadStatistics().getTotalReadTime()
+                  + " total counter "
+                  + hdfsInputStream.getReadStatistics().getCounter() + " ";
+              
+              // riza: only thing left is just to wait stable BW. I'm going to
+              // force to report anyway within 5s by cutting mapRetriesTime
+              if (mapRetriesTime > MAX_RETRY_WHEN_WAITING_BW_ONLY)
+                mapRetriesTime = MAX_RETRY_WHEN_WAITING_BW_ONLY;
             }
             
             if (delaying) {
@@ -884,7 +896,7 @@ abstract public class Task implements Writable, Configurable{
               sendProgress = sendProgress || resetProgressFlag();
               LOG.debug(delayMessage + ", grace wait time left: "
                   + mapRetriesTime + " ms");
-              continue;
+              mayReport = false;
             }
           } else if (!isMapTask() && sendPipelineRateInfo && (sendReduceProgress > 0)) {
             // riza: ReduceTask delaying
@@ -902,11 +914,11 @@ abstract public class Task implements Writable, Configurable{
                   + shouldNotSendShuffleProgress
                   + ", shouldNotSendHdfsWRiteProgress="
                   + shouldNotSendHdfsWRiteProgress + "]");
-              continue;
+              mayReport = false;
             }
           }
           
-          if (sendProgress) {
+          if (sendProgress && mayReport) {
             // we need to send progress update
             updateCounters();
             taskStatus.statusUpdate(taskProgress.get(),
@@ -917,6 +929,11 @@ abstract public class Task implements Writable, Configurable{
               if (sendDatanodeInfo) {
                 // riza: attach lastDatanodeID as additional information
                 double transferRate = getMapTransferRate();
+                if (transferRate <= 0.0d) {
+                  // riza: we are forced to report if we got here. Send
+                  // small-nonzero number as estimated bandwidth
+                  transferRate = 0.000001d;
+                }
                 LOG.debug("riza: reporting datanode " + lastDatanodeId.getHostName()
                     + " with rate " + transferRate + " Mbps");
                 taskStatus.setLastDatanodeID(lastDatanodeId);
@@ -1993,6 +2010,7 @@ abstract public class Task implements Writable, Configurable{
   }
   
   private boolean hasEnoughStats() {
-    return getMapTransferRate() > 0.0d;
+    return !DatanodeID.nullDatanodeID.equals(lastDatanodeId)
+        && (getMapTransferRate() > 0.0d);
   }
 }
