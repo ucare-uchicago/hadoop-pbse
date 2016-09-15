@@ -1419,6 +1419,7 @@ public class RMContainerAllocator extends RMContainerRequestor
             LOG.info("PBSE-Read-Diversity-2:  numreject "
                 + (PBSE_MAX_CONTAINER_REJECTION - maxretry) + " status "
                 + (maxretry > 0 ? "success" : "fail"));
+            wasRejecting = false;
           }
         }
       }
