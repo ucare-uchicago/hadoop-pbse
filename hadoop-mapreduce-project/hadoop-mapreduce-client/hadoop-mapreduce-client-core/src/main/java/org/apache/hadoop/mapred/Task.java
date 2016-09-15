@@ -803,7 +803,7 @@ abstract public class Task implements Writable, Configurable{
           conf.getInt(MRJobConfig.PBSE_MAP_DELAY_INTERVAL_MS,
               MRJobConfig.DEFAULT_PBSE_MAP_DELAY_INTERVAL_MS)  : 0;
       // riza: shall we query for switch instruction?
-      boolean askForSwitch = isMapTask() && avoidSingleSource;
+      boolean askForSwitch = isMapTask() && (getTaskID().getId() < 1) && avoidSingleSource;
       // riza: if datanode or DNPath switched, then immediately report back
       boolean switchHappened = false;
       boolean hasSendInitialHB = false;
@@ -889,6 +889,12 @@ abstract public class Task implements Writable, Configurable{
               // force to report anyway within 5s by cutting mapRetriesTime
               if (mapRetriesTime > MAX_RETRY_WHEN_WAITING_BW_ONLY)
                 mapRetriesTime = MAX_RETRY_WHEN_WAITING_BW_ONLY;
+
+              // riza: if we stuck waiting BW until the last minute and no
+              // progress anyway, just send 1 statusUpdate to notify AM about
+              // our datanode
+              if (mapRetriesTime - PROGRESS_INTERVAL_BEFORE_READ <= 0)
+                sendProgress = true;
             }
             
             if (delaying) {
@@ -998,7 +1004,13 @@ abstract public class Task implements Writable, Configurable{
             }
           }
 
-          sendProgress = resetProgressFlag();
+          if (!mayReport) {
+            // riza: previous reporting was delayed, retain current sendProgress flag
+            sendProgress = sendProgress || resetProgressFlag();
+          } else {
+            // riza: we just report this iteration, reset the flag
+            sendProgress = resetProgressFlag();
+          }
           remainingRetries = MAX_RETRIES;
         } catch (Throwable t) {
           LOG.info("Communication exception: " + StringUtils.stringifyException(t));

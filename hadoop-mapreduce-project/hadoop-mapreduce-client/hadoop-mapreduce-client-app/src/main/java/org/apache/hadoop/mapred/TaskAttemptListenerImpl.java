@@ -446,7 +446,8 @@ public class TaskAttemptListenerImpl extends CompositeService
         new TaskAttemptStatusUpdateEvent(taskAttemptStatus.id,
             taskAttemptStatus));
     // riza: dirty handling of DN update
-    updateDnPath(taskAttemptStatus);
+    if (taskStatus.getIsMap())
+      updateDnPath(taskAttemptStatus);
     return true;
   }
 
@@ -533,8 +534,9 @@ public class TaskAttemptListenerImpl extends CompositeService
 
     taskHeartbeatHandler.register(attemptID);
 
-    //riza: dirty handling of Host path
-    updateHostPath(attemptID, containerHost);
+    //riza: dirty handling of Host path for map
+    if (attemptID.getTaskId().getTaskType() == TaskType.MAP)
+      updateHostPath(attemptID, containerHost);
   }
 
   @Override
@@ -588,11 +590,14 @@ public class TaskAttemptListenerImpl extends CompositeService
   Set<org.apache.hadoop.mapreduce.v2.api.records.TaskId> regDNTask =
       Collections.newSetFromMap(new ConcurrentHashMap<org.apache.hadoop.mapreduce.v2.api.records.TaskId, Boolean>());
   private void updateDnPath(TaskAttemptStatus taskAttemptStatus){
-    org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId taid =
-        taskAttemptStatus.id;
-    DatanodeID dnId = taskAttemptStatus.lastDatanodeID;
-    dnToTaskAttempt.put(dnId, taid);
-    regDNTask.add(taid.getTaskId());
+    synchronized (shallSwitch) {
+      org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId taid = taskAttemptStatus.id;
+      if (taid.getId() < 1) {
+        DatanodeID dnId = taskAttemptStatus.lastDatanodeID;
+        dnToTaskAttempt.put(dnId, taid);
+        regDNTask.add(taid.getTaskId());
+      }
+    }
   }
 
 
@@ -602,31 +607,39 @@ public class TaskAttemptListenerImpl extends CompositeService
       Collections.newSetFromMap(new ConcurrentHashMap<org.apache.hadoop.mapreduce.v2.api.records.TaskId, Boolean>());
   private void updateHostPath(org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId taid,
       String containerHost){
-    hostToTaskAttempt.put(containerHost, taid);
-    regHostTask.add(taid.getTaskId());
+    synchronized (shallSwitch) {
+      if (taid.getId() < 1) {
+        hostToTaskAttempt.put(containerHost, taid);
+        regHostTask.add(taid.getTaskId());
+      }
+    }
   }
 
   private synchronized void updateSwitchInstruction(
       org.apache.hadoop.mapreduce.v2.api.records.JobId jobId) {
-    if (shallSwitch.get() == 0) {
-      int nummap = context.getJob(jobId).getTotalMaps();
-      int diffDn = dnToTaskAttempt.size();
-      int diffHost = hostToTaskAttempt.size();
-      if ((diffDn > 1) && (diffHost > 1)) {
-        shallSwitch.set(2);
-        LOG.info("riza: Attempts work and read from multiple path. Unique datanode="+diffDn
-            +", unique worker="+diffHost);
-      } else {
-        int dnCount = regDNTask.size();
-        int hostCount = regHostTask.size();
-        if (((diffDn == 1) && (dnCount == nummap))
-            || ((diffHost == 1) && (hostCount == nummap))) {
-          boolean switchtriggered = shallSwitch.compareAndSet(0, 1);
-          if (switchtriggered)
-            LOG.warn("riza: Single path detected among attempts! datanode="
-                + diffDn + ", worker=" + diffHost);
+    synchronized (shallSwitch) {
+      if (shallSwitch.get() == 0) {
+        int nummap = context.getJob(jobId).getTotalMaps();
+        int diffDn = dnToTaskAttempt.size();
+        int diffHost = hostToTaskAttempt.size();
+        if ((diffDn > 1) && (diffHost > 1)) {
+          shallSwitch.set(2);
+          LOG.info("riza: Attempts work and read from multiple path. Unique datanode="+diffDn
+              +", unique worker="+diffHost);
+        } else {
+          int dnCount = regDNTask.size();
+          int hostCount = regHostTask.size();
+          if (((diffDn == 1) && (dnCount == nummap))
+              || ((diffHost == 1) && (hostCount == nummap))) {
+            boolean switchtriggered = shallSwitch.compareAndSet(0, 1);
+            if (switchtriggered)
+              LOG.warn("riza: Single path detected among attempts! nummap: "
+                  + nummap + " datanode: " + dnCount + ", worker: " + hostCount
+                  + " diffdatanode: " + diffDn + ", diffworker: " + diffHost);
+          }
         }
       }
     }
   }
+
 }
