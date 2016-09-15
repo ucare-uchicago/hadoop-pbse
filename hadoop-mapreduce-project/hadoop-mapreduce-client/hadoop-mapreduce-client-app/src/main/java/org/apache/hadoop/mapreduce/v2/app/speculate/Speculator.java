@@ -42,7 +42,9 @@ public interface Speculator
     // @Cesar: Added this type to launch pipe rate update events
     ATTEMPT_PIPE_RATE_UPDATE,
     // huanke
-    ATTEMPT_PIPELINE_UPDATE
+    ATTEMPT_PIPELINE_UPDATE,
+    // riza
+    ATTEMPT_SWITCH_DATANODE
   }
 
   // This will be implemented if we go to a model where the events are

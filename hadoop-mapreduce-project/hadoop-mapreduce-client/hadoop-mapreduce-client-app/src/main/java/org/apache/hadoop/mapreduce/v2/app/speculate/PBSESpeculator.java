@@ -170,6 +170,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   AdvanceStatistics globalTransferRate;
   private Map<TaskAttemptId, TaskAttemptStatus> recentAttemptStatus;
   private Map<TaskId, Set<TaskAttemptId>> knownAttempt;
+  TaskAttemptId switchingAttempt;
 
   public PBSESpeculator(Configuration conf, AppContext context) {
     this(conf, context, context.getClock());
@@ -283,7 +284,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
             MRJobConfig.DEFAULT_PBSE_MAP_SLOW_TRANSFER_FIXED_THRESHOLD);
     this.everDelaySpeculation = false;
     this.globalTransferRate = new AdvanceStatistics();
-    this.recentAttemptStatus = new HashMap<TaskAttemptId, TaskAttemptStatus>();
+    this.recentAttemptStatus = new ConcurrentHashMap<TaskAttemptId, TaskAttemptStatus>();
     this.knownAttempt = new HashMap<TaskId, Set<TaskAttemptId>>();
   }
 
@@ -562,6 +563,17 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       processPipelineUpdate(event.getReportedStatus(), event.getDNpath());
       break;
     }
+    
+    case ATTEMPT_SWITCH_DATANODE:
+    {
+      synchronized (recentAttemptStatus) {
+        switchingAttempt = event.getReportedStatus().id;
+        recentAttemptStatus.remove(switchingAttempt);
+      }
+      LOG.info("riza: will delay speculation on " + switchingAttempt
+          + " until next status update");
+      break;
+    }
     }
   }
 
@@ -610,6 +622,11 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     recentAttemptStatus.put(attemptID, reportedStatus);
     globalTransferRate.add(attemptID, reportedStatus.mapTransferRate);
     registerAttempt(attemptID);
+    
+    if ((switchingAttempt != null) && attemptID.equals(switchingAttempt)) {
+      // the switching attempt just sent new update. Retract the switching status.
+      switchingAttempt = null;
+    }
   }
 
   /*   *************************************************************    */
@@ -693,6 +710,13 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 
             LOG.info(runningTaskAttemptID
                 + " has not report its datanode, speculator return TOO_NEW, "
+                + maxSpeculationDelay + " speculation delay left");
+            return TOO_NEW;
+          }
+          
+          if ((switchingAttempt != null) && runningTaskAttemptID.equals(switchingAttempt)) {
+            LOG.info(runningTaskAttemptID
+                + " just switch its datanode, speculator return TOO_NEW, "
                 + maxSpeculationDelay + " speculation delay left");
             return TOO_NEW;
           }

@@ -56,6 +56,7 @@ import org.apache.hadoop.mapreduce.v2.app.job.event.TaskAttemptStatusUpdateEvent
 import org.apache.hadoop.mapreduce.v2.app.job.event.TaskAttemptStatusUpdateEvent.TaskAttemptStatus;
 import org.apache.hadoop.mapreduce.v2.app.rm.RMHeartbeatHandler;
 import org.apache.hadoop.mapreduce.v2.app.security.authorize.MRAMPolicyProvider;
+import org.apache.hadoop.mapreduce.v2.app.speculate.SpeculatorEvent;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.authorize.PolicyProvider;
 import org.apache.hadoop.service.CompositeService;
@@ -576,6 +577,9 @@ public class TaskAttemptListenerImpl extends CompositeService
       updateSwitchInstruction(attemptID.getTaskId().getJobId());
       if (shallSwitch.compareAndSet(1, 2)){
         LOG.info("riza: Instruct datanode switch to "+attemptID);
+
+        context.getEventHandler().handle(
+            new SpeculatorEvent(attemptID, System.currentTimeMillis()));
         return 1;
       } else {
         int myswitch = (byte) shallSwitch.get();

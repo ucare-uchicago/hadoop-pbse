@@ -129,6 +129,15 @@ public class SpeculatorEvent extends AbstractEvent<Speculator.EventType> {
     this.reportedStatus = reportedStatus;
     this.DNpath=DNpath;
   }
+  
+  // riza: This is to prevent task that just switch datanode to be speculated
+  public SpeculatorEvent(TaskAttemptId attemptID, long timestamp) {
+    super(Speculator.EventType.ATTEMPT_SWITCH_DATANODE, timestamp);
+    this.reportedStatus = new TaskAttemptStatus();
+    this.reportedStatus.id = attemptID;
+    this.taskID = attemptID.getTaskId();
+  }
+
   //huanke
   public ArrayList<DatanodeInfo> getDNpath(){
     return this.DNpath;
