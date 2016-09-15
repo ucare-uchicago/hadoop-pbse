@@ -55,6 +55,11 @@ MEMORY TUNING END -->
   </property>
 
   <property>
+    <name>yarn.nodemanager.log.retain-seconds</name>
+    <value>86400</value>
+  </property>
+
+  <property>
     <name>yarn.resourcemanager.scheduler.class</name>
     <value>org.apache.hadoop.yarn.server.resourcemanager.scheduler.capacity.CapacityScheduler</value>
   </property>
