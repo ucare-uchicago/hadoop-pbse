@@ -149,6 +149,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   private PipelineTable pipeTable = new PipelineTable();
   private boolean hdfsWriteSpeculationEnabled = false;
   private double hdfsWriteSlowNodeThresshold = 0.0;
+  private double hdfsWriteSlowNodeMaximumReportDelay = 0.0;
   // @Cesar: To detect cases when there is only one reduce task
   private int numReduceTasks = -1;
   private AtomicBoolean singleReduceHostDetected = new AtomicBoolean(false); 
@@ -263,6 +264,8 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     		"mapreduce.experiment.write_rate_speculation_slow_thresshold", 0.0);
     this.enableSingleReduceSpeculation = conf.getBoolean(
     		"mapreduce.experiment.enable_single_reducer_speculation", false);
+    this.hdfsWriteSlowNodeMaximumReportDelay = conf.getDouble(
+    		"mapreduce.experiment.write_rate_speculation_maximum_report_delay_seconds", 10.0);
     		
     // huanke
     this.reduceIntersectionSpeculationEnabled = conf.getBoolean(
@@ -1078,6 +1081,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       SimpleSlowHdfsWriteEstimator estimator = new SimpleSlowHdfsWriteEstimator();
       Map<HdfsWriteHost, PipelineWriteRateReport> reports = pipeTable.getReports();
       List<HdfsWriteHost> markedForDelete = new ArrayList<>();
+      
 //      LOG.info("@Cesar: We have " + reports.size() + " to check");
       for(Entry<HdfsWriteHost, PipelineWriteRateReport> report : reports.entrySet()){
 //    	  LOG.info("@Cesar: Analizing " + report.getKey() + " with " + report.getValue());
@@ -1087,7 +1091,9 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     		  if(estimator.isSlow(
     				  report.getKey(), 
     				  report.getValue(), 
-    				  hdfsWriteSlowNodeThresshold)){
+    				  hdfsWriteSlowNodeThresshold,
+    				  pipeTable.getWriteStartTime(report.getKey()),
+    				  hdfsWriteSlowNodeMaximumReportDelay)){
     			  // @Cesar: Count and comply with min nuber of reports sent
     			  if(pipeTable.canSpeculate(report.getKey(), PipelineTable.MIN_REPORT_COUNT) 
     				 && !pipeTable.wasSpeculated(report.getKey().getReduceTaskAttempt().getTaskId())){

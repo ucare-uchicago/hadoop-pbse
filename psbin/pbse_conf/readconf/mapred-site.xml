@@ -249,9 +249,16 @@
 
   <property>
     <name>mapreduce.experiment.enable_single_reducer_speculation</name>
-    <value>false</value>
+    <value>true</value>
     <description>UCARE: When the job only has one reduce, always speculate</description>
   </property>  
+
+  <property>
+    <name>mapreduce.experiment.write_rate_speculation_maximum_report_delay_seconds</name>
+    <value>10.0</value>
+    <description>UCARE: Maximum delay for first pipeline write rate report</description>
+  </property>  
+  
 
   <!-- @Cesar: end -->
 

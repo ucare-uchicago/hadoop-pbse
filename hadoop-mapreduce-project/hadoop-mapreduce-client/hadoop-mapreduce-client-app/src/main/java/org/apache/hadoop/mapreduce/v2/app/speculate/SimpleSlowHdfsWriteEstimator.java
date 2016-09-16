@@ -12,7 +12,22 @@ public class SimpleSlowHdfsWriteEstimator {
 	
 	public boolean isSlow(HdfsWriteHost targetTaskAttemptAndHost,
 						  PipelineWriteRateReport report,
-						  double slowPipeThresshold){
+						  double slowPipeThresshold,
+						  long reduceWriteStartTime,
+						  double reducePipelineMaximumDelay){
+		// @Cesar: First, lets check the max delay here
+		double totalSeconds = ((double)(System.nanoTime() - reduceWriteStartTime)) 
+									/ 1000000000.0;
+		if(reducePipelineMaximumDelay > 0.0 
+			&& reduceWriteStartTime > 0
+		    && totalSeconds >= reducePipelineMaximumDelay
+		    && report.getPipeTransferRates().size() == 0){
+			// @Cesar: Yes, i have delay
+			LOG.info("@Cesar: Reporter " + targetTaskAttemptAndHost + " with pipeline " + 
+					 report.getPipeOrderedNodes() + " has been delayed more than " +
+					 reducePipelineMaximumDelay + " seconds so its going to be speculated");
+			return true;
+		}
 		// @Cesar: The approach is going to be simple: If one
 		// of the nodes in the pipeline is slower than the thresshold,
 		// then this is slow!

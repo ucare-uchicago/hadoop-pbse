@@ -212,6 +212,55 @@ def printCombinedGraphs(runs):
   figs.append(fig)
   plt.close()
 
+  # Job Running Time excluding commit duration
+  dat = lambda apps: \
+        [(strToDate(a["time_stop"])-strToDate(a["time_start"])) .total_seconds() - a["commit_duration"]\
+         for a in AM(apps) if ("time_start" in a) and ("time_stop" in a)]
+  fig = combineGraphs(runs,dat,True,100)
+  setFigureLabel(fig,"Job Running Time (Commit time not included)","","second","percentage")
+  figs.append(fig)
+  plt.close()
+
+  # Job Running Time excluding launch duration
+  dat = lambda apps: \
+        [(strToDate(a["time_stop"])-strToDate(a["time_start"])) .total_seconds() - a["launch_duration"]\
+         for a in AM(apps) if ("time_start" in a) and ("time_stop" in a)]
+  fig = combineGraphs(runs,dat,True,100)
+  setFigureLabel(fig,"Job Running Time (Launch time not included)","","second","percentage")
+  figs.append(fig)
+  plt.close()
+
+  # Job Running Time excluding bot duration
+  dat = lambda apps: \
+        [(strToDate(a["time_stop"])-strToDate(a["time_start"])) .total_seconds() - a["launch_duration"] - a["commit_duration"]\
+         for a in AM(apps) if ("time_start" in a) and ("time_stop" in a)]
+  fig = combineGraphs(runs,dat,True,100)
+  setFigureLabel(fig,"Job Running Time (Neither launch nor commit time included)","","second","percentage")
+  figs.append(fig)
+  plt.close()
+
+  # Job commit duration
+  dat = lambda apps: \
+         [a["commit_duration"] \
+          for a in AM(apps) if ("time_start" in a) and ("time_stop" in a)]
+
+  fig = combineGraphs(runs,dat,True,30)
+  setFigureLabel(fig,"Job commit duration","",\
+       "second","percentage")
+  figs.append(fig)
+  plt.close()
+
+  # Job launch duration
+  dat = lambda apps: \
+         [a["launch_duration"] \
+          for a in AM(apps) if ("time_start" in a) and ("time_stop" in a)]
+
+  fig = combineGraphs(runs,dat,True,20)
+  setFigureLabel(fig,"Job launch duration","",\
+       "second","percentage")
+  figs.append(fig)
+  plt.close()
+
   # Job Running Time for jobs where the slow node is involved in map
   dat = lambda apps: \
          [(strToDate(a["master"]["time_stop"])-strToDate(a["master"]["time_start"])).total_seconds() \

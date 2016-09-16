@@ -35,9 +35,14 @@ public class PipelineTable {
 	private Set<HdfsWriteHost> bannedReports = 
 			Collections.newSetFromMap(new ConcurrentHashMap<HdfsWriteHost, Boolean>());
 	
-	// @Cesar: Count the reports for each reportes
+	// @Cesar: Count the reports for each reporters
 	private Map<HdfsWriteHost, Long> reportCount = 
 			new ConcurrentHashMap<>();
+	
+	// @Cesar: Record the time when we got the first pipeline
+	private Map<HdfsWriteHost, Long> reportStartTime = 
+			new ConcurrentHashMap<>();
+		
 	
 	private Set<TaskId> alreadySpeculated = 
 			Collections.newSetFromMap(new ConcurrentHashMap<TaskId, Boolean>());
@@ -68,6 +73,22 @@ public class PipelineTable {
 		}
 	}
 	
+	public void setWriteStartTime(HdfsWriteHost reporter, 
+								  PipelineWriteRateReport report){
+		if(!reportStartTime.containsKey(reporter) 
+			&& report.getPipeOrderedNodes().size() > 0){
+			reportStartTime.put(reporter, System.nanoTime());
+		}
+	}
+	
+	public long getWriteStartTime(HdfsWriteHost reporter){
+		Long startTime = reportStartTime.get(reporter);
+		if(startTime != null){
+			return startTime;
+		}
+		return -1;
+	}
+	
 	public Map<HdfsWriteHost, PipelineWriteRateReport> getReports() {
 		return reports;
 	}
@@ -95,6 +116,8 @@ public class PipelineTable {
 		if(bannedReports.contains(writeHost)) return false;
 		// @Cesar: Store
 		reports.put(writeHost, report);
+		// @Cesar: Set start time
+		setWriteStartTime(writeHost, report);
 		// @Cesar: The pipe report could contain only the
 		// reported pipeline, which is fine but in this case
 		// we do not care on incrementing the report count
