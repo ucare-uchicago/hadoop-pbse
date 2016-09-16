@@ -17,7 +17,7 @@ import org.apache.hadoop.mapreduce.v2.api.records.TaskId;
 public class PipelineTable {
 
 	// @Cesar: Hard code this for now
-	public static final long MIN_REPORT_COUNT = 2; 
+	public static final long MIN_REPORT_COUNT = 1; 
 	
 	// @Cesar: does write diversity kicked in?
 	private boolean writeDiversityKickedIn = false;

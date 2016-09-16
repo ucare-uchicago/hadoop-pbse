@@ -1158,6 +1158,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 			  // run at another host and also the pipeline wont include
 			  // the bad hosts
 	    	  task.appContext.getBlacklistedNodes().add(badHost);
+	    	  for (String no : badPipe) task.appContext.getBlacklistedNodes().add(no);
 	    	  if(LOG.isDebugEnabled()){
 	    		  LOG.debug("@Cesar: Blacklisted hosts due to slow hdfs write" + badHost + 
 	    				  	" and " + Arrays.toString(badPipe.toArray()));
