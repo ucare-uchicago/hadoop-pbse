@@ -20,14 +20,8 @@ package org.apache.hadoop.mapreduce.v2.app.speculate;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,14 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.protocol.DatanodeID;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.mapred.MapTaskAttemptImpl;
 import org.apache.hadoop.mapreduce.MRJobConfig;
-import org.apache.hadoop.mapreduce.TypeConverter;
-import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
-import org.apache.hadoop.mapreduce.task.reduce.PBSEShuffleMessage;
-import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 import org.apache.hadoop.mapreduce.v2.api.records.JobId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptState;
@@ -81,7 +68,7 @@ public class DefaultSpeculator extends AbstractService implements
   private double proportionRunningTasksSpeculatable;
   private double proportionTotalTasksSpeculatable;
   private int  minimumAllowedSpeculativeTasks;
-  
+
   private static final Log LOG = LogFactory.getLog(DefaultSpeculator.class);
 
   private final ConcurrentMap<TaskId, Boolean> runningTasks
@@ -92,21 +79,6 @@ public class DefaultSpeculator extends AbstractService implements
   private final ConcurrentMap<TaskAttemptId, TaskAttemptHistoryStatistics>
       runningTaskAttemptStatistics = new ConcurrentHashMap<TaskAttemptId,
           TaskAttemptHistoryStatistics>();
-  
-  //huanke
-  private Thread speculationIntersectionThread=null;
-  private boolean hdfsWriteSpeculationEnabled=false;
-  
-  // @Cesar: To hold the info about the reported fetch rates
-  private ShuffleTable shuffleTable = new ShuffleTable();
-  private boolean fetchRateSpeculationEnabled = false;
-  private boolean smartFetchRateSpeculationEnabled = false;
-  private double smartFetchRateSpeculationFactor = 0.0;
-  private double fetchRateSpeculationSlowNodeThresshold = 0.0;
-  private double fetchRateSpeculationSlowProgressThresshold = 0.0;
-  // @Cesar: I will keep events in here
-  private Map<ShuffleHost, List<ShuffleRateInfo>> fetchRateUpdateEvents = new HashMap<>();
-  
   // Regular heartbeat from tasks is every 3 secs. So if we don't get a
   // heartbeat in 9 secs (3 heartbeats), we simulate a heartbeat with no change
   // in progress.
@@ -121,38 +93,20 @@ public class DefaultSpeculator extends AbstractService implements
       = new ConcurrentHashMap<JobId, AtomicInteger>();
 
   private final Set<TaskId> mayHaveSpeculated = new HashSet<TaskId>();
-  
+
   private final Configuration conf;
   private AppContext context;
   private Thread speculationBackgroundThread = null;
-  // @Cesar: This is my speculation background thread
-  private Thread speculationFetchRateThread = null;
   private volatile boolean stopped = false;
   private BlockingQueue<SpeculatorEvent> eventQueue
       = new LinkedBlockingQueue<SpeculatorEvent>();
   private TaskRuntimeEstimator estimator;
 
   private BlockingQueue<Object> scanControl = new LinkedBlockingQueue<Object>();
-  // @Cesar
-  private BlockingQueue<Object> fetchRateScanControl = new LinkedBlockingQueue<Object>();
-  // huanke
-  private BlockingQueue<Object> hdfsWriteScanControl = new LinkedBlockingQueue<Object>();
-  
+
   private final Clock clock;
 
   private final EventHandler<TaskEvent> eventHandler;
-
-  //huanke just launch one reduce back up task! using counter1
-  private int counter1=0;
-  private DatanodeInfo ignoreNode;
-  private List<ArrayList<DatanodeInfo>> lists = new ArrayList<ArrayList<DatanodeInfo>>();
-  private Map<TaskId, List<DatanodeInfo>> taskAndPipeline=new ConcurrentHashMap<>();
-  private Set<TaskId> taskSet = new HashSet<>();
-  
-  // riza
-  private int maxSpeculationDelay = 0;
-  private boolean everDelaySpeculation = false;
-  private boolean hasDelayThisIteration = false;
 
   public DefaultSpeculator(Configuration conf, AppContext context) {
     this(conf, context, context.getClock());
@@ -224,19 +178,8 @@ public class DefaultSpeculator extends AbstractService implements
     this.minimumAllowedSpeculativeTasks =
         conf.getInt(MRJobConfig.SPECULATIVE_MINIMUM_ALLOWED_TASKS,
                 MRJobConfig.DEFAULT_SPECULATIVE_MINIMUM_ALLOWED_TASKS);
-    // @Cesar: read the properties
-    this.fetchRateSpeculationEnabled = conf.getBoolean("mapreduce.experiment.enable_fetch_rate_speculation", false);
-    this.fetchRateSpeculationSlowNodeThresshold = conf.getDouble("mapreduce.experiment.fetch_rate_speculation_slow_thresshold", Double.MAX_VALUE);
-    this.fetchRateSpeculationSlowProgressThresshold = conf.getDouble("mapreduce.experiment.fetch_rate_speculation_progress_thresshold", Double.MAX_VALUE);
-    this.smartFetchRateSpeculationEnabled = conf.getBoolean("mapreduce.experiment.smart_fetch_rate_speculation_enabled", false);
-    this.smartFetchRateSpeculationFactor = conf.getDouble("mapreduce.experiment.smart_fetch_rate_speculation_factor", 3.0);
-    // huanke
-    this.hdfsWriteSpeculationEnabled=conf.getBoolean("pbse.enable.for.reduce.pipeline", false);
-    // riza
-    this.maxSpeculationDelay = conf.getInt("mapreduce.policy.faread.maximum_speculation_delay", 0) / (int) this.soonestRetryAfterNoSpeculate;
-    this.everDelaySpeculation = false;
   }
-  
+
 /*   *************************************************************    */
 
   // This is the task-mongering that creates the two new threads -- one for
@@ -245,210 +188,44 @@ public class DefaultSpeculator extends AbstractService implements
 
   @Override
   protected void serviceStart() throws Exception {
-	//huanke create my own thread to launch a backup reduce task
-    LOG.info("@huanke PBSEenabled "+hdfsWriteSpeculationEnabled);
-    if (hdfsWriteSpeculationEnabled){
-      Runnable speculationIntersection
-              = new Runnable() {
-        @Override
-        public void run() {
-          LOG.info("@huanke MyThread is running!" + taskAndPipeline + "TaskSet000: " + taskSet);
-          while (!stopped && !Thread.currentThread().isInterrupted()) {
-            long backgroundRunStartTime = clock.getTime();
-            try {
-              DatanodeInfo ignoreNode = checkIntersection();
-              if (ignoreNode == null) {
-                //LOG.info("@huanke checkIntersection returns null now");
-                //just test to launch a backup reduce task
-              } else {
-                LOG.info("@huanke checkIntersection returns ignoreNode :" + ignoreNode);
-                LOG.info("PBSE-Write-Diversity-1 taskId " + taskAndPipeline.keySet() + " choose-datanode " + taskAndPipeline+" IntersectedNode "+ignoreNode);
-                relauchReduceTask(ignoreNode);
-              }
-              long mininumRecomp
-                      = ignoreNode != null ? soonestRetryAfterSpeculate
-                      : soonestRetryAfterNoSpeculate;
-              long wait = Math.max(mininumRecomp,
-                      clock.getTime() - backgroundRunStartTime);
-              //LOG.info("@huanke MyThread is waiting for Pipeline info" + wait);
-
-              Object pollResult
-                      = hdfsWriteScanControl.poll(wait, TimeUnit.MILLISECONDS);
-
-            } catch (InterruptedException e) {
-              if (!stopped) {
-                LOG.error("Background thread returning, interrupted", e);
-              }
-              return;
-            }
-          }
-        }
-      };
-      speculationIntersectionThread = new Thread(speculationIntersection, " DefaultSpeculator for intersection");
-      speculationIntersectionThread.start();
-    }
     Runnable speculationBackgroundCore
-    = new Runnable() {
-        @Override
-        public void run() {
-          while (!stopped && !Thread.currentThread().isInterrupted()) {
-            hasDelayThisIteration = false;
-            long backgroundRunStartTime = clock.getTime();
-            try {
-              int speculations = computeSpeculations();
-              long mininumRecomp
-                  = speculations > 0 ? soonestRetryAfterSpeculate
-                                     : soonestRetryAfterNoSpeculate;
-              long wait = Math.max(mininumRecomp,
-                    clock.getTime() - backgroundRunStartTime);
+        = new Runnable() {
+            @Override
+            public void run() {
+              while (!stopped && !Thread.currentThread().isInterrupted()) {
+                long backgroundRunStartTime = clock.getTime();
+                try {
+                  int speculations = computeSpeculations();
+                  long mininumRecomp
+                      = speculations > 0 ? soonestRetryAfterSpeculate
+                                         : soonestRetryAfterNoSpeculate;
 
-              if (speculations > 0) {
-                LOG.info("We launched " + speculations
-                    + " speculations.  Sleeping " + wait + " milliseconds.");
+                  long wait = Math.max(mininumRecomp,
+                        clock.getTime() - backgroundRunStartTime);
+
+                  if (speculations > 0) {
+                    LOG.info("We launched " + speculations
+                        + " speculations.  Sleeping " + wait + " milliseconds.");
+                  }
+
+                  Object pollResult
+                      = scanControl.poll(wait, TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                  if (!stopped) {
+                    LOG.error("Background thread returning, interrupted", e);
+                  }
+                  return;
+                }
               }
-              Object pollResult
-                  = scanControl.poll(wait, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-              if (!stopped) {
-                LOG.error("Background thread returning, interrupted", e);
-              }
-              return;
             }
-          }
-        }
-      };
-      speculationBackgroundThread = new Thread
-    		  (speculationBackgroundCore, "DefaultSpeculator background processing");
-      speculationBackgroundThread.start();
-    if(fetchRateSpeculationEnabled){
-    	// @Cesar: Create a new thread to speculate using the fetch rate
-        Runnable speculationFetchRate = new Runnable(){
-    		@Override
-    		public void run() {
-    			// @Cesar: In here, we check the table and speculate
-    			// if necessary
-    			while (!stopped && !Thread.currentThread().isInterrupted()){
-    				try{
-    					long backgroundRunStartTime = clock.getTime();
-    					// @Cesar: Log some info
-    					LOG.debug("@Cesar: Starting fetch rate speculation check");
-    					int numSpeculations = checkFetchRateTable();
-    	    			// @Cesar: So, after speculation we are going to
-    					// sleep only for soonestRetryAfterNoSpeculate seconds, the same when
-    					// we do not speculate. Why? Well, i have seen cases where we relaunch task x
-    					// and then task x + 1 is slow, so we would have to wait to detect that slow shuffle
-    	    			long mininumRecomp = soonestRetryAfterNoSpeculate;
-    	                long wait = Math.max(mininumRecomp,
-    	                        clock.getTime() - backgroundRunStartTime);
-    	                if (numSpeculations > 0) {
-    	                    LOG.debug("@Cesar: We launched " + numSpeculations
-    	                        + " speculations.  Sleeping " + wait + " milliseconds.");
-    	                }
-    	                LOG.debug("@Cesar: Finished checking for speculations");
-    	                // @Cesar: Sleep a while
-    	                Object dummy = fetchRateScanControl.poll(wait, TimeUnit.MILLISECONDS);
-    				}
-    				catch(InterruptedException ie){
-    					if(!stopped){
-    						LOG.error("@Cesar: Background thread returning, interrupted", ie);
-    					}
-    					// @Cesar: Get out
-    					return;
-    				}
-	    			
-    			}
-    		}
-        };
-    	speculationFetchRateThread = new Thread(speculationFetchRate, "@Cesar: Fetch rate "
-    			+ " speculation background processing");
-    	speculationFetchRateThread.start();
-    }
+          };
+    speculationBackgroundThread = new Thread
+        (speculationBackgroundCore, "DefaultSpeculator background processing");
+    speculationBackgroundThread.start();
+
     super.serviceStart();
   }
 
-  
-  //huanke
-  private DatanodeInfo checkIntersection() {
-	// THis should not die if it has an exceptioon for now, it 
-	// should recover in next run
-	try{  
-	    //huanke--------------------------------------------------------------
-	    TaskType type=TaskType.REDUCE;
-	//    LOG.info("@huanke TaskSetSize :"+TaskSet+TaskAndPipeline);
-	    if(taskSet.size()!=0) {
-	//      LOG.info("@huanke TaskSet1 :" + TaskSet);
-	      //huanke TaskSet1 :[task_1471318623508_0001_r_000001]
-	      //huanke TaskSet1 :[task_1471318623508_0001_r_000001, task_1471318623508_0001_r_000000]
-	      Iterator iter = taskSet.iterator();
-	      TaskId Ttmp = (TaskId) iter.next();
-	      Job job = context.getJob(Ttmp.getJobId());
-	      Map<TaskId, Task> tasks = job.getTasks(type);
-	      LOG.info("@huanke taskSize "+tasks.size()+tasks);
-	      for (Map.Entry<TaskId, Task> taskEntry : tasks.entrySet()) {
-	        if(taskAndPipeline!=null && taskAndPipeline.size()==tasks.size()) {
-	          List<DatanodeInfo> tmp = taskAndPipeline.get(taskEntry.getKey());
-	          LOG.info("@huanke TaskAndPipeline for each task" + tmp);
-	//          huanke TaskAndPipeline for each task[10.1.1.4:50010, 10.1.1.7:50010]
-	//          huanke TaskAndPipeline for each task[10.1.1.6:50010, 10.1.1.4:50010]
-	          if (tmp != null) {
-	            lists.add((ArrayList<DatanodeInfo>) tmp);
-	          } else {
-	//            LOG.info("@huanke TaskAndPipeline is not ready for task " + taskEntry.getKey());
-	          }
-	        }
-	        else{
-	//          LOG.info("@huanke TaskAndPipeline is still empty");
-	        }
-	      }
-	    }else{
-	//      LOG.info("@huanke TaskSet2 is empty now :" + TaskSet);
-	    }
-	    if(lists.isEmpty()){
-	//      LOG.info("@huanke listsa is empty now");
-	      return null;
-	    }else{
-	      LOG.info("@huanke lists1: " + lists);
-	      //huanke lists1: [[10.1.1.4:50010, 10.1.1.7:50010], [10.1.1.6:50010, 10.1.1.4:50010]]
-	      List<DatanodeInfo> common = new ArrayList<DatanodeInfo>();
-	//      LOG.info("@huanke common00: " + common);
-	//      huanke common00: []
-	      common.addAll(lists.get(0));
-	      LOG.info("@huanke common01: " + common);
-	//      huanke common01: [10.1.1.4:50010, 10.1.1.7:50010]
-	      for (ListIterator<ArrayList<DatanodeInfo>> iter = lists.listIterator(); iter.hasNext(); ) {
-	        ArrayList<DatanodeInfo> ttt=iter.next();
-	//        LOG.info("@huanke iter.next(): " + ttt );
-	//        huanke iter.next(): [10.1.1.4:50010, 10.1.1.7:50010]
-	//        huanke iter.next(): [10.1.1.6:50010, 10.1.1.4:50010]
-	        common.retainAll(ttt);
-	//        LOG.info("@huanke commonIter: " + common);
-	//        huanke commonIter: [10.1.1.4:50010, 10.1.1.7:50010]
-	//        huanke commonIter: [10.1.1.4:50010]
-	      }
-	      if (common.isEmpty()) {
-	//        LOG.info("@huanke common is null");
-	        return null;
-	      } else {
-	        LOG.info("@huanke common: " + common);
-	//        huanke common: [10.1.1.4:50010]
-	        return common.get(0);
-	      }
-	    }
-	}
-	catch(Exception exc){
-		LOG.error("@huanke: There was an exception here, we dont let this thread die for this: " + exc.getMessage());
-		return null;
-	}
-  }
-
-  //huanke
-  private void relauchReduceTask(DatanodeInfo ignoreNode) {
-    TaskId taskID=taskAndPipeline.keySet().iterator().next();
-    LOG.info("@huanke relauchRedueTask" + taskID);
-    eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ADD_SPEC_ATTEMPT, ignoreNode));
-    mayHaveSpeculated.add(taskID);
-  }
-  
   @Override
   protected void serviceStop()throws Exception {
       stopped = true;
@@ -456,109 +233,9 @@ public class DefaultSpeculator extends AbstractService implements
     if (speculationBackgroundThread != null) {
       speculationBackgroundThread.interrupt();
     }
-    // @Cesar: Also interrupt this one
-    if(speculationFetchRateThread != null){
-    	speculationFetchRateThread.interrupt();
-    }
-    // huanke
-    if (speculationIntersectionThread != null) {
-        speculationIntersectionThread.interrupt();
-    }
     super.serviceStop();
   }
-  
-  // @Cesar: Check the table, return num speculations
-  private int checkFetchRateTable(){
-	  try{
-		  // @Cesar: Start by pulling all reports
-		  synchronized(fetchRateUpdateEvents){ 
-			  for(Entry<ShuffleHost, List<ShuffleRateInfo>> events : fetchRateUpdateEvents.entrySet()){
-				  for(ShuffleRateInfo rate : events.getValue()){
-					  shuffleTable.reportRate(events.getKey(), rate);
-				  }
-			  }
-			  fetchRateUpdateEvents.clear();
-		  }
-		  // @Cesar: This will be the return value
-		  int numSpeculatedMapTasks = 0;
-		  // @Cesar: This is the class that selects wich nodes
-		  // are slow
-		  HarmonicAverageSlowShuffleEstimator estimator = new HarmonicAverageSlowShuffleEstimator();
-		  // @Cesar: In here, we have to check the shuffle rate for
-		  // one mapper, and choose if we are going to speculate 
-		  // or not
-		  // @Cesar: So, iterate the fetch rate table
-		  LOG.info("@Cesar: Starting fetch rate speculation check");
-		  Map<ShuffleHost, Set<ShuffleRateInfo>> allReports = shuffleTable.getReports();
-		  // @Cesar: Done released object, now go
-		  // Lets iterate
-		  if(allReports != null){
-			  // @Cesar: Mark this hosts to be checked to delete if no entries
-			  LOG.info("@Cesar: We have " + allReports.size() + " map hosts to check");
-			  Iterator<Entry<ShuffleHost, Set<ShuffleRateInfo>>> fetchRateTableIterator = allReports.entrySet().iterator();
-			  while(fetchRateTableIterator.hasNext()){
-				  Entry<ShuffleHost, Set<ShuffleRateInfo>> nextEntry = fetchRateTableIterator.next();
-				  // @Cesar: Do we have enough reports to speculate something??
-				  if(!shuffleTable.canSpeculate(nextEntry.getKey().getMapHost())){
-					  // @Cesar: Continue loop
-					  LOG.info("@Cesar: No speculation possible for host " + nextEntry.getKey().getMapHost() + 
-							  	" since it does not have enough reports");
-					  continue;
-				  }
-				  // @Cesar: So, in this row we have one map host.
-				  // This map host can have multiple map task associated, so if we detect
-				  // that this node is slow, then we will relaunch all tasks in here
-				  if(estimator.isSlow(nextEntry.getKey().getMapHost(), 
-						  			  nextEntry.getValue(), 
-						  			  fetchRateSpeculationSlowNodeThresshold, 
-						  			  fetchRateSpeculationSlowProgressThresshold)){
-					  // @Cesar: So, this node is slow. Get all its map tasks
-					  Set<TaskAttemptId> allMapTasksInHost = null;
-					  if(smartFetchRateSpeculationEnabled){
-						  allMapTasksInHost = shuffleTable.getCompliantSuccessfullMapTaskAttemptsFromHost(nextEntry.getKey().getMapHost(),
-								  																		 smartFetchRateSpeculationFactor);
-					  }
-					  else{
-						  allMapTasksInHost = shuffleTable.getAllSuccessfullMapTaskAttemptsFromHost(nextEntry.getKey().getMapHost());  
-					  }
-					  LOG.info("@Cesar: " + allMapTasksInHost.size() + " map tasks will be speculated at " + nextEntry.getKey());
-					  Iterator<TaskAttemptId> mapIterator = allMapTasksInHost.iterator();
-					  while(mapIterator.hasNext()){
-						  TaskAttemptId next = mapIterator.next(); 
-						  if(!shuffleTable.wasSpeculated(next.getTaskId())){
-							  // @Cesar: Only speculate if i havent done it already
-							  LOG.info("@Cesar: Relaunching attempt " + next + " of task " + next.getTaskId() + 
-									  	" at host " + nextEntry.getKey().getMapHost());
-							  relaunchTask(next.getTaskId(), nextEntry.getKey().getMapHost(), next);
-							  // @Cesar: also, add to the list of tasks that may have been speculated already
-							  shuffleTable.bannMapTask(next.getTaskId());
-							  // @Cesar: Mark this attempt as relaunched (killed)
-							  shuffleTable.unsucceedTaskAtHost(nextEntry.getKey().getMapHost(), next.getTaskId());
-							  shuffleTable.bannMapTaskAttempt(next);
-							  // @Cesar: This is the real number of speculated map tasks
-							  ++numSpeculatedMapTasks;
-						  }
-						  else{
-							  LOG.info("@Cesar: Not going to relaunch " + next + " since task " + next.getTaskId() + " was speculated already");
-						  }
-						  // @Cesar: Clean host
-						  shuffleTable.cleanHost(nextEntry.getKey().getMapHost());
-					  }
-				  }
-				  else{
-					  LOG.info("Estimator established that " + nextEntry.getKey().getMapHost() + " is not slow, so no speculations for this host");
-				  }
-			  }
-		  }
-		  LOG.info("@Cesar: Finished fetch rate speculation check");
-		  return numSpeculatedMapTasks;
-	  }
-	  catch(Exception exc){
-		  LOG.error("@Cesar: Catching dangerous exception: " + exc.getMessage() + " : " + exc.getCause());
-		  return 0;
-	  }
-  }
-  
+
   @Override
   public void handleAttempt(TaskAttemptStatus status) {
     long timestamp = clock.getTime();
@@ -608,26 +285,8 @@ public class DefaultSpeculator extends AbstractService implements
     switch (event.getType()) {
       case ATTEMPT_STATUS_UPDATE:
         statusUpdate(event.getReportedStatus(), event.getTimestamp());
-        // @Cesar: Is this a success event? is this a map task? is fetch rate spec enabled?
-        if(event.isSuccedded() && event.getReportedStatus().id.getTaskId().getTaskType() == TaskType.MAP && 
-           fetchRateSpeculationEnabled){
-        	// @Cesar: Report attempt as finished
-        	shuffleTable.reportSuccessfullAttempt(event.getMapperHost(), event.getReportedStatus().id, event.getTime());
-        	LOG.info("@Cesar: Reported successfull map at " + event.getMapperHost()  + " : " + event.getReportedStatus().id);
-        	// @Cesar: The event contains the time reported for this map task
-        }
-        // @Cesar: Is this a success event? is this a reduce task? is hdfs write spec enabled?
-        /*if(event.isSuccedded() && event.getReportedStatus().id.getTaskId().getTaskType() == TaskType.REDUCE && 
-        	hdfsWriteSpeculationEnabled){
-        	// @Cesar: I need to clean the TaskSet object and the TaskAndPipeline object
-        	taskAndPipeline.remove(event.getReportedStatus().id.getTaskId());
-        	// @Cesar: Also the other one, this one has to be sync
-        	synchronized(taskSet){
-        		taskSet.remove(event.getReportedStatus().id.getTaskId());
-        	}
-        	LOG.info("@Cesar: Reported successfull reduce at " + event.getMapperHost()  + " : " + event.getReportedStatus().id);
-        }*/
         break;
+
       case TASK_CONTAINER_NEED_UPDATE:
       {
         AtomicInteger need = containerNeed(event.getTaskID());
@@ -640,12 +299,6 @@ public class DefaultSpeculator extends AbstractService implements
         LOG.info("ATTEMPT_START " + event.getTaskID());
         estimator.enrollAttempt
             (event.getReportedStatus(), event.getTimestamp());
-        // @Cesar: Enroll also in here
-        if(event.getTaskID().getTaskType() == TaskType.MAP && fetchRateSpeculationEnabled){
-        	// @Cesar: An attempt started for a given map task
-        	shuffleTable.reportStartedTask(event.getMapperHost(), event.getTaskID());
-        	LOG.info("@Cesar: Map task reported at node " + event.getMapperHost() + " : " + event.getTaskID());
-        }
         break;
       }
       
@@ -655,109 +308,9 @@ public class DefaultSpeculator extends AbstractService implements
         estimator.contextualize(getConfig(), context);
         break;
       }
-      // @Cesar: Handle fetch rate update
-      case ATTEMPT_FETCH_RATE_UPDATE:
-      {
-    	FetchRateReport report = event.getReport();
-    	String reduceHost = ShuffleTable.parseHost(event.getReducerNode());
-    	if(reduceHost != null && fetchRateSpeculationEnabled){
-    		// @Cesar: If we are here, report is not null
-    		for(Entry<String, ShuffleData> reportEntry : report.getFetchRateReport().entrySet()){
-    			// @Cesar: This is the report for one mapper
-    			String mapHost = ShuffleTable.parseHost(reportEntry.getKey());
-    			ShuffleRateInfo info = new ShuffleRateInfo();
-    			info.setFetchRate(reportEntry.getValue().getTransferRate());
-    			info.setMapHost(mapHost);
-    			info.setMapTaskAttempId(TypeConverter.toYarn(reportEntry.getValue().getMapTaskId()));
-    			info.setReduceHost(reduceHost);
-    			info.setReduceTaskAttempId(event.getReduceTaskId());
-    			info.setTransferProgress(reportEntry.getValue().getBytes() / (reportEntry.getValue().getTotalBytes() != 0?
-    																		  reportEntry.getValue().getTotalBytes() : 1.0));
-    			info.setTotalBytes(reportEntry.getValue().getTotalBytes());
-    			info.setShuffledBytes(reportEntry.getValue().getBytes());
-    			info.setUnit(reportEntry.getValue().getTransferRateUnit().toString());
-    			// @Cesar: Lets save this report in queue
-    			synchronized(fetchRateUpdateEvents){
-    				if(fetchRateUpdateEvents.containsKey(new ShuffleHost(mapHost))){
-    					fetchRateUpdateEvents.get(new ShuffleHost(mapHost)).add(info);
-    				}
-    				else{
-    					List<ShuffleRateInfo> rates = new ArrayList<>();
-    					rates.add(info);
-    					fetchRateUpdateEvents.put(new ShuffleHost(mapHost), rates);
-    				}
-    				
-    			}
-    			// @Cesar: Done
-    			LOG.info("@Cesar: Stored report with " + info);
-    		}
-    	}
-    	else{
-    		// @Cesar: Small error, just log it. It should never happen
-    		LOG.error("@Cesar: Trying to update fetch rate report with null reducer. Data is " + 
-    				  report);
-    	}
-        // @Cesar: Log that this event happened
-    	LOG.info("ATTEMPT_FETCH_RATE_UPDATE " + event.getReduceTaskId());
-    	break;
-      }
-      case ATTEMPT_PIPELINE_UPDATE:
-      {
-          LOG.info("@huanke ATTEMPT_PIPELINE_UPDATE");
-          PipelineUpdate(event.getReportedStatus(), event.getDNpath());
-
-          break;
-      }
     }
   }
 
-  private void PipelineUpdate(TaskAttemptStatus reportedStatus, ArrayList<DatanodeInfo> dNpath) {
-	    String stateString = reportedStatus.taskState.toString();
-
-	    LOG.info("@huanke at the beginning"+taskAndPipeline+" size: "+taskAndPipeline.size()+dNpath+reportedStatus.Pipeline);
-
-	    TaskAttemptId attemptID = reportedStatus.id;
-	    TaskId taskID = attemptID.getTaskId();
-	    Job job = context.getJob(taskID.getJobId());
-
-	    synchronized (taskAndPipeline) {
-	      if (taskID.getTaskType() == TaskType.REDUCE) {
-	        if (dNpath.size() == 0) {
-	          LOG.info("@huanke TaskAndPipeline is empty at this moment");
-	        }
-	        else {
-	          if (taskSet.add(taskID)) {
-	            taskAndPipeline.put(taskID, dNpath);
-	          }
-	        }
-	      }
-	    }
-	    LOG.info("@huanke DefaultSpeculator TaskAndPipeline"+taskAndPipeline+taskAndPipeline.size());
-	    //DefaultSpeculator TaskAndPipeline{task_1471222182002_0001_r_000000=[10.1.1.2:50010, 10.1.1.7:50010], task_1471222182002_0001_r_000001=[10.1.1.7:50010, 10.1.1.4:50010]}2
-
-
-	    if (job == null) {
-	      return;
-	    }
-
-	    Task task = job.getTask(taskID);
-
-	    if (task == null) {
-	      return;
-	    }
-	//
-//	    estimator.updateAttempt(reportedStatus, timestamp);
-
-	    if (stateString.equals(TaskAttemptState.RUNNING.name())) {
-	      runningTasks.putIfAbsent(taskID, Boolean.TRUE);
-	    } else {
-	      runningTasks.remove(taskID, Boolean.TRUE);
-	      if (!stateString.equals(TaskAttemptState.STARTING.name())) {
-	        runningTaskAttemptStatistics.remove(attemptID);
-	      }
-	    }
-	  }
-  
   /**
    * Absorbs one TaskAttemptStatus
    *
@@ -783,7 +336,7 @@ public class DefaultSpeculator extends AbstractService implements
     if (task == null) {
       return;
     }
-    
+
     estimator.updateAttempt(reportedStatus, timestamp);
 
     if (stateString.equals(TaskAttemptState.RUNNING.name())) {
@@ -795,53 +348,42 @@ public class DefaultSpeculator extends AbstractService implements
       }
     }
   }
-  
-   
 
-  /* ************************************************************* */
+/*   *************************************************************    */
 
-  // This is the code section that runs periodically and adds speculations for
-  // those jobs that need them.
+// This is the code section that runs periodically and adds speculations for
+//  those jobs that need them.
+
 
   // This can return a few magic values for tasks that shouldn't speculate:
-  // returns ON_SCHEDULE if thresholdRuntime(taskID) says that we should not
-  // considering speculating this task
-  // returns ALREADY_SPECULATING if that is true. This has priority.
-  // returns TOO_NEW if our companion task hasn't gotten any information
-  // returns PROGRESS_IS_GOOD if the task is sailing through
-  // returns NOT_RUNNING if the task is not running
+  //  returns ON_SCHEDULE if thresholdRuntime(taskID) says that we should not
+  //     considering speculating this task
+  //  returns ALREADY_SPECULATING if that is true.  This has priority.
+  //  returns TOO_NEW if our companion task hasn't gotten any information
+  //  returns PROGRESS_IS_GOOD if the task is sailing through
+  //  returns NOT_RUNNING if the task is not running
   //
-  // All of these values are negative. Any value that should be allowed to
-  // speculate is 0 or positive.
+  // All of these values are negative.  Any value that should be allowed to
+  //  speculate is 0 or positive.
   private long speculationValue(TaskId taskID, long now) {
     Job job = context.getJob(taskID.getJobId());
     Task task = job.getTask(taskID);
     Map<TaskAttemptId, TaskAttempt> attempts = task.getAttempts();
     long acceptableRuntime = Long.MIN_VALUE;
     long result = Long.MIN_VALUE;
-    
+
     if (!mayHaveSpeculated.contains(taskID)) {
       acceptableRuntime = estimator.thresholdRuntime(taskID);
       if (acceptableRuntime == Long.MAX_VALUE) {
-    	  return ON_SCHEDULE;
+        return ON_SCHEDULE;
       }
     }
 
-   // @Cesar: Ignore tasks relaunched by slow shuffle
-   synchronized(shuffleTable){
-	   if(shuffleTable.wasSpeculated(taskID)){
-		   // @Cesar: Return in here, this wont be speculated again
-		   LOG.info("@Cesar: Task " + taskID + " wont be speculated again.");
-		   return ON_SCHEDULE;
-	   }
-   }
-    
     TaskAttemptId runningTaskAttemptID = null;
 
     int numberRunningAttempts = 0;
-    
+
     for (TaskAttempt taskAttempt : attempts.values()) {
-    	
       if (taskAttempt.getState() == TaskAttemptState.RUNNING
           || taskAttempt.getState() == TaskAttemptState.STARTING) {
         if (++numberRunningAttempts > 1) {
@@ -857,26 +399,6 @@ public class DefaultSpeculator extends AbstractService implements
           // This background process ran before we could process the task
           //  attempt status change that chronicles the attempt start
           return TOO_NEW;
-        }
-
-        // riza: do not speculate task that has not sent its first status update
-        MapTaskAttemptImpl mapTaskAttempt = (taskAttempt instanceof MapTaskAttemptImpl) ?
-            (MapTaskAttemptImpl) taskAttempt : null;
-        if (mapTaskAttempt != null) {
-          if (maxSpeculationDelay > 0 && DatanodeID.nullDatanodeID.equals(mapTaskAttempt.getLastDatanodeID())) {
-            if (!everDelaySpeculation)
-              LOG.info("PBSE-Read-2: " + runningTaskAttemptID + " speculation delayed");
-            everDelaySpeculation = true;
-
-            if (!hasDelayThisIteration) {
-              maxSpeculationDelay--;
-              hasDelayThisIteration = true;
-            }
-
-            LOG.info(runningTaskAttemptID + " has not report its datanode, speculator return TOO_NEW, "
-              + maxSpeculationDelay + " speculation delay left");
-            return TOO_NEW;
-          }
         }
 
         long estimatedEndTime = estimatedRunTime + taskAttemptStartTime;
@@ -918,19 +440,18 @@ public class DefaultSpeculator extends AbstractService implements
         if (estimatedReplacementEndTime >= estimatedEndTime) {
           return TOO_LATE_TO_SPECULATE;
         }
-        //LOG.info("@huanke  ---estimatedEndTime: "+estimatedEndTime +"estimatedReplacementEndTime: "+estimatedReplacementEndTime+" progress: "+progress+" now: "+now);
-        //huanke  ---estimatedEndTime: 1470079227747 estimatedReplacementEndTime: 1469999793485 progress: 0.0 now: 1469999785793
+
         result = estimatedEndTime - estimatedReplacementEndTime;
-      
       }
     }
-    
+
     // If we are here, there's at most one task attempt.
     if (numberRunningAttempts == 0) {
       return NOT_RUNNING;
     }
 
-    
+
+
     if (acceptableRuntime == Long.MIN_VALUE) {
       acceptableRuntime = estimator.thresholdRuntime(taskID);
       if (acceptableRuntime == Long.MAX_VALUE) {
@@ -938,43 +459,17 @@ public class DefaultSpeculator extends AbstractService implements
       }
     }
 
-    
     return result;
   }
 
-  //huanke reduce task does not launch backup task as map task like T_ADD_SPEC_ATTEMPT
-  protected void relaunchTask(TaskId taskID) {
-    LOG.info
-            ("DefaultSpeculator.@huanke-relaunchTask -- we are speculating a reduce task of id " + taskID);
-    eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ATTEMPT_KILLED));
-    // @huanke: Add this as speculated
-    mayHaveSpeculated.add(taskID);
-  }
-  
   //Add attempt to a given Task.
   protected void addSpeculativeAttempt(TaskId taskID) {
-	// @Cesar: Do not re espculate if this have been launched by slow shuffle
-	  LOG.info
-      ("DefaultSpeculator.addSpeculativeAttempt -- we are speculating " + taskID);
-	  eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ADD_SPEC_ATTEMPT));
-	  mayHaveSpeculated.add(taskID);
-   
+    LOG.info
+        ("DefaultSpeculator.addSpeculativeAttempt -- we are speculating " + taskID);
+    eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ADD_SPEC_ATTEMPT));
+    mayHaveSpeculated.add(taskID);
   }
 
-  // @Cesar: I will use this to send my map speculative attempt for now
-  // It can change if at the end of the day i discover that is the same
-  // using addSpeculativeAttempt
-  protected void relaunchTask(TaskId taskID, String mapperHost, TaskAttemptId mapId) {
-    LOG.info
-        ("DefaultSpeculator.relaunchTask.@cesar -- we are speculating a map task of id " + taskID);
-    eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ATTEMPT_KILLED, mapperHost, mapId));
-    // @Cesar: Log
-    LOG.info(PBSEShuffleMessage.createPBSEMessageMapTaskRelaunched(mapperHost));
-    // @Cesar: Add this as speculated
-	mayHaveSpeculated.add(taskID);
-	
-  }
-  
   @Override
   public void handle(SpeculatorEvent event) {
     processSpeculatorEvent(event);
@@ -990,8 +485,10 @@ public class DefaultSpeculator extends AbstractService implements
   }
 
   private int maybeScheduleASpeculation(TaskType type) {
-	int successes = 0;
+    int successes = 0;
+
     long now = clock.getTime();
+
     ConcurrentMap<JobId, AtomicInteger> containerNeeds
         = type == TaskType.MAP ? mapContainerNeeds : reduceContainerNeeds;
 
@@ -1017,7 +514,7 @@ public class DefaultSpeculator extends AbstractService implements
       int numberAllowedSpeculativeTasks
           = (int) Math.max(minimumAllowedSpeculativeTasks,
               proportionTotalTasksSpeculatable * tasks.size());
-     
+
       TaskId bestTaskID = null;
       long bestSpeculationValue = -1L;
 
@@ -1030,16 +527,10 @@ public class DefaultSpeculator extends AbstractService implements
           ++numberSpeculationsAlready;
         }
 
-        //LOG.info("@huanke TaskId"+taskEntry.getKey()+taskEntry.getValue().getType()+" taskProgress: "+taskEntry.getValue().getProgress());
-        
         if (mySpeculationValue != NOT_RUNNING) {
           ++numberRunningTasks;
-
         }
 
-        //LOG.info("@huanke mySpeculationValue: "+mySpeculationValue+" bestSpeculationValue: "+bestSpeculationValue + " taskEntry.getKey(): "+ taskEntry.getKey());
-        //huanke mySpeculationValue: -9223372036854775808 bestSpeculationValue: -1 taskEntry.getKey(): task_1470000526915_0001_m_000000
-        
         if (mySpeculationValue > bestSpeculationValue) {
           bestTaskID = taskEntry.getKey();
           bestSpeculationValue = mySpeculationValue;
@@ -1052,12 +543,11 @@ public class DefaultSpeculator extends AbstractService implements
       // If we found a speculation target, fire it off
       if (bestTaskID != null
           && numberAllowedSpeculativeTasks > numberSpeculationsAlready) {
-    	LOG.info("@huanke addSpeculativeAttempt: h_r ?"+bestTaskID.getTaskType()); 
         addSpeculativeAttempt(bestTaskID);
         ++successes;
       }
     }
-    
+
     return successes;
   }
 
