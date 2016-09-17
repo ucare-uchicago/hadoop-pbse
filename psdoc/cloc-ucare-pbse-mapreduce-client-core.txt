@@ -1,0 +1,17 @@
+     100 files     200 files     300 files     400 files     500 files     593 text files.
+classified 593 filesDuplicate file check 593 files (550 known unique)Unique:      100 files                                          Unique:      200 files                                          Unique:      300 files                                          Unique:      400 files                                          Unique:      500 files                                               578 unique files.                              
+Counting:  100Counting:  200Counting:  300Counting:  400Counting:  500      40 files ignored.
+
+http://cloc.sourceforge.net v 1.62  T=9.07 s (60.6 files/s, 11797.7 lines/s)
+----------------------------------------------------------------------------------------
+Language                              files          blank        comment           code
+----------------------------------------------------------------------------------------
+Java                                    542          11649          31773          61076
+XML                                       4            271            117           1844
+Maven                                     1              5             12             83
+Velocity Template Language                1             29             11             79
+Bourne Again Shell                        1              5              0             11
+CSS                                       1              3             16             11
+----------------------------------------------------------------------------------------
+SUM:                                    550          11962          31929          63104
+----------------------------------------------------------------------------------------
