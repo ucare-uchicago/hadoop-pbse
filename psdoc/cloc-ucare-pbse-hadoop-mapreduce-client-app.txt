@@ -1,7 +1,3 @@
-     100 files     200 files     229 text files.
-classified 229 filesDuplicate file check 229 files (215 known unique)Unique:      100 files                                          Unique:      200 files                                               222 unique files.                              
-Counting:  100Counting:  200      14 files ignored.
-
 http://cloc.sourceforge.net v 1.62  T=3.74 s (56.5 files/s, 13629.7 lines/s)
 --------------------------------------------------------------------------------
 Language                      files          blank        comment           code
