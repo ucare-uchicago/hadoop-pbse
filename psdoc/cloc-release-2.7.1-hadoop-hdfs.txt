@@ -1,0 +1,25 @@
+     100 files     200 files     300 files     400 files     500 files     600 files     700 files     800 files     900 files    1000 files    1100 files    1200 files    1300 files    1400 files    1500 files    1600 files    1700 files    1800 files    1900 files    2000 files    2100 files    2200 files    2300 files    2400 files    2500 files    2600 files    2700 files    2800 files    2900 files    3000 files    3100 files    3200 files    3300 files    3400 files    3500 files    3600 files    3700 files    3740 text files.
+classified 3739 filesDuplicate file check 3739 files (2953 known unique)Unique:      100 files                                          Unique:      200 files                                          Unique:      300 files                                          Unique:      400 files                                          Unique:      500 files                                          Unique:      600 files                                          Unique:      700 files                                          Unique:      800 files                                          Unique:      900 files                                          Unique:     1000 files                                          Unique:     1100 files                                          Unique:     1200 files                                          Unique:     1300 files                                          Unique:     1400 files                                          Unique:     1500 files                                          Unique:     1600 files                                          Unique:     1700 files                                          Unique:     1800 files                                          Unique:     1900 files                                          Unique:     2000 files                                          Unique:     2100 files                                          Unique:     2200 files                                          Unique:     2300 files                                          Unique:     2400 files                                          Unique:     2500 files                                          Unique:     2600 files                                          Unique:     2700 files                                          Unique:     2800 files                                          Unique:     2900 files                                              3259 unique files.                              
+Counting:  100Counting:  200Counting:  300Counting:  400Counting:  500Counting:  600Counting:  700Counting:  800Counting:  900Counting:  1000Counting:  1100Counting:  1200Counting:  1300Counting:  1400Counting:  1500Counting:  1600Counting:  1700Counting:  1800Counting:  1900Counting:  2000Counting:  2100Counting:  2200Counting:  2300Counting:  2400Counting:  2500Counting:  2600Counting:  2700Counting:  2800Counting:  2900Counting:  3000Counting:  3100Counting:  3200     474 files ignored.
+
+http://cloc.sourceforge.net v 1.62  T=62.38 s (50.7 files/s, 23387.2 lines/s)
+--------------------------------------------------------------------------------
+Language                      files          blank        comment           code
+--------------------------------------------------------------------------------
+HTML                           1727          16798          66522         563611
+Java                           1273          60029         129654         505491
+XML                              34           2289           2450          87060
+C                                58           1603           2426          11855
+C/C++ Header                     30            440           2246           1546
+CSS                               6             68            109            770
+Maven                             2             12             29            733
+Javascript                        8             80             89            516
+Bourne Shell                     12            116            232            380
+CMake                             5             59            109            327
+DOS Batch                         4             54              0            305
+Bourne Again Shell                1             29             31            246
+Perl                              1             30             44            208
+XSLT                              2             23             28            164
+--------------------------------------------------------------------------------
+SUM:                           3163          81630         203969        1173212
+--------------------------------------------------------------------------------
