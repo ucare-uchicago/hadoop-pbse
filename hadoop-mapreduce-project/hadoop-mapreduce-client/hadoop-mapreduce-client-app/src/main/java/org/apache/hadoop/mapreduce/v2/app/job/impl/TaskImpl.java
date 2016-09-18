@@ -692,7 +692,8 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
  	// @Cesar: Lets run reduce task attempt
  	private void speculateReduceTaskDueToSloWrite(Avataar avataar,
  												 List<String> badPipe,
- 												 String badHost){
+ 												 String badHost,
+ 												 TaskId targetTask){
  		// @Cesar: This only happens on reduce tasks
  		TaskAttempt attempt = createNewReduceAttempt(avataar, badPipe, badHost);
  	    inProgressAttempts.add(attempt.getID());
@@ -704,12 +705,17 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
  	      eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
  	    		 TaskAttemptEventType.TA_SCHEDULE));
  	    }
+ 	    // @Cesar: This will be speculated only one
+ 	    synchronized(ignoreTasks){
+ 	    	ignoreTasks.add(targetTask);
+ 	    }
  	}
  
  	// @Cesar: Lets run reduce task attempt
   	private void speculateReduceTaskDueToWriteDiversity(Avataar avataar,
   												 		List<String> badPipe,
-  												 		String badHost){
+  												 		String badHost,
+  												 		TaskId targetTask){
   		// @Cesar: This only happens on reduce tasks
   		TaskAttempt attempt = createNewReduceAttempt(avataar, badPipe, badHost);
   	    inProgressAttempts.add(attempt.getID());
@@ -721,6 +727,10 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
   	      eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
   	    		 TaskAttemptEventType.TA_SCHEDULE));
   	    }
+  	    // @Cesar: This will be speculated only one
+ 	    synchronized(ignoreTasks){
+ 	    	ignoreTasks.add(targetTask);
+ 	    }
   	}
  	
   //huanke add ignore node here
@@ -1145,9 +1155,9 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 //			  LOG.info("@huanke SPECULATIVE1 and ignoreNode--"+ignoreNode);
 			  task.addAndScheduleAttempt(Avataar.SPECULATIVE, ignoreNode);
 		  }
-		  else if(badPipe != null && badHost != null && !event.isWriteDiversity()){
+		  else if(badPipe != null && badHost != null && event.getTargetAttempt() != null){
 			  // @Cesar: In here, we should set the values in the target task
-			  task.speculateReduceTaskDueToSloWrite(Avataar.SPECULATIVE, badPipe, badHost);
+			  task.speculateReduceTaskDueToSloWrite(Avataar.SPECULATIVE, badPipe, badHost, task.getID());
 			  // @Cesar: Also, lets add diagnostic to job
 			  task.eventHandler.handle(new JobDiagnosticsUpdateEvent(
       		  		task.getID().getJobId(), 
@@ -1158,15 +1168,18 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 			  // run at another host and also the pipeline wont include
 			  // the bad hosts
 	    	  task.appContext.getBlacklistedNodes().add(badHost);
-	    	  for (String no : badPipe) task.appContext.getBlacklistedNodes().add(no);
+	    	  // for (String no : badPipe) task.appContext.getBlacklistedNodes().add(no);
 	    	  if(LOG.isDebugEnabled()){
 	    		  LOG.debug("@Cesar: Blacklisted hosts due to slow hdfs write" + badHost + 
 	    				  	" and " + Arrays.toString(badPipe.toArray()));
 	    	  }
-			  
-		  }else if(badPipe != null && badHost != null && event.isWriteDiversity()){
+	    	  // @Cesar: Also, kill the original attempt
+	    	  task.eventHandler.handle(new TaskAttemptKillEvent(event.getTargetAttempt(),
+	    	            			   "Attempt killed due to slow pipeline during write!"));
+		  }else if(badPipe != null && badHost != null 
+				  && event.isWriteDiversity() && event.getTargetAttempt() == null){
 			  // @Cesar: In here, we should set the values in the target task
-			  task.speculateReduceTaskDueToWriteDiversity(Avataar.SPECULATIVE, badPipe, badHost);
+			  task.speculateReduceTaskDueToWriteDiversity(Avataar.SPECULATIVE, badPipe, badHost, task.getID());
 			  // @Cesar: Also, lets add diagnostic to job
 			  task.eventHandler.handle(new JobDiagnosticsUpdateEvent(
       		  		task.getID().getJobId(), 
@@ -1176,6 +1189,17 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 			  // @Cesar: In this case i will blacklist, i want the
 			  // spec to run at another node
 			  task.appContext.getBlacklistedNodes().add(badHost);
+			  
+		  }else if(badPipe != null && badHost != null 
+				  	&& !event.isWriteDiversity() && event.getTargetAttempt() == null){
+			  // @Cesar: In here, we should set the values in the target task
+			  task.speculateReduceTaskDueToWriteDiversity(Avataar.SPECULATIVE, badPipe, badHost, task.getID());
+			  // @Cesar: Also, lets add diagnostic to job
+			  task.eventHandler.handle(new JobDiagnosticsUpdateEvent(
+      		  		task.getID().getJobId(), 
+      		  		"Task " + task.getID() + " running at host " + badHost + " was speculated since this job has only one reduce task. "
+      		  				+ "The first node on pipeline should be ignored (" + Arrays.toString(badPipe.toArray())
+					  		+ ") in the new attempt."));
 			  
 		  }else{
 //			  LOG.info("@huanke SPECULATIVE2 ");
