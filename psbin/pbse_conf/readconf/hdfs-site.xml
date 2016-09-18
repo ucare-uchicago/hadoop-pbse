@@ -105,8 +105,8 @@
 
  <property>
    <name>pbse.enable.for.reduce.pipeline</name>
-   <value>false</value>
-   <description>HACK: force reduce to write to slow node</description>
+   <value>true</value>
+   <description>PBSE enabled (its not a hack)</description>
  </property>
  <!-- @huanke: custom end -->
 

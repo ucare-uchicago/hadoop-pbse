@@ -11,6 +11,7 @@ public class PBSEReduceMessage {
 	
 	private static final String PBSE_VERSION_WRITE = "PBSE-Slow-Reduce-Write-1";
 	private static final String PBSE_VERSION_DIVERSITY = "PBSE-Write-Diversity-1";
+	private static final String PBSE_VERSION_SINGLE_REDUCE = "PBSE-Single-Reduce-1";
 	private static final String PBSE_MSG = "PBSE_SLOW_REDUCE_WRITE";
 	
 	// @Cesar: Create a message to be logged for pbse statistic purposes
@@ -42,33 +43,62 @@ public class PBSEReduceMessage {
 	}
 	
 	// @Cesar: Create a message to be logged for pbse statistic purposes
-		public static String createPBSEMessageReduceTaskSpeculatedDueToWriteDiversity
-							(String reduceHost,
-							 String attemptId,
-							 List<String> pipeline){
-			StringBuilder bld = new StringBuilder();
-			bld.append(PBSE_VERSION_DIVERSITY).append(": ")
-			.append("{")
-			.append("\"type\":")
-			.append("\"").append(MESSAGE_TYPE_SPECULATION).append("\"")
-			.append(",")
-			.append("\"ignoreHost\":")
-			.append("\"").append(reduceHost).append("\"")
-			.append(",")
-			.append("\"attempt\":")
-			.append("\"").append(attemptId).append("\"")
-			.append(",")
-			.append("\"ignorePipe\":[");
-				for(String node : pipeline)
-					bld.append("\"").append(node).append("\"").append(",");
-			// @Cesar: Remove last comma
-			if(pipeline.size() > 0)
-				bld.delete(bld.length() - 1, bld.length());
-			bld.append("]")
-			.append("}");
-			return bld.toString();
-				     
-		}	
+	public static String createPBSEMessageReduceTaskSpeculatedDueToSingleReduce
+						(String reduceHost,
+						 String attemptId,
+						 List<String> pipeline){
+		StringBuilder bld = new StringBuilder();
+		bld.append(PBSE_VERSION_SINGLE_REDUCE).append(": ")
+		.append("{")
+		.append("\"type\":")
+		.append("\"").append(MESSAGE_TYPE_SPECULATION).append("\"")
+		.append(",")
+		.append("\"ignoreHost\":")
+		.append("\"").append(reduceHost).append("\"")
+		.append(",")
+		.append("\"attempt\":")
+		.append("\"").append(attemptId).append("\"")
+		.append(",")
+		.append("\"ignorePipe\":[");
+			for(String node : pipeline)
+				bld.append("\"").append(node).append("\"").append(",");
+		// @Cesar: Remove last comma
+		if(pipeline.size() > 0)
+			bld.delete(bld.length() - 1, bld.length());
+		bld.append("]")
+		.append("}");
+		return bld.toString();
+			     
+	}
+	
+	// @Cesar: Create a message to be logged for pbse statistic purposes
+	public static String createPBSEMessageReduceTaskSpeculatedDueToWriteDiversity
+						(String reduceHost,
+						 String attemptId,
+						 List<String> pipeline){
+		StringBuilder bld = new StringBuilder();
+		bld.append(PBSE_VERSION_DIVERSITY).append(": ")
+		.append("{")
+		.append("\"type\":")
+		.append("\"").append(MESSAGE_TYPE_SPECULATION).append("\"")
+		.append(",")
+		.append("\"ignoreHost\":")
+		.append("\"").append(reduceHost).append("\"")
+		.append(",")
+		.append("\"attempt\":")
+		.append("\"").append(attemptId).append("\"")
+		.append(",")
+		.append("\"ignorePipe\":[");
+			for(String node : pipeline)
+				bld.append("\"").append(node).append("\"").append(",");
+		// @Cesar: Remove last comma
+		if(pipeline.size() > 0)
+			bld.delete(bld.length() - 1, bld.length());
+		bld.append("]")
+		.append("}");
+		return bld.toString();
+			     
+	}	
 		
 		public static void main(String... args){
 			System.out.println(createPBSEMessageReduceTaskSpeculatedDueToWriteDiversity

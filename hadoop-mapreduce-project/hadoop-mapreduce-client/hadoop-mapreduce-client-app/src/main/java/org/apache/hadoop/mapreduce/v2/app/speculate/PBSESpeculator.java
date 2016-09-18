@@ -948,7 +948,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   public int getMinimumAllowedSpeculativeTasks() {
     return minimumAllowedSpeculativeTasks;
   }
-
+  
   //@Cesar: In here, we check for write diversity.
   // The idea is that if the first node in the pipeline
   // for all the running reduce tasks is the same, then
@@ -995,7 +995,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 				  firstInPipe.add(ignoreHost);
 			  }
 			  // @Cesar: Speculate
-			  speculateReduceTaskDueToWriteDiversity(
+			  speculateReduceTaskDueToSingleReduce(
 					  attemptId, 
 					  firstInPipe, 
 					  ignoreHost);
@@ -1230,9 +1230,32 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 		   		attempt.toString(), 
 		   		badPipe));
    eventHandler.handle(new TaskEvent(attempt.getTaskId(), TaskEventType.T_ADD_SPEC_ATTEMPT,
-		   							 badPipe, badHost, false));
+		   							 badPipe, badHost, false, attempt));
    mayHaveSpeculated.add(attempt.getTaskId());
  }
+  
+  
+ //@Cesar
+ private void speculateReduceTaskDueToSingleReduce(TaskAttemptId attempt, 
+		  										   List<String> badPipe, 
+		  										   String badHost) {
+  // @Cesar: Double check
+  if(!pipeTable.isFinished(attempt.getTaskId())){	  
+	   LOG.info("@Cesar speculateReduceTaskDueToSingleReduce " + attempt.getTaskId());
+	   LOG.info(PBSEReduceMessage.createPBSEMessageReduceTaskSpeculatedDueToSingleReduce(
+			   		badHost, 
+			   		attempt.toString(), 
+			   		badPipe));
+	   eventHandler.handle(new TaskEvent(attempt.getTaskId(), TaskEventType.T_ADD_SPEC_ATTEMPT,
+			   							 badPipe, badHost, false));
+	   mayHaveSpeculated.add(attempt.getTaskId());
+  }
+  else{
+	   // @Cesar: This is a potential problem
+	   LOG.error("@Cesar: Trying to speculate a reduce task that is finished while "
+	   			+ " checking for diversity!: " + attempt);
+  }
+}
   
   // @Cesar
   private void speculateReduceTaskDueToWriteDiversity(TaskAttemptId attempt, 
