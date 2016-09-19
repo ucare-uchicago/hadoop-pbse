@@ -1,0 +1,26 @@
+
+
+
+CLOC
+		release-2.7.1	ucare-pbse	Diff
+hadoop-common	199842		199926		84
+hadoop-hdfs	505491		506789		1298
+client-app	33617		36887		3270
+client-core	59725		61076		1351
+
+
+git diff --stats release-2.7.1 ucare-pbse
+
+All 230 files changed, 42737 insertions(+), 1136 deletions(-)
+hadoop-*        111 files changed, 10027 insertions(+), 1136 deletions(-)
+hadoop-common	8 files changed, 196 insertions(+), 4 deletions(-)
+hadoop-hdfs 	25 files changed, 2158 insertions(+), 114 deletions(-)
+client-app      34 files changed, 4749 insertions(+), 248 deletions(-)
+client-core     35 files changed, 2746 insertions(+), 762 deletions(-) 
+
+psbin & psdoc  117 files changed, 32656 insertions(+)
+packsend 112
+
+Total change = 4749 + 2746 + 2158 + 196 = 9849
+
+
