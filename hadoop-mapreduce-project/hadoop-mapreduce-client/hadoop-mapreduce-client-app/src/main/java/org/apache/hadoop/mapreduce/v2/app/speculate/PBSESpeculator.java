@@ -948,6 +948,26 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   public int getMinimumAllowedSpeculativeTasks() {
     return minimumAllowedSpeculativeTasks;
   }
+
+  private String compressPathAndGetFirstNode(String host, 
+		  					  				 Map<Integer, String> originalPath){
+	  if(originalPath.containsValue(host)){
+		  int firstPos = 0;
+		  for(Entry<Integer, String> entries : originalPath.entrySet()){
+			  if(entries.getValue().compareToIgnoreCase(host) == 0){
+				  break;
+			  }
+			  else{
+				  ++firstPos;
+			  }
+		  }
+		  return firstPos == 0? originalPath.get(1) : originalPath.get(firstPos - 1);
+	  }
+	  else{
+		  return originalPath.get(0);
+	  }
+
+  }
   
   //@Cesar: In here, we check for write diversity.
   // The idea is that if the first node in the pipeline
@@ -962,6 +982,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 	  String reducePipelineFirstNode = null;
 	  Map<Integer, String> ignorePipe = null;
 	  String ignoreHost = null;
+	  String firstPipeNode = null;
 	  TaskAttemptId attemptId = null;
 	  if(allReports.size() == 0 && numReduceTasks > 1){
 		  // @Cesar: No reports, no write diversity needed
@@ -1017,19 +1038,20 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 			  allReports.entrySet()){
 			  	if(!pipelineTable.isFinished(report.getKey()
 			  			.getReduceTaskAttempt().getTaskId())){
+			  		String node = compressPathAndGetFirstNode(
+			  						report.getKey().getReduceHost(),
+			  						report.getValue().getPipeOrderedNodes());
 					if(reducePipelineFirstNode == null){
 						// @Cesar: First report
-						reducePipelineFirstNode = report.getValue()
-													.getPipeOrderedNodes().get(0);
+						reducePipelineFirstNode = node;
 					}
-					else if(report.getValue()
-								.getPipeOrderedNodes().get(0)
-								.compareToIgnoreCase(reducePipelineFirstNode) == 0){
+					else if(node.compareToIgnoreCase(reducePipelineFirstNode) == 0){
 						// @Cesar: Intersection on first node
 						if(commonValueCount == 0){
 							ignoreHost = report.getKey().getReduceHost();
 							ignorePipe = report.getValue().getPipeOrderedNodes();
 							attemptId = report.getKey().getReduceTaskAttempt();
+							firstPipeNode = node;
 						}
 						++commonValueCount;
 					}
@@ -1043,14 +1065,14 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 			  // @Cesar: speculate one reduce task. Which one?
 			  // One that is not finished. So, the first one analyzed
 			  List<String> firstInPipe = new ArrayList<String>();
-			  firstInPipe.add(ignorePipe.get(0));
+			  firstInPipe.add(firstPipeNode);
 			  speculateReduceTaskDueToWriteDiversity(
 					  attemptId, 
 					  firstInPipe, 
 					  ignoreHost);
 			  // @Cesar: Write diversity kicked in so we are fine
 			  pipelineTable.setWriteDiversityKickedIn(true);
-			  LOG.info("@Cesar: Write diversity kicked in: all running have common first node");
+			  LOG.info("@Cesar: Write diversity kicked in: all running have common first node (after path compression)");
 			  return true;
 		  }
 	  }
