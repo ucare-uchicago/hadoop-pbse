@@ -623,7 +623,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       reportedStatus.stateString = TaskAttemptState.SUCCEEDED.name();
     }
     recentAttemptStatus.put(attemptID, reportedStatus);
-    globalTransferRate.add(attemptID, reportedStatus.mapTransferRate);
+    globalTransferRate.addOrUpdate(attemptID, reportedStatus.mapTransferRate);
     registerAttempt(attemptID);
     
     if ((switchingAttempt != null) && attemptID.equals(switchingAttempt)) {

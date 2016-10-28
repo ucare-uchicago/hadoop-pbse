@@ -47,8 +47,8 @@ public class AdvanceStatistics {
       this.count++;
       this.sum += newNum;
       this.sumSquares += newNum * newNum;
+      this.data.put(newKey, newNum);
     }
-    this.data.put(newKey, newNum);
   }
 
   public synchronized void updateStatistics(Object key, double update) {
@@ -57,6 +57,14 @@ public class AdvanceStatistics {
       this.sum += update - old;
       this.sumSquares += (update * update) - (old * old);
       this.data.put(key, update);
+    }
+  }
+
+  public synchronized void addOrUpdate(Object key, double update) {
+    if (!this.data.containsKey(key)) {
+      add(key, update);
+    } else {
+      updateStatistics(key, update);
     }
   }
 
