@@ -44,7 +44,11 @@
   <property>
     <name>mapreduce.reduce.speculative</name>
     <value>true</value>
-    <description>Enable reduce speculation.</description>
+  </property>
+
+  <property>
+    <name>mapreduce.map.speculative</name>
+    <value>true</value>
   </property>
 
   <property>
@@ -58,44 +62,5 @@
     <value>10.1.1.19:19888</value>
     <description>MapReduce JobHistory Server Web UI host:port</description>
   </property>
-
-
-  <!-- CUSTOM CONF BEGIN -->
-  <property>
-    <name>mapreduce.ucare_se.map.datanode.send_report</name>
-    <value>false</value>
-    <description>UCARE: failure aware read</description>
-  </property>
-
-  <property>
-    <name>mapreduce.ucare_se.map.avoid_single_source</name>
-    <value>false</value>
-    <description>UCARE: rare single read path mechanishm detection</description>
-  </property>
-
-  <property>
-    <name>mapreduce.ucare_se.map.avoid_single_worker</name>
-    <value>false</value>
-    <description>UCARE: rare single read path mechanishm detection</description>
-  </property>
-
-  <property>
-    <name>mapreduce.ucare_se.maximum_speculation_delay</name>
-    <value>0</value>
-    <description>UCARE: maximum time to delay speculation for task that has not send status update</description>
-  </property>
-
-  <property>
-    <name>mapreduce.experiment.slownode</name>
-    <value>pc000</value> <!-- node 17 -->
-    <description>UCARE: slow node host in emulab experiment</description>
-  </property>
-
-  <property>
-    <name>mapreduce.ucare_se.hack.map.progress_interval</name>
-    <value>3000</value>
-    <description>HACK: heartbeat interval in ms</description>
-  </property>
-  <!-- CUSTOM CONF END -->
 
 </configuration>

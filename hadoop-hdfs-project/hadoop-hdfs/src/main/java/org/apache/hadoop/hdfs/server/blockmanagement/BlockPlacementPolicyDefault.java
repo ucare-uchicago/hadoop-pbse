@@ -101,7 +101,8 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
         DFSConfigKeys.DFS_NAMENODE_STALE_DATANODE_INTERVAL_KEY, 
         DFSConfigKeys.DFS_NAMENODE_STALE_DATANODE_INTERVAL_DEFAULT);
     //huanke
-    this.slowDataNodes=conf.getStringCollection("slow.pipeline.datanode");
+    this.slowDataNodes = conf.getStringCollection(
+        DFSConfigKeys.UCARE_SE_HACK_SLOW_PIPELINE_DATANODE);
     //huanke-----------------------------------
 //    setslowDN(slowDataNodes);
     //-------------------------------------

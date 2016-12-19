@@ -800,9 +800,20 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final boolean DFS_DATANODE_BLOCK_PINNING_ENABLED_DEFAULT =
     false;
 
+  // riza: UCARE_SE Configurations
+
   // riza: list of hack and experiment settings
   public static final String UCARE_SE_HACK_SORT_DATANODE =
       "dfs.ucare_se.hack.sort_datanode";
   public static final boolean UCARE_SE_HACK_SORT_DATANODE_DEFAULT =
       false;
+
+  public static final String UCARE_SE_HACK_SLOW_PIPELINE_DATANODE_ENABLE =
+      "dfs.ucare_se.reduce.slow.pipeline.datanode.enable";
+  public static final boolean UCARE_SE_HACK_SLOW_PIPELINE_DATANODE_ENABLE_DEFAULT =
+      false;
+
+  public static final String UCARE_SE_HACK_SLOW_PIPELINE_DATANODE =
+      "dfs.ucare_se.hack.slow.pipeline.datanode";
+
 }

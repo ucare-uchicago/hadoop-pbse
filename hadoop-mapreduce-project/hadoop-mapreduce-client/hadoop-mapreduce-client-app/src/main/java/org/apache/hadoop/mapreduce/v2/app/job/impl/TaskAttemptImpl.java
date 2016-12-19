@@ -2204,12 +2204,14 @@ public abstract class TaskAttemptImpl implements
 
   // riza: check if node is in slow list
   private boolean isNodeSlow(String hostname){
-    String[] slownodes = this.conf.getStrings("mapreduce.experiment.slownode","");
-    for (String s: slownodes){
-      if (hostname.contains(s)){
-        return true;
+    Collection<String> slownodes = this.conf.getStringCollection(
+        MRJobConfig.UCARE_SE_EXPERIMENT_SLOWNODE_LIST);
+    if (!slownodes.isEmpty())
+      for (String s: slownodes){
+        if (hostname.contains(s)){
+          return true;
+        }
       }
-    }
     return false;
   }
 }

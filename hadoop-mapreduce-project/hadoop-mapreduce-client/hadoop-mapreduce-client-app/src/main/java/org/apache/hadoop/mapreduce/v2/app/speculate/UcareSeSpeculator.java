@@ -43,6 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.mapred.MapTaskAttemptImpl;
@@ -128,7 +129,7 @@ public class UcareSeSpeculator extends AbstractService implements Speculator {
 
 
   // huanke
-  private boolean reduceIntersectionSpeculationEnabled = false;
+  private boolean slowPipelineHackEnabled = false;
   // huanke just launch one reduce back up task! using counter1
   private int counter1 = 0;
   private DatanodeInfo ignoreNode;
@@ -268,8 +269,9 @@ public class UcareSeSpeculator extends AbstractService implements Speculator {
     		"mapreduce.experiment.write_rate_speculation_maximum_report_delay_seconds", 10.0);
     		
     // huanke
-    this.reduceIntersectionSpeculationEnabled = conf.getBoolean(
-        "ucare_se.enable.for.reduce.pipeline", false);
+    this.slowPipelineHackEnabled = conf.getBoolean(
+        DFSConfigKeys.UCARE_SE_HACK_SLOW_PIPELINE_DATANODE_ENABLE,
+        DFSConfigKeys.UCARE_SE_HACK_SLOW_PIPELINE_DATANODE_ENABLE_DEFAULT);
 
     // riza
     this.maxSpeculationDelay =

@@ -17,29 +17,6 @@
   </property>
 
   <property>
-    <name>yarn.resourcemanager.hostname</name>
-    <value>node-17:8088</value>
-  </property>
-
-<!--  <property>
-    <name>yarn.nodemanager.local-dirs</name>
-    <value>/mnt/extra/dfs-ucare/nm-local-dir</value>
-  </property>-->
-
-<!-- MEMORY TUNING BEGIN
-  <property>
-    <name>yarn.scheduler.minimum-allocation-mb</name>
-    <value>1024</value>
-  </property>
-
-  <property>
-    <name>yarn.scheduler.maximum-allocation-mb</name>
-    <value>8192</value>
-  </property>
-
-MEMORY TUNING END -->
-
-  <property>
     <name>yarn.nodemanager.resource.memory-mb</name>
     <value>16384</value> <!-- write mode -->
     <!-- <value>2048</value> experiment mode -->
@@ -49,21 +26,6 @@ MEMORY TUNING END -->
     <name>yarn.nodemanager.resource.cpu-vcores</name>
     <value>16</value> <!-- write mode -->
     <!-- <value>2</value> experiment mode -->
-  </property>
-
-  <property>
-    <name>yarn.nodemanager.disk-health-checker.max-disk-utilization-per-disk-percentage</name>
-    <value>100</value>
-  </property>
-
-  <property>
-    <name>yarn.resourcemanager.recovery.enabled</name>
-    <value>false</value>
-  </property>
-
-  <property>
-    <name>yarn.nodemanager.log.retain-seconds</name>
-    <value>10800</value>
   </property>
 
   <!-- @Cesar: Added by cesar to control location of app master -->

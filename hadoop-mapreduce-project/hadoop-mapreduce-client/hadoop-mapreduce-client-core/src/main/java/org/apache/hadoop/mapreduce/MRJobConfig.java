@@ -930,4 +930,7 @@ public interface MRJobConfig {
   // riza: list of hack and experiment settings
   public static final String UCARE_SE_HACK_MAP_PROGRESS_INTERVAL =
       "mapreduce.ucare_se.hack.map.progress_interval";
+
+  public static final String UCARE_SE_EXPERIMENT_SLOWNODE_LIST =
+      "mapreduce.experiment.slownode";
 }

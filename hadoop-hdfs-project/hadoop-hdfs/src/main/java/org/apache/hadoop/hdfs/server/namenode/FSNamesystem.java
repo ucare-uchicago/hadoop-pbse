@@ -319,7 +319,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   };
 
   //huanke
-  private boolean ucare_seEnable=false;
+  private boolean slowPipelineHackEnable = false;
 
   private final BlockIdManager blockIdManager;
 
@@ -782,7 +782,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           checksumType);
 
       //huanke
-      this.ucare_seEnable=conf.getBoolean("ucare_se.enable.for.reduce.pipeline", false);
+      this.slowPipelineHackEnable = conf.getBoolean(
+          DFSConfigKeys.UCARE_SE_HACK_SLOW_PIPELINE_DATANODE_ENABLE,
+          DFSConfigKeys.UCARE_SE_HACK_SLOW_PIPELINE_DATANODE_ENABLE_DEFAULT);
       
       this.maxFsObjects = conf.getLong(DFS_NAMENODE_MAX_OBJECTS_KEY, 
                                        DFS_NAMENODE_MAX_OBJECTS_DEFAULT);
@@ -3202,13 +3204,15 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
               clientMachine);
       replication = pendingFile.getFileReplication();
 
-      if(pendingFile.getName().contains("part-r")&&IngoreInfo==null&&ucare_seEnable){
+      if(pendingFile.getName().contains("part-r") && IngoreInfo==null
+          && slowPipelineHackEnable){
         LOG.debug("@huanke get the reduce task output file "+pendingFile);
 //        huanke get the reduce task output file part-r-00000
 //        huanke get the reduce task output file part-r-00001
         OriginalOutput=true;
       }
-      if(pendingFile.getName().contains("part-r")&&IngoreInfo!=null&&ucare_seEnable){
+      if(pendingFile.getName().contains("part-r") && IngoreInfo!=null
+          && slowPipelineHackEnable){
         LOG.debug("@huanke get the reduce task output file "+pendingFile);
 //        huanke get the reduce task output file part-r-00000
 //        huanke get the reduce task output file part-r-00001
@@ -3216,7 +3220,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       }
       OutputBoolean.add(OriginalOutput);
       OutputBoolean.add(BackupOutput);
-      LOG.debug("@huanke OutputBoolean: "+OutputBoolean+ucare_seEnable);
+      LOG.debug("@huanke OutputBoolean: "+OutputBoolean+ " intersecSpecEnable: "
+      + slowPipelineHackEnable);
 
 
       DFSClient.LOG.debug("@huanke---clientMachine: "+clientMachine+" clientNode: "+ clientNode+" replication: "+replication+" pendingFile "+pendingFile);

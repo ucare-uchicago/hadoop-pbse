@@ -30,11 +30,8 @@
 
   <property>
     <name>dfs.datanode.data.dir</name>
-    <!--<value>file://${hadoop.tmp.dir}/dfs/data</value>
-    <value>file:///scratch/ucare/dfs-ucare/data</value>-->
     <value>file:///mnt/extra/dfs-ucare/data</value>
   </property>
-
 
   <property>
     <name>dfs.hosts</name>
@@ -43,10 +40,6 @@
 
   <property>
     <name>dfs.blocksize</name>
-    <!--<value>8388608</value> 8 MB-->
-    <!--<value>12582912</value> 12 MB-->
-    <!--<value>16777216</value> 16 MB-->
-    <!--<value>33554432</value> 32 MB-->
     <value>67108864</value> <!--64 MB-->
   </property>
 
@@ -56,33 +49,28 @@
   </property>
 
   <property>
-    <name>dfs.permissions.superusergroup</name>
-    <value>ucare</value>
-  </property>
-
-  <property>
     <name>dfs.client.use.datanode.hostname</name>
     <value>false</value>
     <description>ALWAYS use ip or bandwidth shaping will fail</description>
   </property>
 
- <property>
+  <property>
     <name>dfs.client.file-block-storage-locations.num-threads</name>
     <value>64</value>
     <description>Increase namenode RPC throughput.Valid value: 10-256</description>
- </property>
+  </property>
 
- <property>
+  <property>
     <name>dfs.namenode.secondary.http-address</name>
     <value>10.1.1.18:50090</value>
     <description>fix secondary namenode http</description>
- </property>
+  </property>
 
- <property>
+  <property>
     <name>dfs.namenode.secondary.https-address</name>
     <value>10.1.1.18:50091</value>
     <description>fix secondary namenode https</description>
- </property>
+  </property>
 
   <property>
     <name>dfs.permissions.enabled</name>
@@ -90,17 +78,23 @@
     <description>Enable permissions</description>
   </property>
 
+  <property>
+    <name>dfs.permissions.superusergroup</name>
+    <value>ucare</value>
+    <description>The name of the group of super-users</description>
+  </property>
+
   <!-- @huanke: custom begin -->
   <property>
-    <name>slow.pipeline.datanode</name>
-    <value>pc001</value> <!-- to be replaced by sed -->
-    <description>HACK: node to force reduce to write</description>
+    <name>dfs.ucare_se.hack.slow.pipeline.datanode</name>
+    <value></value>
+    <description>HACK: huanke: list of slowed nodes that will be avoided on dfs write pipeline</description>
   </property>
 
   <property>
-    <name>ucare_se.enable.for.reduce.pipeline</name>
+    <name>dfs.ucare_se.hack.slow.pipeline.datanode.enable</name>
     <value>false</value>
-    <description>HACK: force reduce to write to slow node</description>
+    <description>HACK: huanke: slow pipeline avoidance. dfs.ucare_se.hack.slow.pipeline.datanode must be defined</description>
   </property>
   <!-- @huanke: custom end -->
 
