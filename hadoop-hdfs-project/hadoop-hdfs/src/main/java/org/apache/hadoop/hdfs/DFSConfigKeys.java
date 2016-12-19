@@ -799,4 +799,10 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
     "dfs.datanode.block-pinning.enabled";
   public static final boolean DFS_DATANODE_BLOCK_PINNING_ENABLED_DEFAULT =
     false;
+
+  // riza: list of hack and experiment settings
+  public static final String UCARE_SE_HACK_SORT_DATANODE =
+      "dfs.ucare_se.hack.sort_datanode";
+  public static final boolean UCARE_SE_HACK_SORT_DATANODE_DEFAULT =
+      false;
 }

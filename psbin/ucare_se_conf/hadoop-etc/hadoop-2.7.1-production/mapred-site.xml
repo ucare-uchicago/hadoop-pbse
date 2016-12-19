@@ -62,43 +62,31 @@
 
   <!-- CUSTOM CONF BEGIN -->
   <property>
-    <name>mapreduce.policy.faread</name>
+    <name>mapreduce.ucare_se.map.datanode.send_report</name>
     <value>true</value>
     <description>UCARE: report datanode being read to AM</description>
   </property>
 
   <property>
-    <name>mapreduce.policy.ucare_se.read_new_datanode</name>
+    <name>mapreduce.ucare_se.map.datanode.read_new</name>
     <value>false</value>
     <description>UCARE: avoid read from same datanode as original task</description>
   </property>
 
   <property>
-    <name>mapreduce.policy.faread.sort.datanode</name>
-    <value>false</value>
-    <description>UCARE: HACK to always pick the least datanode</description>
-  </property>
-
-  <property>
-    <name>mapreduce.policy.faread.progress_interval</name>
-    <value>3000</value>
-    <description>UCARE: heartbeat interval in ms</description>
-  </property>
-
-  <property>
-    <name>mapreduce.policy.faread.avoid_single_readpath</name>
+    <name>mapreduce.ucare_se.map.avoid_single_source</name>
     <value>false</value>
     <description>UCARE: rare single read path mechanishm detection</description>
   </property>
 
   <property>
-    <name>mapreduce.policy.faread.avoid_single_assignpath</name>
+    <name>mapreduce.ucare_se.map.avoid_single_worker</name>
     <value>false</value>
     <description>UCARE: rare single read path mechanishm detection</description>
   </property>
 
   <property>
-    <name>mapreduce.policy.faread.maximum_speculation_delay</name>
+    <name>mapreduce.ucare_se.maximum_speculation_delay</name>
     <value>0</value>
     <description>UCARE: maximum time to delay speculation for task that has not send status update</description>
   </property>
@@ -107,6 +95,12 @@
     <name>mapreduce.experiment.slownode</name>
     <value>pc000</value> <!-- node 17 -->
     <description>UCARE: slow node host in emulab experiment</description>
+  </property>
+
+  <property>
+    <name>mapreduce.ucare_se.hack.map.progress_interval</name>
+    <value>3000</value>
+    <description>HACK: heartbeat interval in ms</description>
   </property>
   <!-- CUSTOM CONF END -->
 
@@ -166,6 +160,6 @@
     <value>true</value>
     <description>UCARE: the scope for reduce tasks</description>
   </property>
-
   <!-- HUAN END -->
+
 </configuration>

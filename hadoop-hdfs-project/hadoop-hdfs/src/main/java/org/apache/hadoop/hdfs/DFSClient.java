@@ -509,7 +509,9 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
           DFSConfigKeys.DFS_CLIENT_KEY_PROVIDER_CACHE_EXPIRY_MS,
           DFSConfigKeys.DFS_CLIENT_KEY_PROVIDER_CACHE_EXPIRY_DEFAULT);
 
-      sortDatanode = conf.getBoolean("mapreduce.policy.faread.sort.datanode", false);
+      sortDatanode = conf.getBoolean(
+          DFSConfigKeys.UCARE_SE_HACK_SORT_DATANODE,
+          DFSConfigKeys.UCARE_SE_HACK_SORT_DATANODE_DEFAULT);
 
       //huanke
       slowDN = conf.getStringCollection("slow.fix.datanode");

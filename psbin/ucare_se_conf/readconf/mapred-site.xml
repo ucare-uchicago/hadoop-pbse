@@ -144,13 +144,13 @@
 
   <!-- CUSTOM CONF BEGIN -->
   <property>
-    <name>mapreduce.policy.faread</name>
+    <name>mapreduce.ucare_se.map.datanode.send_report</name>
     <value>true</value>
     <description>UCARE: report datanode being read to AM</description>
   </property>
 
   <property>
-    <name>mapreduce.policy.ucare_se.read_new_datanode</name>
+    <name>mapreduce.ucare_se.map.datanode.read_new</name>
     <value>true</value>
     <description>UCARE: avoid read from same datanode as original task</description>
   </property>
@@ -174,33 +174,27 @@
   </property>
 
   <property>
-    <name>mapreduce.policy.faread.avoid_single_readpath</name>
+    <name>mapreduce.ucare_se.map.avoid_single_source</name>
     <value>true</value>
     <description>UCARE: rare single read path mechanishm detection</description>
   </property>
 
   <property>
-    <name>mapreduce.policy.faread.avoid_single_assignpath</name>
+    <name>mapreduce.ucare_se.map.avoid_single_worker</name>
     <value>true</value>
     <description>UCARE: rare single read path mechanishm detection</description>
   </property>
 
   <property>
-    <name>mapreduce.policy.faread.maximum_speculation_delay</name>
+    <name>mapreduce.ucare_se.maximum_speculation_delay</name>
     <value>60000</value>
     <description>UCARE: maximum time (ms) to delay speculation for task that has not send status update</description>
   </property>
 
   <property>
-    <name>mapreduce.policy.faread.sort.datanode</name>
-    <value>false</value>
-    <description>UCARE: HACK to always pick the least datanode</description>
-  </property>
-
-  <property>
-    <name>mapreduce.policy.faread.progress_interval</name>
+    <name>mapreduce.ucare_se.hack.map.progress_interval</name>
     <value>3000</value>
-    <description>UCARE: HACK to adjust heartbeat interval in ms</description>
+    <description>HACK: to adjust heartbeat interval in ms</description>
   </property>
 
   <property>

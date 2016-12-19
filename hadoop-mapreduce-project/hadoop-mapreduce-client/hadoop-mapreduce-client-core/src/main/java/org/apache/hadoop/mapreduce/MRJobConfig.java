@@ -878,17 +878,17 @@ public interface MRJobConfig {
 
   // riza: UCARE_SE Configurations
   public static final String UCARE_SE_MAP_DATANODE_SEND_REPORT =
-      "mapreduce.policy.faread";
+      "mapreduce.ucare_se.map.datanode.send_report";
   public static final boolean DEFAULT_UCARE_SE_MAP_DATANODE_SEND_REPORT =
       false;
 
   public static final String UCARE_SE_MAP_DATANODE_READ_NEW =
-      "mapreduce.policy.ucare_se.read_new_datanode";
+      "mapreduce.ucare_se.map.datanode.read_new";
   public static final boolean DEFAULT_UCARE_SE_MAP_DATANODE_READ_NEW =
       false;
   
   public static final String UCARE_SE_MAP_DELAY_INTERVAL_MS =
-      "mapreduce.policy.faread.maximum_speculation_delay";
+      "mapreduce.ucare_se.maximum_speculation_delay";
   public static final int DEFAULT_UCARE_SE_MAP_DELAY_INTERVAL_MS =
       0;
 
@@ -908,12 +908,12 @@ public interface MRJobConfig {
       50.0d;
   
   public static final String UCARE_SE_MAP_AVOID_SINGLE_WORKER =
-      "mapreduce.policy.faread.avoid_single_assignpath";
+      "mapreduce.ucare_se.map.avoid_single_worker";
   public static final boolean DEFAULT_UCARE_SE_MAP_AVOID_SINGLE_WORKER =
       false;
   
   public static final String UCARE_SE_MAP_AVOID_SINGLE_SOURCE =
-      "mapreduce.policy.faread.avoid_single_readpath";
+      "mapreduce.ucare_se.map.avoid_single_worker";
   public static final boolean DEFAULT_UCARE_SE_MAP_AVOID_SINGLE_SOURCE =
       false;
 
@@ -929,5 +929,5 @@ public interface MRJobConfig {
   
   // riza: list of hack and experiment settings
   public static final String UCARE_SE_HACK_MAP_PROGRESS_INTERVAL =
-      "mapreduce.policy.faread.progress_interval";
+      "mapreduce.ucare_se.hack.map.progress_interval";
 }

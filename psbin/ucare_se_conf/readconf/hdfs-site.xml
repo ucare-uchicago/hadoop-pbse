@@ -110,4 +110,12 @@
  </property>
  <!-- @huanke: custom end -->
 
+ <!-- hack and experimental setting begin -->
+ <property>
+   <name>dfs.ucare_se.hack.sort_datanode</name>
+   <value>false</value>
+   <description>HACK: to always pick the least datanode</description>
+ </property>
+ <!-- hack and experimental setting end -->
+
 </configuration>
