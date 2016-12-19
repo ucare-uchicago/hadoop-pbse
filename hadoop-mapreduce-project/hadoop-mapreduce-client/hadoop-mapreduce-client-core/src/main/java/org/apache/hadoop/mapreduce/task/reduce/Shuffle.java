@@ -190,7 +190,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
 
     // @Cesar: Log shuffle finish time
     long shuffleTimeStop = System.nanoTime();
-    LOG.info(PBSEShuffleMessage.createUCARESEMessageShuffleFinished(shuffleTimeStop - shuffleTimeStart));
+    LOG.info(UcareSeShuffleMessage.createUcareSeMessageShuffleFinished(shuffleTimeStop - shuffleTimeStart));
     
     copyPhase.complete(); // copy is already complete
     taskStatus.setPhase(TaskStatus.Phase.SORT);

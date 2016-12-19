@@ -1,4 +1,0 @@
-#!/usr/local/bin/bash
-
-ssh node-$1.pbse.ucare.emulab.net
-#ssh node-$1.sclck.ucare.emulab.net

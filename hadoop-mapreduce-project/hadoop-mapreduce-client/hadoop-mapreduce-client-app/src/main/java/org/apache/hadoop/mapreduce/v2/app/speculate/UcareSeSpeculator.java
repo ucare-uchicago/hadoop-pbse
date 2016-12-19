@@ -49,8 +49,8 @@ import org.apache.hadoop.mapred.MapTaskAttemptImpl;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.TypeConverter;
 import org.apache.hadoop.mapreduce.task.reduce.FetchRateReport;
-import org.apache.hadoop.mapreduce.task.reduce.PBSEReduceMessage;
-import org.apache.hadoop.mapreduce.task.reduce.PBSEShuffleMessage;
+import org.apache.hadoop.mapreduce.task.reduce.UcareSeReduceMessage;
+import org.apache.hadoop.mapreduce.task.reduce.UcareSeShuffleMessage;
 import org.apache.hadoop.mapreduce.task.reduce.PipelineWriteRateReport;
 import org.apache.hadoop.mapreduce.task.reduce.ShuffleData;
 import org.apache.hadoop.mapreduce.v2.api.records.JobId;
@@ -72,7 +72,7 @@ import org.apache.hadoop.yarn.util.Clock;
 
 import com.google.common.annotations.VisibleForTesting;
 
-public class PBSESpeculator extends AbstractService implements Speculator {
+public class UcareSeSpeculator extends AbstractService implements Speculator {
 
   private static final long ON_SCHEDULE = Long.MIN_VALUE;
   private static final long ALREADY_SPECULATING = Long.MIN_VALUE + 1;
@@ -87,7 +87,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   private double proportionTotalTasksSpeculatable;
   private int  minimumAllowedSpeculativeTasks;
 
-  private static final Log LOG = LogFactory.getLog(PBSESpeculator.class);
+  private static final Log LOG = LogFactory.getLog(UcareSeSpeculator.class);
 
   private final ConcurrentMap<TaskId, Boolean> runningTasks
       = new ConcurrentHashMap<TaskId, Boolean>();
@@ -173,11 +173,11 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   private Map<TaskId, Set<TaskAttemptId>> knownAttempt;
   TaskAttemptId switchingAttempt;
 
-  public PBSESpeculator(Configuration conf, AppContext context) {
+  public UcareSeSpeculator(Configuration conf, AppContext context) {
     this(conf, context, context.getClock());
   }
 
-  public PBSESpeculator(Configuration conf, AppContext context, Clock clock) {
+  public UcareSeSpeculator(Configuration conf, AppContext context, Clock clock) {
     this(conf, context, getEstimator(conf, context), clock);
   }
 
@@ -218,9 +218,9 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   // This constructor is designed to be called by other constructors.
   // However, it's public because we do use it in the test cases.
   // Normally we figure out our own estimator.
-  public PBSESpeculator
+  public UcareSeSpeculator
       (Configuration conf, AppContext context, TaskRuntimeEstimator estimator, Clock clock) {
-    super(PBSESpeculator.class.getName());
+    super(UcareSeSpeculator.class.getName());
 
     this.conf = conf;
     this.context = context;
@@ -401,7 +401,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       }
     };
     speculationBackgroundThread = new Thread
-        (speculationBackgroundCore, "UCARESESpeculator background processing");
+        (speculationBackgroundCore, "UcareSeSpeculator background processing");
     speculationBackgroundThread.start();
     super.serviceStart();
   }
@@ -791,7 +791,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   // Add attempt to a given Task.
   protected void addSpeculativeAttempt(TaskId taskID) {
     // @Cesar: Do not re espculate if this have been launched by slow shuffle
-    LOG.info("UCARESESpeculator.addSpeculativeAttempt -- we are speculating " + taskID);
+    LOG.info("UcareSeSpeculator.addSpeculativeAttempt -- we are speculating " + taskID);
     eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ADD_SPEC_ATTEMPT));
     mayHaveSpeculated.add(taskID);
   }
@@ -1247,7 +1247,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 		  										 List<String> badPipe, 
 		  										 String badHost) {
    LOG.info("@Cesar speculateReduceTaskDueToSlowWrite " + attempt.getTaskId());
-   LOG.info(PBSEReduceMessage.createUCARESEMessageReduceTaskSpeculated(
+   LOG.info(UcareSeReduceMessage.createUcareSeMessageReduceTaskSpeculated(
 		   		badHost, 
 		   		attempt.toString(), 
 		   		badPipe));
@@ -1264,7 +1264,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   // @Cesar: Double check
   if(!pipeTable.isFinished(attempt.getTaskId())){	  
 	   LOG.info("@Cesar speculateReduceTaskDueToSingleReduce " + attempt.getTaskId());
-	   LOG.info(PBSEReduceMessage.createPBSEMessageReduceTaskSpeculatedDueToSingleReduce(
+	   LOG.info(UcareSeReduceMessage.createUcareSeMessageReduceTaskSpeculatedDueToSingleReduce(
 			   		badHost, 
 			   		attempt.toString(), 
 			   		badPipe));
@@ -1286,7 +1286,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
    // @Cesar: Double check
    if(!pipeTable.isFinished(attempt.getTaskId())){	  
 	   LOG.info("@Cesar speculateReduceTaskDueToWriteDiversity " + attempt.getTaskId());
-	   LOG.info(PBSEReduceMessage.createUCARESEMessageReduceTaskSpeculatedDueToWriteDiversity(
+	   LOG.info(UcareSeReduceMessage.createUcareSeMessageReduceTaskSpeculatedDueToWriteDiversity(
 			   		badHost, 
 			   		attempt.toString(), 
 			   		badPipe));
@@ -1325,13 +1325,13 @@ public class PBSESpeculator extends AbstractService implements Speculator {
         }
       }
     }
-//    LOG.info("@huanke UCARESESpeculator TaskAndPipeline" + TaskAndPipeline
+//    LOG.info("@huanke UcareSeSpeculator TaskAndPipeline" + TaskAndPipeline
 //        + TaskAndPipeline.size());
   }
 
   // huanke reduce task does not launch backup task as map task like T_ADD_SPEC_ATTEMPT
   protected void relaunchTask(TaskId taskID) {
-    LOG.info("UCARESESpeculator.@huanke-relaunchTask -- we are speculating a reduce task of id "
+    LOG.info("UcareSeSpeculator.@huanke-relaunchTask -- we are speculating a reduce task of id "
         + taskID);
     eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ATTEMPT_KILLED));
     // @huanke: Add this as speculated
@@ -1526,13 +1526,13 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   // using addSpeculativeAttempt
   protected void relaunchTask(TaskId taskID, String mapperHost,
       TaskAttemptId mapId) {
-    LOG.info("UCARESESpeculator.relaunchTask.@cesar -- we are speculating a map task of id "
+    LOG.info("UcareSeSpeculator.relaunchTask.@cesar -- we are speculating a map task of id "
         + taskID);
     eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ATTEMPT_KILLED,
         mapperHost, mapId));
 
     // @Cesar: Log
-    LOG.info(PBSEShuffleMessage.createUCARESEMessageMapTaskRelaunched(mapperHost));
+    LOG.info(UcareSeShuffleMessage.createUcareSeMessageMapTaskRelaunched(mapperHost));
 
     // @Cesar: Add this as speculated
     mayHaveSpeculated.add(taskID);

@@ -1,6 +1,6 @@
 package org.apache.hadoop.mapreduce.task.reduce;
 
-public class PBSEShuffleMessage {
+public class UcareSeShuffleMessage {
 	
 	  private static final String MESSAGE_TYPE_SPECULATION = "RELAUNCH_TASK";
 	  private static final String MESSAGE_TYPE_FETCHER_DATA = "FETCHER_INFO";
@@ -13,7 +13,7 @@ public class PBSEShuffleMessage {
 	  
 	  
 	  // @Cesar: Create a message to be logged for ucare_se statistic purposes
-	  public static String createUCARESEMessageMapTaskRelaunched(String mapperHost){
+	  public static String createUcareSeMessageMapTaskRelaunched(String mapperHost){
 		  StringBuilder bld = new StringBuilder();
 		  bld.append(UCARE_SE_VERSION).append(": ")
 		 .append("{")
@@ -28,7 +28,7 @@ public class PBSEShuffleMessage {
 	  }
 	  
 	  // @Cesar: Create a message to be logged for ucare_se statistic purposes
-	  public static String createUCARESEMessageFetcherThreadAssigned(String mapperHost, int fetcherId){
+	  public static String createUcareSeMessageFetcherThreadAssigned(String mapperHost, int fetcherId){
 		  StringBuilder bld = new StringBuilder();
 		  bld.append(UCARE_SE_MSG).append(":")
 		 .append("{")
@@ -46,7 +46,7 @@ public class PBSEShuffleMessage {
 	  }
 
 	  // @Cesar: Create a message to be logged for ucare_se statistic purposes
-	  public static String createUCARESEMessageShuffleFinished(long totalTime){
+	  public static String createUcareSeMessageShuffleFinished(long totalTime){
 		  StringBuilder bld = new StringBuilder();
 		  bld.append(UCARE_SE_MSG).append(":")
 		  .append("{")
@@ -61,7 +61,7 @@ public class PBSEShuffleMessage {
 	  }
 	
 	// @Cesar: Create a message to be logged for ucare_se statistic purposes
-	public static String createUCARESEMessageSortFinished(){
+	public static String createUcareSeMessageSortFinished(){
 		StringBuilder bld = new StringBuilder();
 		bld.append(UCARE_SE_MSG).append(":")
 		 .append("{")
@@ -73,7 +73,7 @@ public class PBSEShuffleMessage {
 	 }
 	  
 	// @Cesar: Create a message to be logged for ucare_se statistic purposes
-	public static String createUCARESEMessageReduceFinished(){
+	public static String createUcareSeMessageReduceFinished(){
 		StringBuilder bld = new StringBuilder();
 		bld.append(UCARE_SE_MSG).append(":")
 		 .append("{")
@@ -85,10 +85,10 @@ public class PBSEShuffleMessage {
 	  }
 	
 	  public static void main(String... args){
-		  System.out.println(createUCARESEMessageMapTaskRelaunched("xxx"));
-		  System.out.println(createUCARESEMessageFetcherThreadAssigned("xxx", 10));
-		  System.out.println(createUCARESEMessageShuffleFinished(1100000000L));
-		  System.out.println(createUCARESEMessageSortFinished());
+		  System.out.println(createUcareSeMessageMapTaskRelaunched("xxx"));
+		  System.out.println(createUcareSeMessageFetcherThreadAssigned("xxx", 10));
+		  System.out.println(createUcareSeMessageShuffleFinished(1100000000L));
+		  System.out.println(createUcareSeMessageSortFinished());
 	  }
 	  
 }

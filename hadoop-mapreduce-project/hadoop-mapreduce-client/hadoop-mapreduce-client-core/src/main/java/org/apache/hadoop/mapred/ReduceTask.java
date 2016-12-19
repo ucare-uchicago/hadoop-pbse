@@ -61,7 +61,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskCounter;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormatCounter;
 import org.apache.hadoop.mapreduce.split.AMtoReduceTask;
-import org.apache.hadoop.mapreduce.task.reduce.PBSEShuffleMessage;
+import org.apache.hadoop.mapreduce.task.reduce.UcareSeShuffleMessage;
 import org.apache.hadoop.mapreduce.task.reduce.Shuffle;
 import org.apache.hadoop.util.Progress;
 import org.apache.hadoop.util.Progressable;
@@ -435,7 +435,7 @@ public class ReduceTask extends Task {
     sortPhase.complete();                         // sort is complete
     long sorFinished = System.nanoTime();
     // @Cesar: Log sort finish time
-    LOG.info(PBSEShuffleMessage.createUCARESEMessageSortFinished());
+    LOG.info(UcareSeShuffleMessage.createUcareSeMessageSortFinished());
     setPhase(TaskStatus.Phase.REDUCE); 
     //huanke reocrd the write reduce phase start time
     long StartTime = System.currentTimeMillis();
@@ -466,7 +466,7 @@ public class ReduceTask extends Task {
     LOG.info("@huanke EndTime: "+StartTime);
     LOG.info("@huanke ReducePhase time: "+ (EndTime-StartTime));
     // @Cesar: Log reduce finish time
-    LOG.info(PBSEShuffleMessage.createUCARESEMessageReduceFinished());
+    LOG.info(UcareSeShuffleMessage.createUcareSeMessageReduceFinished());
     shuffleConsumerPlugin.close();
     done(umbilical, reporter);
   }

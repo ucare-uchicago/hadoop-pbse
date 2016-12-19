@@ -2,5 +2,4 @@
 
 echo "restore node-$1"
 
-#tevc -e ucare/pbse now lan0-node-$1 modify bandwidth=1000000
 ssh -n node-$1 "sudo $PSBIN/fast_machine.sh"

@@ -5,7 +5,7 @@ import java.util.List;
 
 import com.google.common.collect.Lists;
 
-public class PBSEReduceMessage {
+public class UcareSeReduceMessage {
 	
 	private static final String MESSAGE_TYPE_SPECULATION = "SPECULATE_TASK";
 	
@@ -15,7 +15,7 @@ public class PBSEReduceMessage {
 	private static final String UCARE_SE_MSG = "UCARE_SE_SLOW_REDUCE_WRITE";
 	
 	// @Cesar: Create a message to be logged for ucare_se statistic purposes
-	public static String createUCARESEMessageReduceTaskSpeculated(String reduceHost,
+	public static String createUcareSeMessageReduceTaskSpeculated(String reduceHost,
 															   String attemptId,
 															   List<String> pipeline){
 		StringBuilder bld = new StringBuilder();
@@ -43,7 +43,7 @@ public class PBSEReduceMessage {
 	}
 	
 	// @Cesar: Create a message to be logged for ucare_se statistic purposes
-	public static String createPBSEMessageReduceTaskSpeculatedDueToSingleReduce
+	public static String createUcareSeMessageReduceTaskSpeculatedDueToSingleReduce
 						(String reduceHost,
 						 String attemptId,
 						 List<String> pipeline){
@@ -72,7 +72,7 @@ public class PBSEReduceMessage {
 	}
 	
 	// @Cesar: Create a message to be logged for ucare_se statistic purposes
-	public static String createUCARESEMessageReduceTaskSpeculatedDueToWriteDiversity
+	public static String createUcareSeMessageReduceTaskSpeculatedDueToWriteDiversity
 						(String reduceHost,
 						 String attemptId,
 						 List<String> pipeline){
@@ -101,7 +101,7 @@ public class PBSEReduceMessage {
 	}	
 		
 		public static void main(String... args){
-			System.out.println(createUCARESEMessageReduceTaskSpeculatedDueToWriteDiversity
+			System.out.println(createUcareSeMessageReduceTaskSpeculatedDueToWriteDiversity
 								("a", "b", (List)Lists.newArrayList()));
 		}
 }

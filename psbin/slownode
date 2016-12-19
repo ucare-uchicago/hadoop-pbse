@@ -2,5 +2,4 @@
 
 echo "slowing node-$1"
 
-#tevc -e ucare/pbse now lan0-node-$1 modify bandwidth=1000
 ssh node-$1 -n "sudo $PSBIN/slow_machine.sh"

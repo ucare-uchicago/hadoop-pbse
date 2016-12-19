@@ -15,7 +15,7 @@ ssh -t node-17 "clstop;"
 clcleanlogs
 sleep 5
 
-cp pbse_conf/readconf/* $HADOOP_CONF_DIR/
+cp ucare_se_conf/readconf/* $HADOOP_CONF_DIR/
 
 # change slow down node
 sed -i "s/pc001/$2/" $HADOOP_CONF_DIR/hdfs-site.xml

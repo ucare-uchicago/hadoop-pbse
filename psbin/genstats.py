@@ -27,7 +27,7 @@ tasknode = re.compile('.+ TaskAttempt: \[(.+)\].+ on NM: \[(.+):.+\]')
 dataread = re.compile('.+ reporting datanode (.+) with.*')
 re_date = re.compile("..+[-/]..[-/].. ..:..:..(,...)*")
 re_hb = re.compile(".*statusUpdate.*")
-re_tags_pbse = re.compile(".+ (UCARE_SE-[^ :]+).*")
+re_tags_ucare_se = re.compile(".+ (UCARE_SE-[^ :]+).*")
 re_dnpipeline = re.compile(".+write transfer rates:.*0=(.+), 1=(.+), 2=(.+)\}.*")
 re_am_finalct = re.compile(".+Final Stats: PendingReds:(.+) ScheduledMaps:(.+) ScheduledReds:(.+) AssignedMaps:(.+) AssignedReds:(.+) CompletedMaps:(.+) CompletedReds:(.+) ContAlloc:(.+) ContRel:(.+) HostLocal:(.+) RackLocal:(.+)")
 re_am_specadd = re.compile(".+addSpeculativeAttempt.+")
@@ -35,16 +35,16 @@ re_jc_appid = re.compile(".+Submitted application (.+)")
 re_jc_startrun = re.compile(".+Job .+ running in uber mode.+")
 re_jc_stoprun = re.compile(".+Job .+ completed successfully")
 re_jc_duration = re.compile("The job took (.+) seconds.")
-re_shuffle_msg = re.compile(".+ PBSE_SHUFFLE:\{(.+)\:(.+),(.+)\:(.+)\}")
-re_sort_msg = re.compile(".+ PBSE_SHUFFLE:\{(.+)\:(.+)\}")
-re_red_msg = re.compile(".+ PBSE_SHUFFLE:\{(.+)\:(.+)\}")
+re_shuffle_msg = re.compile(".+ UCARE_SE_SHUFFLE:\{(.+)\:(.+),(.+)\:(.+)\}")
+re_sort_msg = re.compile(".+ UCARE_SE_SHUFFLE:\{(.+)\:(.+)\}")
+re_red_msg = re.compile(".+ UCARE_SE_SHUFFLE:\{(.+)\:(.+)\}")
 lookForShuffleTime = "\"SHUFFLE_TIME\""
 lookForSortTime = "\"SORT_TIME\""
 lookForReduceTime = "\"REDUCE_TIME\""
 re_container_finished = re.compile(".+Task \'(.+)\' done\.")
 re_app_master_node = re.compile(".+Instantiated MRClientService at (.+)/(.+)")
 re_relauch_attempt = re.compile(".+Relaunching attempt (.+) of task (.+) at host (.+)")
-re_write_diversity = re.compile(".+PBSE-Write-Diversity-1\: \{\"type\"\:\"SPECULATE_TASK\",\"ignoreHost\"\:\"(.+)\",\"attempt\"\:\"(.+)\",.+\}")
+re_write_diversity = re.compile(".+UCARE_SE-Write-Diversity-1\: \{\"type\"\:\"SPECULATE_TASK\",\"ignoreHost\"\:\"(.+)\",\"attempt\"\:\"(.+)\",.+\}")
 
 def getTaskId(ct):
   att = ct["attempt"]
@@ -128,7 +128,7 @@ def initMasterStats():
     "slowNodeInvolvedInMap" : False,
     "slowNodeInvolvedInReduce" : False,
     "slowNodeInvolvedInDatawrite" : False,
-    "tags_PBSE" : [],
+    "tags_UCARE_SE" : [],
     "location" : "", # location
     "killedBySlowShuffle" : [], # killed by slow shuffle
     "slowShuffleDetections" : [],   # time where the kill was issued
@@ -259,10 +259,10 @@ def getMasterStats(app):
       else:
         master["ct_SpecRed"] += 1
 
-    match = re_tags_pbse.match(line)
+    match = re_tags_ucare_se.match(line)
     if match:
-      if match.group(1) not in master["tags_PBSE"]:
-        master["tags_PBSE"].append(match.group(1))
+      if match.group(1) not in master["tags_UCARE_SE"]:
+        master["tags_UCARE_SE"].append(match.group(1))
 
     linect += 1
 
@@ -324,10 +324,10 @@ def getContainerStats(app):
          if not ct["ismap"] and SLOWHOST in ct["reducenode"]:
             master["slowNodeInvolvedInReduce"] = True
 
-      match = re_tags_pbse.match(line)
+      match = re_tags_ucare_se.match(line)
       if match:
-        if match.group(1) not in master["tags_PBSE"]:
-          master["tags_PBSE"].append(match.group(1))
+        if match.group(1) not in master["tags_UCARE_SE"]:
+          master["tags_UCARE_SE"].append(match.group(1))
 
       linect += 1
 

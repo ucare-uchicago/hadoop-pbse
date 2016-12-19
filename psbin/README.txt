@@ -1,6 +1,6 @@
 
 
-PBSE Scripts
+UCARE_SE Scripts
 
 First, copy the entire of psbin folder to the hadoop installation
 folder, such as:
@@ -10,7 +10,7 @@ folder, such as:
 
 SETUP ENV
 
-1. Setup Hadoop and PBSE environtment vars
+1. Setup Hadoop and UCARE_SE environtment vars
    Check out riza_cshrc and pad these vars to your ~/.cshrc.
    Update the values according to your directory setup.
 
@@ -20,10 +20,10 @@ SETUP ENV
    - mapred-site
    - yarn-site.xml
    - capacity-scheduler.xml
-   (example at psbin/pbse_conf/hadoop-etc/hadoop-2.7.1/)
+   (example at psbin/ucare_se_conf/hadoop-etc/hadoop-2.7.1/)
 
 3. MAKE SURE to sync your mapred-site.xml and yarn-site.xml with the
-   one at pbse_conf/writeconf and pbse_conf/readconf
+   one at ucare_se_conf/writeconf and ucare_se_conf/readconf
 
    writeconf : configuration for SWIM input write
    readconf  : configuration for SWIM benchmark
@@ -36,7 +36,7 @@ SETUP ENV
 SETUP EXPERIMENT
 
 1. Generate your SWIM benchmark and note the input sizes.
-   Update files pbse_conf/*.xsl according to the input size you just
+   Update files ucare_se_conf/*.xsl according to the input size you just
    generate.
 
    Refer to https://github.com/SWIMProjectUCB/SWIM/wiki/Performance-measurement-by-executing-synthetic-or-historical-workloads
