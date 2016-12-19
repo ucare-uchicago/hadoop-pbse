@@ -97,7 +97,7 @@ abstract public class Task implements Writable, Configurable{
   // huan: last known
   // private DatanodeInfo[] DNPath=DatanodeInfo.createDatanodeInfo();
 
-  // riza: PBSE fields
+  // riza: UCARE_SE fields
   private static final int PROGRESS_INTERVAL_BEFORE_READ = 500;
   private static final int PROGRESS_INTERVAL_BEFORE_FIRST_HEARTBEAT = 100;
   private static final int PROGRESS_INTERVAL_AFTER_DATANODE_SWITCH = 100;
@@ -779,29 +779,29 @@ abstract public class Task implements Writable, Configurable{
      * let the parent know that it's alive. It also pings the parent to see if it's alive.
      */
     public void run() {
-      // riza: PBSE init
+      // riza: UCARE_SE init
       sendDatanodeInfo =
-          conf.getBoolean(MRJobConfig.PBSE_MAP_DATANODE_SEND_REPORT,
-              MRJobConfig.DEFAULT_PBSE_MAP_DATANODE_SEND_REPORT);
+          conf.getBoolean(MRJobConfig.UCARE_SE_MAP_DATANODE_SEND_REPORT,
+              MRJobConfig.DEFAULT_UCARE_SE_MAP_DATANODE_SEND_REPORT);
       avoidSingleSource =
-          conf.getBoolean(MRJobConfig.PBSE_MAP_AVOID_SINGLE_SOURCE,
-              MRJobConfig.DEFAULT_PBSE_MAP_AVOID_SINGLE_SOURCE);
+          conf.getBoolean(MRJobConfig.UCARE_SE_MAP_AVOID_SINGLE_SOURCE,
+              MRJobConfig.DEFAULT_UCARE_SE_MAP_AVOID_SINGLE_SOURCE);
 //      sendPipelineInfo =
-//          conf.getBoolean(MRJobConfig.PBSE_REDUCE_PIPELINE_SEND_REPORT,
-//              MRJobConfig.DEFAULT_PBSE_REDUCE_PIPELINE_SEND_REPORT);
+//          conf.getBoolean(MRJobConfig.UCARE_SE_REDUCE_PIPELINE_SEND_REPORT,
+//              MRJobConfig.DEFAULT_UCARE_SE_REDUCE_PIPELINE_SEND_REPORT);
       sendPipelineRateInfo =
-              conf.getBoolean(MRJobConfig.PBSE_REDUCE_PIPELINE_RATE_SEND_REPORT,
-                  MRJobConfig.DEFAULT_PBSE_REDUCE_PIPELINE_RATE_SEND_REPORT);
+              conf.getBoolean(MRJobConfig.UCARE_SE_REDUCE_PIPELINE_RATE_SEND_REPORT,
+                  MRJobConfig.DEFAULT_UCARE_SE_REDUCE_PIPELINE_RATE_SEND_REPORT);
       
       final int MAX_RETRIES = 3;
       int remainingRetries = MAX_RETRIES;
-      final int proginterval = conf.getInt(MRJobConfig.PBSE_HACK_MAP_PROGRESS_INTERVAL,
+      final int proginterval = conf.getInt(MRJobConfig.UCARE_SE_HACK_MAP_PROGRESS_INTERVAL,
               PROGRESS_INTERVAL);
 
       // riza: wait 1 minute times until lastDatanodeID set
       int mapRetriesTime = isMapTask() ?
-          conf.getInt(MRJobConfig.PBSE_MAP_DELAY_INTERVAL_MS,
-              MRJobConfig.DEFAULT_PBSE_MAP_DELAY_INTERVAL_MS)  : 0;
+          conf.getInt(MRJobConfig.UCARE_SE_MAP_DELAY_INTERVAL_MS,
+              MRJobConfig.DEFAULT_UCARE_SE_MAP_DELAY_INTERVAL_MS)  : 0;
       // riza: shall we query for switch instruction?
       boolean askForSwitch = isMapTask() && (getTaskID().getId() < 1) && avoidSingleSource;
       // riza: if datanode or DNPath switched, then immediately report back
@@ -810,8 +810,8 @@ abstract public class Task implements Writable, Configurable{
       
       // 1 minute retry for reduce progress
       int sendReduceProgress = !isMapTask() ?
-          conf.getInt(MRJobConfig.PBSE_MAP_DELAY_INTERVAL_MS,
-              MRJobConfig.DEFAULT_PBSE_MAP_DELAY_INTERVAL_MS)  : 0;
+          conf.getInt(MRJobConfig.UCARE_SE_MAP_DELAY_INTERVAL_MS,
+              MRJobConfig.DEFAULT_UCARE_SE_MAP_DELAY_INTERVAL_MS)  : 0;
       
       // get current flag value and reset it as well
       boolean sendProgress = resetProgressFlag();
@@ -968,7 +968,7 @@ abstract public class Task implements Writable, Configurable{
               if (shallswitch == 1)
                 try {
                   hdfsInputStream.switchDatanode(lastDatanodeId);
-                  LOG.debug("PBSE-Read-Diversity-1: lastDatanode "
+                  LOG.debug("UCARE_SE-Read-Diversity-1: lastDatanode "
                       + lastDatanodeId + " newDatanode "
                       + hdfsInputStream.getCurrentOrChoosenDatanode());
                 } catch (IOException ex) {

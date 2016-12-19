@@ -2196,7 +2196,7 @@ public abstract class TaskAttemptImpl implements
     Counters counters = EMPTY_COUNTERS;
     result.counters = counters;
 
-    // riza: PBSE task status init
+    // riza: UCARE_SE task status init
     result.containerHost = "UNKNOWN";
     result.lastDatanodeID = DatanodeID.createNullDatanodeID();
     result.mapTransferRate = -1.0D;

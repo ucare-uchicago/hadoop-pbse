@@ -9,17 +9,17 @@ public class PBSEReduceMessage {
 	
 	private static final String MESSAGE_TYPE_SPECULATION = "SPECULATE_TASK";
 	
-	private static final String PBSE_VERSION_WRITE = "PBSE-Slow-Reduce-Write-1";
-	private static final String PBSE_VERSION_DIVERSITY = "PBSE-Write-Diversity-1";
-	private static final String PBSE_VERSION_SINGLE_REDUCE = "PBSE-Single-Reduce-1";
-	private static final String PBSE_MSG = "PBSE_SLOW_REDUCE_WRITE";
+	private static final String UCARE_SE_VERSION_WRITE = "UCARE_SE-Slow-Reduce-Write-1";
+	private static final String UCARE_SE_VERSION_DIVERSITY = "UCARE_SE-Write-Diversity-1";
+	private static final String UCARE_SE_VERSION_SINGLE_REDUCE = "UCARE_SE-Single-Reduce-1";
+	private static final String UCARE_SE_MSG = "UCARE_SE_SLOW_REDUCE_WRITE";
 	
-	// @Cesar: Create a message to be logged for pbse statistic purposes
-	public static String createPBSEMessageReduceTaskSpeculated(String reduceHost,
+	// @Cesar: Create a message to be logged for ucare_se statistic purposes
+	public static String createUCARESEMessageReduceTaskSpeculated(String reduceHost,
 															   String attemptId,
 															   List<String> pipeline){
 		StringBuilder bld = new StringBuilder();
-		bld.append(PBSE_VERSION_WRITE).append(": ")
+		bld.append(UCARE_SE_VERSION_WRITE).append(": ")
 		.append("{")
 		.append("\"type\":")
 		.append("\"").append(MESSAGE_TYPE_SPECULATION).append("\"")
@@ -42,13 +42,13 @@ public class PBSEReduceMessage {
 			     
 	}
 	
-	// @Cesar: Create a message to be logged for pbse statistic purposes
+	// @Cesar: Create a message to be logged for ucare_se statistic purposes
 	public static String createPBSEMessageReduceTaskSpeculatedDueToSingleReduce
 						(String reduceHost,
 						 String attemptId,
 						 List<String> pipeline){
 		StringBuilder bld = new StringBuilder();
-		bld.append(PBSE_VERSION_SINGLE_REDUCE).append(": ")
+		bld.append(UCARE_SE_VERSION_SINGLE_REDUCE).append(": ")
 		.append("{")
 		.append("\"type\":")
 		.append("\"").append(MESSAGE_TYPE_SPECULATION).append("\"")
@@ -71,13 +71,13 @@ public class PBSEReduceMessage {
 			     
 	}
 	
-	// @Cesar: Create a message to be logged for pbse statistic purposes
-	public static String createPBSEMessageReduceTaskSpeculatedDueToWriteDiversity
+	// @Cesar: Create a message to be logged for ucare_se statistic purposes
+	public static String createUCARESEMessageReduceTaskSpeculatedDueToWriteDiversity
 						(String reduceHost,
 						 String attemptId,
 						 List<String> pipeline){
 		StringBuilder bld = new StringBuilder();
-		bld.append(PBSE_VERSION_DIVERSITY).append(": ")
+		bld.append(UCARE_SE_VERSION_DIVERSITY).append(": ")
 		.append("{")
 		.append("\"type\":")
 		.append("\"").append(MESSAGE_TYPE_SPECULATION).append("\"")
@@ -101,7 +101,7 @@ public class PBSEReduceMessage {
 	}	
 		
 		public static void main(String... args){
-			System.out.println(createPBSEMessageReduceTaskSpeculatedDueToWriteDiversity
+			System.out.println(createUCARESEMessageReduceTaskSpeculatedDueToWriteDiversity
 								("a", "b", (List)Lists.newArrayList()));
 		}
 }

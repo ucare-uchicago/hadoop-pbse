@@ -323,8 +323,8 @@ public class MapTask extends Task {
     this.umbilical = umbilical;
 
     this.sendDatanodeInfo =
-        job.getBoolean(MRJobConfig.PBSE_MAP_DATANODE_SEND_REPORT,
-            MRJobConfig.DEFAULT_PBSE_MAP_DATANODE_SEND_REPORT);
+        job.getBoolean(MRJobConfig.UCARE_SE_MAP_DATANODE_SEND_REPORT,
+            MRJobConfig.DEFAULT_UCARE_SE_MAP_DATANODE_SEND_REPORT);
 
     if (isMapTask()) {
       // If there are no reducers then there won't be any sort. Hence the map 
@@ -379,7 +379,7 @@ public class MapTask extends Task {
    // riza: insert ignored datanode to HdfsDataInputStream at beginning
    try{
      if (sendDatanodeInfo){
-       LOG.info("Initiating PBSE datanode reporting");
+       LOG.info("Initiating UCARE_SE datanode reporting");
        if (inFile instanceof HdfsDataInputStream) {
          switchDatanode((HdfsDataInputStream) inFile, null);
        } else {
@@ -499,7 +499,7 @@ public class MapTask extends Task {
 //
 //          if ((inputS instanceof HdfsDataInputStream)
 //              && sendDatanodeInfo) {
-//            LOG.info("Initiating PBSE datanode reporting");
+//            LOG.info("Initiating UCARE_SE datanode reporting");
 //            switchDatanode((HdfsDataInputStream) inputS, reporter);
 //          } else {
 //            LOG.warn("no faread or input stream is not instance of HdfsDataInputStream "
@@ -2145,7 +2145,7 @@ public class MapTask extends Task {
 
   /**
    * riza: switch datanode with one obtained from splitMetaInfo.
-   * {@code TaskSplitIndex#getSlowShufflingMap()} from PBSE-Slow-Shuffle-1 is
+   * {@code TaskSplitIndex#getSlowShufflingMap()} from UCARE_SE-Slow-Shuffle-1 is
    * prioritized over {@code TaskSplitIndex#getLastDatanodeID()}, means that if
    * both is not empty, it will ignore slow shuffling map rather than
    * lastDatanodeID, <b>EXCEPT</b> if this task is the first attempt.
@@ -2173,7 +2173,7 @@ public class MapTask extends Task {
       
       if (hdis.getIgnoredDatanode() != null
           && !hdis.getIgnoredDatanode().equals(DatanodeID.nullDatanodeID)) {
-        LOG.info("PBSE-Read-1: ignored " + hdis.getIgnoredDatanode()
+        LOG.info("UCARE_SE-Read-1: ignored " + hdis.getIgnoredDatanode()
             + " current " + hdis.getCurrentOrChoosenDatanode());
       }
 

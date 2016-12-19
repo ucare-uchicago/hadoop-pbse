@@ -66,12 +66,12 @@ MEMORY TUNING END -->
 
   <!-- @Cesar: Added by cesar to control location of app master -->
   <property>
-      <name>yarn.pbse.experiment.blAppMaster</name>
+      <name>yarn.ucare_se.experiment.blAppMaster</name>
       <value></value>
   </property>
   
   <property>
-      <name>yarn.pbse.experiment.fixAppMaster</name>
+      <name>yarn.ucare_se.experiment.fixAppMaster</name>
       <value>false</value>
   </property>
   <!-- @Cesar: End cesar custom configuration -->

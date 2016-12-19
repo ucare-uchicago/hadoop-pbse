@@ -435,7 +435,7 @@ public class ReduceTask extends Task {
     sortPhase.complete();                         // sort is complete
     long sorFinished = System.nanoTime();
     // @Cesar: Log sort finish time
-    LOG.info(PBSEShuffleMessage.createPBSEMessageSortFinished());
+    LOG.info(PBSEShuffleMessage.createUCARESEMessageSortFinished());
     setPhase(TaskStatus.Phase.REDUCE); 
     //huanke reocrd the write reduce phase start time
     long StartTime = System.currentTimeMillis();
@@ -466,7 +466,7 @@ public class ReduceTask extends Task {
     LOG.info("@huanke EndTime: "+StartTime);
     LOG.info("@huanke ReducePhase time: "+ (EndTime-StartTime));
     // @Cesar: Log reduce finish time
-    LOG.info(PBSEShuffleMessage.createPBSEMessageReduceFinished());
+    LOG.info(PBSEShuffleMessage.createUCARESEMessageReduceFinished());
     shuffleConsumerPlugin.close();
     done(umbilical, reporter);
   }
@@ -774,8 +774,8 @@ public class ReduceTask extends Task {
         } else {
           LOG.info("@huanke output is null");
         }
-        boolean flag = job.getBoolean(MRJobConfig.PBSE_REDUCE_PIPELINE_RATE_SEND_REPORT,
-            MRJobConfig.DEFAULT_PBSE_REDUCE_PIPELINE_RATE_SEND_REPORT);
+        boolean flag = job.getBoolean(MRJobConfig.UCARE_SE_REDUCE_PIPELINE_RATE_SEND_REPORT,
+            MRJobConfig.DEFAULT_UCARE_SE_REDUCE_PIPELINE_RATE_SEND_REPORT);
         //huanke .. it seems not work here.
         reducer.run(reducerContext,output, reporter, flag);
       }

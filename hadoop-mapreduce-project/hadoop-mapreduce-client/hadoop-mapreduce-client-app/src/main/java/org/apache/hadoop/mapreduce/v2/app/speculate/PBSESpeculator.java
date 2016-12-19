@@ -160,11 +160,11 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   
   // @Cesar: Store pipe updates here
   private Map<HdfsWriteHost, PipelineWriteRateReport> pipeRateUpdateEvents = new HashMap<>();
-  // riza: PBSE-Read-2 fields
+  // riza: UCARE_SE-Read-2 fields
   private int maxSpeculationDelay = 0;
   private boolean everDelaySpeculation = false;
   private boolean hasDelayThisIteration = false;
-  // riza: PBSE-Read-3 fields
+  // riza: UCARE_SE-Read-3 fields
   private boolean mapPathSpeculationEnabled = false;
   private double slowTransferRateRatio;
   private double slowTransferRateThreshold;
@@ -269,22 +269,22 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     		
     // huanke
     this.reduceIntersectionSpeculationEnabled = conf.getBoolean(
-        "pbse.enable.for.reduce.pipeline", false);
+        "ucare_se.enable.for.reduce.pipeline", false);
 
     // riza
     this.maxSpeculationDelay =
-        conf.getInt(MRJobConfig.PBSE_MAP_DELAY_INTERVAL_MS,
-            MRJobConfig.DEFAULT_PBSE_MAP_DELAY_INTERVAL_MS) 
+        conf.getInt(MRJobConfig.UCARE_SE_MAP_DELAY_INTERVAL_MS,
+            MRJobConfig.DEFAULT_UCARE_SE_MAP_DELAY_INTERVAL_MS)
         / (int) this.soonestRetryAfterNoSpeculate;
     this.mapPathSpeculationEnabled =
-        conf.getBoolean(MRJobConfig.PBSE_MAP_PATH_SPECULATION_ENABLED,
-            MRJobConfig.DEFAULT_PBSE_MAP_PATH_SPECULATION_ENABLED);
+        conf.getBoolean(MRJobConfig.UCARE_SE_MAP_PATH_SPECULATION_ENABLED,
+            MRJobConfig.DEFAULT_UCARE_SE_MAP_PATH_SPECULATION_ENABLED);
     this.slowTransferRateRatio =
-        conf.getDouble(MRJobConfig.PBSE_MAP_SLOW_TRANSFER_RATIO,
-            MRJobConfig.DEFAULT_PBSE_MAP_SLOW_TRANSFER_RATIO);
+        conf.getDouble(MRJobConfig.UCARE_SE_MAP_SLOW_TRANSFER_RATIO,
+            MRJobConfig.DEFAULT_UCARE_SE_MAP_SLOW_TRANSFER_RATIO);
     this.slowTransferRateThreshold =
-        conf.getDouble(MRJobConfig.PBSE_MAP_SLOW_TRANSFER_FIXED_THRESHOLD,
-            MRJobConfig.DEFAULT_PBSE_MAP_SLOW_TRANSFER_FIXED_THRESHOLD);
+        conf.getDouble(MRJobConfig.UCARE_SE_MAP_SLOW_TRANSFER_FIXED_THRESHOLD,
+            MRJobConfig.DEFAULT_UCARE_SE_MAP_SLOW_TRANSFER_FIXED_THRESHOLD);
     this.everDelaySpeculation = false;
     this.globalTransferRate = new AdvanceStatistics();
     this.recentAttemptStatus = new ConcurrentHashMap<TaskAttemptId, TaskAttemptStatus>();
@@ -318,7 +318,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
             
             long minWait = soonestRetryAfterNoSpeculate;
 
-            // riza: prioritize PBSE speculation
+            // riza: prioritize UCARE_SE speculation
 
             if (hdfsWriteSpeculationEnabled
             	&& nextHdfsWriteRateSpeculation <= backgroundRunStartTime) {
@@ -363,7 +363,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
               }
             }
 
-            // riza: this is basic speculative algorithm. If PBSE algorithm has
+            // riza: this is basic speculative algorithm. If UCARE_SE algorithm has
             // kick in before, wait until next iteration to speculate again.
             if (nextDefaultSpeculation <= backgroundRunStartTime) {
               if (mapSpeculation <= 0)
@@ -401,7 +401,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       }
     };
     speculationBackgroundThread = new Thread
-        (speculationBackgroundCore, "PBSESpeculator background processing");
+        (speculationBackgroundCore, "UCARESESpeculator background processing");
     speculationBackgroundThread.start();
     super.serviceStart();
   }
@@ -702,7 +702,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
               && DatanodeID.nullDatanodeID.equals(mapTaskAttempt
                   .getLastDatanodeID())) {
             if (!everDelaySpeculation)
-              LOG.info("PBSE-Read-2: " + runningTaskAttemptID
+              LOG.info("UCARE_SE-Read-2: " + runningTaskAttemptID
                   + " speculation delayed");
             everDelaySpeculation = true;
 
@@ -791,7 +791,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   // Add attempt to a given Task.
   protected void addSpeculativeAttempt(TaskId taskID) {
     // @Cesar: Do not re espculate if this have been launched by slow shuffle
-    LOG.info("PBSESpeculator.addSpeculativeAttempt -- we are speculating " + taskID);
+    LOG.info("UCARESESpeculator.addSpeculativeAttempt -- we are speculating " + taskID);
     eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ADD_SPEC_ATTEMPT));
     mayHaveSpeculated.add(taskID);
   }
@@ -1176,7 +1176,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
     DatanodeInfo ignoreNode = checkIntersection();
     if (ignoreNode != null) {
       LOG.info("@huanke checkIntersection returns ignoreNode :" + ignoreNode);
-      LOG.info("PBSE-Write-Diversity-1 taskId " + TaskAndPipeline.keySet()
+      LOG.info("UCARE_SE-Write-Diversity-1 taskId " + TaskAndPipeline.keySet()
           + " choose-datanode " + TaskAndPipeline + " IntersectedNode "
           + ignoreNode);
       relauchReduceTask(ignoreNode);
@@ -1247,7 +1247,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 		  										 List<String> badPipe, 
 		  										 String badHost) {
    LOG.info("@Cesar speculateReduceTaskDueToSlowWrite " + attempt.getTaskId());
-   LOG.info(PBSEReduceMessage.createPBSEMessageReduceTaskSpeculated(
+   LOG.info(PBSEReduceMessage.createUCARESEMessageReduceTaskSpeculated(
 		   		badHost, 
 		   		attempt.toString(), 
 		   		badPipe));
@@ -1286,7 +1286,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
    // @Cesar: Double check
    if(!pipeTable.isFinished(attempt.getTaskId())){	  
 	   LOG.info("@Cesar speculateReduceTaskDueToWriteDiversity " + attempt.getTaskId());
-	   LOG.info(PBSEReduceMessage.createPBSEMessageReduceTaskSpeculatedDueToWriteDiversity(
+	   LOG.info(PBSEReduceMessage.createUCARESEMessageReduceTaskSpeculatedDueToWriteDiversity(
 			   		badHost, 
 			   		attempt.toString(), 
 			   		badPipe));
@@ -1325,13 +1325,13 @@ public class PBSESpeculator extends AbstractService implements Speculator {
         }
       }
     }
-//    LOG.info("@huanke PBSESpeculator TaskAndPipeline" + TaskAndPipeline
+//    LOG.info("@huanke UCARESESpeculator TaskAndPipeline" + TaskAndPipeline
 //        + TaskAndPipeline.size());
   }
 
   // huanke reduce task does not launch backup task as map task like T_ADD_SPEC_ATTEMPT
   protected void relaunchTask(TaskId taskID) {
-    LOG.info("PBSESpeculator.@huanke-relaunchTask -- we are speculating a reduce task of id "
+    LOG.info("UCARESESpeculator.@huanke-relaunchTask -- we are speculating a reduce task of id "
         + taskID);
     eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ATTEMPT_KILLED));
     // @huanke: Add this as speculated
@@ -1526,13 +1526,13 @@ public class PBSESpeculator extends AbstractService implements Speculator {
   // using addSpeculativeAttempt
   protected void relaunchTask(TaskId taskID, String mapperHost,
       TaskAttemptId mapId) {
-    LOG.info("PBSESpeculator.relaunchTask.@cesar -- we are speculating a map task of id "
+    LOG.info("UCARESESpeculator.relaunchTask.@cesar -- we are speculating a map task of id "
         + taskID);
     eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_ATTEMPT_KILLED,
         mapperHost, mapId));
 
     // @Cesar: Log
-    LOG.info(PBSEShuffleMessage.createPBSEMessageMapTaskRelaunched(mapperHost));
+    LOG.info(PBSEShuffleMessage.createUCARESEMessageMapTaskRelaunched(mapperHost));
 
     // @Cesar: Add this as speculated
     mayHaveSpeculated.add(taskID);
@@ -1692,7 +1692,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 
       if (slowestTransferRate < threshold) {
         // riza: path group speculation
-        LOG.info("PBSE-Read-3: Speculating "
+        LOG.info("UCARE_Se-Read-3: Speculating "
             + taskGroup.get(slowestHost).size() + " tasks on path group "
             + slowestHost + " having avg rate " + slowestTransferRate
             + " threshold " + threshold
@@ -1705,7 +1705,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
       } else if ((slowestMap != null)
           && (slowestMap.mapTransferRate < threshold)) {
         // riza: individual map speculation
-        LOG.info("PBSE-Read-3: Speculating single map " + slowestMap.id
+        LOG.info("UCARE_SE-Read-3: Speculating single map " + slowestMap.id
             + " having path (" + slowestMap.lastDatanodeID + ","
             + slowestMap.containerHost + ") avg rate "
             + slowestMap.mapTransferRate + " threshold " + threshold
@@ -1835,7 +1835,7 @@ public class PBSESpeculator extends AbstractService implements Speculator {
 
       if (!toSPeculate.isEmpty()) {
         // riza: path group speculation
-        LOG.info("PBSE-Read-3: Speculating " + toSPeculate.size()
+        LOG.info("UCARE_SE-Read-3: Speculating " + toSPeculate.size()
             + " tasks, fastest rate " + fastestRate + " threshold " + threshold
             + " global avg rate " + globalTransferRate);
 

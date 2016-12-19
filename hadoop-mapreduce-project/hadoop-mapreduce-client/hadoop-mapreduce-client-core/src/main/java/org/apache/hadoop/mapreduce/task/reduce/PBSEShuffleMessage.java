@@ -8,14 +8,14 @@ public class PBSEShuffleMessage {
 	  private static final String MESSAGE_TYPE_SORT_TIME = "SORT_TIME";
 	  private static final String MESSAGE_TYPE_REDUCE_TIME = "REDUCE_TIME";
 	  
-	  private static final String PBSE_VERSION = "PBSE-Slow-Shuffle-1";
-	  private static final String PBSE_MSG = "PBSE_SHUFFLE";
+	  private static final String UCARE_SE_VERSION = "UCARE_SE-Slow-Shuffle-1";
+	  private static final String UCARE_SE_MSG = "UCARE_SE_SHUFFLE";
 	  
 	  
-	  // @Cesar: Create a message to be logged for pbse statistic purposes
-	  public static String createPBSEMessageMapTaskRelaunched(String mapperHost){
+	  // @Cesar: Create a message to be logged for ucare_se statistic purposes
+	  public static String createUCARESEMessageMapTaskRelaunched(String mapperHost){
 		  StringBuilder bld = new StringBuilder();
-		  bld.append(PBSE_VERSION).append(": ")
+		  bld.append(UCARE_SE_VERSION).append(": ")
 		 .append("{")
 		 .append("\"type\":")
 		 .append("\"").append(MESSAGE_TYPE_SPECULATION).append("\"")
@@ -27,10 +27,10 @@ public class PBSEShuffleMessage {
 		     
 	  }
 	  
-	  // @Cesar: Create a message to be logged for pbse statistic purposes
-	  public static String createPBSEMessageFetcherThreadAssigned(String mapperHost, int fetcherId){
+	  // @Cesar: Create a message to be logged for ucare_se statistic purposes
+	  public static String createUCARESEMessageFetcherThreadAssigned(String mapperHost, int fetcherId){
 		  StringBuilder bld = new StringBuilder();
-		  bld.append(PBSE_MSG).append(":")
+		  bld.append(UCARE_SE_MSG).append(":")
 		 .append("{")
 		 .append("\"type\":")
 		 .append("\"").append(MESSAGE_TYPE_FETCHER_DATA).append("\"")
@@ -45,10 +45,10 @@ public class PBSEShuffleMessage {
 		     
 	  }
 
-	  // @Cesar: Create a message to be logged for pbse statistic purposes
-	  public static String createPBSEMessageShuffleFinished(long totalTime){
+	  // @Cesar: Create a message to be logged for ucare_se statistic purposes
+	  public static String createUCARESEMessageShuffleFinished(long totalTime){
 		  StringBuilder bld = new StringBuilder();
-		  bld.append(PBSE_MSG).append(":")
+		  bld.append(UCARE_SE_MSG).append(":")
 		  .append("{")
 		  .append("\"type\":")
 		  .append("\"").append(MESSAGE_TYPE_SHUFFLE_TIME).append("\"")
@@ -60,10 +60,10 @@ public class PBSEShuffleMessage {
 		     
 	  }
 	
-	// @Cesar: Create a message to be logged for pbse statistic purposes
-	public static String createPBSEMessageSortFinished(){
+	// @Cesar: Create a message to be logged for ucare_se statistic purposes
+	public static String createUCARESEMessageSortFinished(){
 		StringBuilder bld = new StringBuilder();
-		bld.append(PBSE_MSG).append(":")
+		bld.append(UCARE_SE_MSG).append(":")
 		 .append("{")
 		 .append("\"type\":")
 		 .append("\"").append(MESSAGE_TYPE_SORT_TIME).append("\"")
@@ -72,10 +72,10 @@ public class PBSEShuffleMessage {
 		     
 	 }
 	  
-	// @Cesar: Create a message to be logged for pbse statistic purposes
-	public static String createPBSEMessageReduceFinished(){
+	// @Cesar: Create a message to be logged for ucare_se statistic purposes
+	public static String createUCARESEMessageReduceFinished(){
 		StringBuilder bld = new StringBuilder();
-		bld.append(PBSE_MSG).append(":")
+		bld.append(UCARE_SE_MSG).append(":")
 		 .append("{")
 		 .append("\"type\":")
 		 .append("\"").append(MESSAGE_TYPE_REDUCE_TIME).append("\"")
@@ -85,10 +85,10 @@ public class PBSEShuffleMessage {
 	  }
 	
 	  public static void main(String... args){
-		  System.out.println(createPBSEMessageMapTaskRelaunched("xxx"));
-		  System.out.println(createPBSEMessageFetcherThreadAssigned("xxx", 10));
-		  System.out.println(createPBSEMessageShuffleFinished(1100000000L));
-		  System.out.println(createPBSEMessageSortFinished());
+		  System.out.println(createUCARESEMessageMapTaskRelaunched("xxx"));
+		  System.out.println(createUCARESEMessageFetcherThreadAssigned("xxx", 10));
+		  System.out.println(createUCARESEMessageShuffleFinished(1100000000L));
+		  System.out.println(createUCARESEMessageSortFinished());
 	  }
 	  
 }

@@ -98,7 +98,7 @@ public class RMContainerAllocator extends RMContainerRequestor
   public static final
   float DEFAULT_COMPLETED_MAPS_PERCENT_FOR_REDUCE_SLOWSTART = 0.05f;
 
-  public static final int PBSE_MAX_CONTAINER_REJECTION = 10;
+  public static final int UCARE_SE_MAX_CONTAINER_REJECTION = 10;
 
   static final Priority PRIORITY_FAST_FAIL_MAP;
   static final Priority PRIORITY_REDUCE;
@@ -174,10 +174,10 @@ public class RMContainerAllocator extends RMContainerRequestor
   private Clock clock;
   
 
-  // riza: PBSE-Read-Diversity-2 fields
+  // riza: UCARE_SE-Read-Diversity-2 fields
   private Map<String, Set<TaskAttemptId>> hostToAssignedTask =
       new HashMap<String, Set<TaskAttemptId>>();
-  private int maxretry = PBSE_MAX_CONTAINER_REJECTION;
+  private int maxretry = UCARE_SE_MAX_CONTAINER_REJECTION;
   private boolean wasRejecting = false; // for logging
 
   @VisibleForTesting
@@ -1416,8 +1416,8 @@ public class RMContainerAllocator extends RMContainerRequestor
           }
         } else {
           if (wasRejecting) {
-            LOG.info("PBSE-Read-Diversity-2:  numreject "
-                + (PBSE_MAX_CONTAINER_REJECTION - maxretry) + " status "
+            LOG.info("UCARE_SE-Read-Diversity-2:  numreject "
+                + (UCARE_SE_MAX_CONTAINER_REJECTION - maxretry) + " status "
                 + (maxretry > 0 ? "success" : "fail"));
             wasRejecting = false;
           }

@@ -34,8 +34,8 @@ public class InputStreamInterceptor implements InputStreamFinder {
     this.splitMetaInfo = splitMetaInfo;
 
     this.sendDatanodeInfo =
-        task.getConf().getBoolean(MRJobConfig.PBSE_MAP_DATANODE_SEND_REPORT,
-            MRJobConfig.DEFAULT_PBSE_MAP_DATANODE_SEND_REPORT);
+        task.getConf().getBoolean(MRJobConfig.UCARE_SE_MAP_DATANODE_SEND_REPORT,
+            MRJobConfig.DEFAULT_UCARE_SE_MAP_DATANODE_SEND_REPORT);
   }
   
   @Override
@@ -44,7 +44,7 @@ public class InputStreamInterceptor implements InputStreamFinder {
     LOG.info("riza: InputStream lookup took " + (stopTime - startTime) + " ms");
     inputStream = istream;
     if ((inputStream instanceof HdfsDataInputStream) && sendDatanodeInfo) {
-      LOG.info("Initiating PBSE datanode reporting");
+      LOG.info("Initiating UCARE_SE datanode reporting");
       HdfsDataInputStream hdis = (HdfsDataInputStream) inputStream;
       switchDatanode(hdis, reporter);
       reporter.setInputStream(hdis);
@@ -56,7 +56,7 @@ public class InputStreamInterceptor implements InputStreamFinder {
   
   /**
    * riza: switch datanode with one obtained from splitMetaInfo.
-   * {@code TaskSplitIndex#getSlowShufflingMap()} from PBSE-Slow-Shuffle-1 is
+   * {@code TaskSplitIndex#getSlowShufflingMap()} from UCARE_SE-Slow-Shuffle-1 is
    * prioritized over {@code TaskSplitIndex#getLastDatanodeID()}, means that if
    * both is not empty, it will ignore slow shuffling map rather than
    * lastDatanodeID, <b>EXCEPT</b> if this task is the first attempt.
@@ -84,7 +84,7 @@ public class InputStreamInterceptor implements InputStreamFinder {
       
       if (hdis.getIgnoredDatanode() != null
           && !hdis.getIgnoredDatanode().equals(DatanodeID.nullDatanodeID)) {
-        LOG.info("PBSE-Read-1: ignored " + hdis.getIgnoredDatanode()
+        LOG.info("UCARE_SE-Read-1: ignored " + hdis.getIgnoredDatanode()
             + " current " + hdis.getCurrentOrChoosenDatanode());
       }
 

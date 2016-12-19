@@ -98,7 +98,7 @@
   </property>
 
   <property>
-    <name>pbse.enable.for.reduce.pipeline</name>
+    <name>ucare_se.enable.for.reduce.pipeline</name>
     <value>false</value>
     <description>HACK: force reduce to write to slow node</description>
   </property>

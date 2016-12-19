@@ -460,9 +460,9 @@ public class RMAppAttemptImpl implements RMAppAttempt, Recoverable {
         new RMAppAttemptMetrics(applicationAttemptId, rmContext);
     
     // @Cesar: Load conf from yarn file
-    Collection<String> blNodes = conf.getStringCollection("yarn.pbse.experiment.blAppMaster");
+    Collection<String> blNodes = conf.getStringCollection("yarn.ucare_se.experiment.blAppMaster");
     appMasterBlackList.addAll(blNodes);
-    fixAppMaster = conf.getBoolean("yarn.pbse.experiment.fixAppMaster", false);
+    fixAppMaster = conf.getBoolean("yarn.ucare_se.experiment.fixAppMaster", false);
     
     this.amReq = amReq;
   }

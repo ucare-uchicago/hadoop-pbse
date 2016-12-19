@@ -95,7 +95,7 @@ public class TaskAttemptListenerImpl extends CompositeService
 
   private byte[] encryptedSpillKey;
   
-  // riza: PBSE-Read-Diversity-1 fields
+  // riza: UCARE_SE-Read-Diversity-1 fields
   private boolean avoidSingleSource;
   private AtomicInteger shallSwitch = new AtomicInteger(0);
 
@@ -118,8 +118,8 @@ public class TaskAttemptListenerImpl extends CompositeService
    super.serviceInit(conf);
 
    // riza: datanode switch initialization
-   avoidSingleSource = conf.getBoolean(MRJobConfig.PBSE_MAP_AVOID_SINGLE_SOURCE,
-       MRJobConfig.DEFAULT_PBSE_MAP_AVOID_SINGLE_SOURCE);
+   avoidSingleSource = conf.getBoolean(MRJobConfig.UCARE_SE_MAP_AVOID_SINGLE_SOURCE,
+       MRJobConfig.DEFAULT_UCARE_SE_MAP_AVOID_SINGLE_SOURCE);
    shallSwitch.set(avoidSingleSource ? 0 : 2);
   }
 

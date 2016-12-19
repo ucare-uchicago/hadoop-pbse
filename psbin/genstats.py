@@ -17,7 +17,7 @@ SLOWNODE=100
 SLOWHOST="VOID"
 SLOWIP="10.1.1."+str(SLOWNODE+2)
 
-VERSION="3.1"
+VERSION="4.0"
 DATE_FORMAT="%Y-%m-%d %H:%M:%S.%f"
 
 pp = pprint.PrettyPrinter(indent=2)
@@ -27,7 +27,7 @@ tasknode = re.compile('.+ TaskAttempt: \[(.+)\].+ on NM: \[(.+):.+\]')
 dataread = re.compile('.+ reporting datanode (.+) with.*')
 re_date = re.compile("..+[-/]..[-/].. ..:..:..(,...)*")
 re_hb = re.compile(".*statusUpdate.*")
-re_tags_pbse = re.compile(".+ (PBSE-[^ :]+).*")
+re_tags_pbse = re.compile(".+ (UCARE_SE-[^ :]+).*")
 re_dnpipeline = re.compile(".+write transfer rates:.*0=(.+), 1=(.+), 2=(.+)\}.*")
 re_am_finalct = re.compile(".+Final Stats: PendingReds:(.+) ScheduledMaps:(.+) ScheduledReds:(.+) AssignedMaps:(.+) AssignedReds:(.+) CompletedMaps:(.+) CompletedReds:(.+) ContAlloc:(.+) ContRel:(.+) HostLocal:(.+) RackLocal:(.+)")
 re_am_specadd = re.compile(".+addSpeculativeAttempt.+")

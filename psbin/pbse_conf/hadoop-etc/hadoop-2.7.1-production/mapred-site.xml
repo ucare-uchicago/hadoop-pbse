@@ -68,7 +68,7 @@
   </property>
 
   <property>
-    <name>mapreduce.policy.pbse.read_new_datanode</name>
+    <name>mapreduce.policy.ucare_se.read_new_datanode</name>
     <value>false</value>
     <description>UCARE: avoid read from same datanode as original task</description>
   </property>
@@ -162,21 +162,10 @@
   </property>
 
   <property>
-    <name>pbse.enable.for.reduce.pipeline</name>
-    <value>false</value>
-    <description>UCARE: the scope for reduce tasks</description>
-  </property>
-
-  <property>
     <name>reduce.get.pipenodes.flag</name>
     <value>true</value>
     <description>UCARE: the scope for reduce tasks</description>
   </property>
 
-  <property>
-    <name>mapreduce.policy.pbse.read_new_datanode</name>
-    <value>false</value>
-    <description>UCARE: avoid read from same datanode as original task</description>
-  </property>
   <!-- HUAN END -->
 </configuration>

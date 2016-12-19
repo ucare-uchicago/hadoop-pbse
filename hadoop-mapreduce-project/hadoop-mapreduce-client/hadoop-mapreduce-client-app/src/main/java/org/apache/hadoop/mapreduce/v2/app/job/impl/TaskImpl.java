@@ -345,10 +345,10 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     // than 1000 attempts in its single generation, which is very reasonable.
     nextAttemptNumber = (appAttemptId - 1) * 1000;
     
-    // riza: PBSE init
+    // riza: UCARE_SE init
     this.readNewDatanode =
-        conf.getBoolean(MRJobConfig.PBSE_MAP_DATANODE_READ_NEW,
-            MRJobConfig.DEFAULT_PBSE_MAP_DATANODE_READ_NEW);
+        conf.getBoolean(MRJobConfig.UCARE_SE_MAP_DATANODE_READ_NEW,
+            MRJobConfig.DEFAULT_UCARE_SE_MAP_DATANODE_READ_NEW);
   }
 
   @Override
@@ -629,7 +629,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
       LOG.debug("Updating MapTaskImpl.taskSplitMetaInfo");
       ((MapTaskImpl) this).updateTaskSplitMetaInfo();
     }else if ((this instanceof ReduceTaskImpl)
-        && conf.getBoolean("mapreduce.policy.pbse.write_new_pipeline", false)){
+        && conf.getBoolean("mapreduce.policy.ucare_se.write_new_pipeline", false)){
       //huanke
 //      LOG.info("@huanke lauch1 a backup reduce task"+this.getID().getId());
       ((ReduceTaskImpl) this).updateTaskOutputDN();

@@ -104,9 +104,9 @@
  </property>
 
  <property>
-   <name>pbse.enable.for.reduce.pipeline</name>
+   <name>ucare_se.enable.for.reduce.pipeline</name>
    <value>true</value>
-   <description>PBSE enabled (its not a hack)</description>
+   <description>UCARE_SE enabled (its not a hack)</description>
  </property>
  <!-- @huanke: custom end -->
 

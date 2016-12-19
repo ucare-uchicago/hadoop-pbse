@@ -150,25 +150,25 @@
   </property>
 
   <property>
-    <name>mapreduce.policy.pbse.read_new_datanode</name>
+    <name>mapreduce.policy.ucare_se.read_new_datanode</name>
     <value>true</value>
     <description>UCARE: avoid read from same datanode as original task</description>
   </property>
 
   <property>
-    <name>mapreduce.pbse.map.path-speculation.enabled</name>
+    <name>mapreduce.ucare_se.map.path-speculation.enabled</name>
     <value>true</value>
     <description>UCARE: avoid read from same datanode as original task</description>
   </property>
 
   <property>
-    <name>mapreduce.pbse.map.path-speculation.threshold</name>
+    <name>mapreduce.ucare_se.map.path-speculation.threshold</name>
     <value>0.1</value>
     <description>UCARE: avoid read from same datanode as original task</description>
   </property>
 
   <property>
-    <name>mapreduce.pbse.map.path-speculation.fixed-threshold</name>
+    <name>mapreduce.ucare_se.map.path-speculation.fixed-threshold</name>
     <value>0.0</value>
     <description>UCARE: avoid read from same datanode as original task</description>
   </property>
@@ -284,12 +284,6 @@
   <property>
     <name>reduce.task.locations.scope</name>
     <value></value>
-    <description>UCARE: the scope for reduce tasks</description>
-  </property>
-
-  <property>
-    <name>pbse.enable.for.reduce.pipeline</name>
-    <value>true</value>
     <description>UCARE: the scope for reduce tasks</description>
   </property>
 

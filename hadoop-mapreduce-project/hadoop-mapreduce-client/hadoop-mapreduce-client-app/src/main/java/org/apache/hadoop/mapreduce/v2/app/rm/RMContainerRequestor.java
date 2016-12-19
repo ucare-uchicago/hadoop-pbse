@@ -109,7 +109,7 @@ public abstract class RMContainerRequestor extends RMCommunicator {
   private final Set<String> blacklistRemovals = Collections
       .newSetFromMap(new ConcurrentHashMap<String, Boolean>());
 
-  // riza: PBSE config
+  // riza: UCARE_SE config
   protected boolean  askDistictHost = false;
   // riza: host to blacklist and whitelist for once
   private String oneTimeBlacklist;
@@ -192,11 +192,11 @@ public abstract class RMContainerRequestor extends RMCommunicator {
     }
     LOG.info("blacklistDisablePercent is " + blacklistDisablePercent);
 
-    // riza: PBSE config
+    // riza: UCARE_SE config
     askDistictHost = 
-        conf.getBoolean(MRJobConfig.PBSE_MAP_AVOID_SINGLE_WORKER,
-            MRJobConfig.DEFAULT_PBSE_MAP_AVOID_SINGLE_WORKER);
-    LOG.info("riza: " + MRJobConfig.PBSE_MAP_AVOID_SINGLE_WORKER + " : " + askDistictHost);
+        conf.getBoolean(MRJobConfig.UCARE_SE_MAP_AVOID_SINGLE_WORKER,
+            MRJobConfig.DEFAULT_UCARE_SE_MAP_AVOID_SINGLE_WORKER);
+    LOG.info("riza: " + MRJobConfig.UCARE_SE_MAP_AVOID_SINGLE_WORKER + " : " + askDistictHost);
   }
 
   protected AllocateResponse makeRemoteRequest() throws YarnException,
@@ -601,7 +601,7 @@ public abstract class RMContainerRequestor extends RMCommunicator {
     return blacklistedNodes;
   }
 
-  // riza: PBSE functions
+  // riza: UCARE_SE functions
   public void addOneTimeBlacklistNode(String node) {
     this.oneTimeBlacklist = node;
   }

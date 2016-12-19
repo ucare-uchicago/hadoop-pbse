@@ -115,7 +115,7 @@ public class HdfsDataInputStream extends FSDataInputStream {
   private DatanodeID ignoredDatanode;
 
   /**
-   * Get ignored datanode by PBSE0 algorithm. If no datanode is ignored before,
+   * Get ignored datanode by UCARE_SE0 algorithm. If no datanode is ignored before,
    * it will return null. If it is original task, it will return
    * {@link DatanodeID#nullDatanodeID}
    *
@@ -145,11 +145,11 @@ public class HdfsDataInputStream extends FSDataInputStream {
   }
 
   /**
-   * Set datanode to ignore by PBSE-Read-1 algorithm and switch datanode if current
+   * Set datanode to ignore by UCARE_SE-Read-1 algorithm and switch datanode if current
    * datanode is equal {@code ignoredDatanode}
    *
    * @param ignoredDatanode
-   *          datanode to ignore, by PBSE-Read-1 algorithm.
+   *          datanode to ignore, by UCARE_SE-Read-1 algorithm.
    * @throws IOException
    */
   public void switchDatanode(DatanodeID ignoredDatanode) throws IOException{
@@ -162,11 +162,11 @@ public class HdfsDataInputStream extends FSDataInputStream {
   }
 
   /**
-   * Set datanode to ignore by PBSE-Read-1 algorithm and switch datanode if current
+   * Set datanode to ignore by UCARE_SE-Read-1 algorithm and switch datanode if current
    * datanode is equal {@code hostname}
    *
    * @param hostname
-   *          hostname of datanode to ignore, by PBSE-Read-1 algorithm.
+   *          hostname of datanode to ignore, by UCARE_SE-Read-1 algorithm.
    * @throws IOException
    */
   public void switchDatanode(String hostname) throws IOException{

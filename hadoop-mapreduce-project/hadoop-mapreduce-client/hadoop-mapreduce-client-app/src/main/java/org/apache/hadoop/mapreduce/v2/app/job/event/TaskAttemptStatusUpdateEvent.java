@@ -60,7 +60,7 @@ public class TaskAttemptStatusUpdateEvent extends TaskAttemptEvent {
     public long shuffleFinishTime;
     public long sortFinishTime;
     public TaskAttemptState taskState;
-    // riza: PBSE piggyback
+    // riza: UCARE_SE piggyback
     public String containerHost;
     public DatanodeID lastDatanodeID;
     public double mapTransferRate;

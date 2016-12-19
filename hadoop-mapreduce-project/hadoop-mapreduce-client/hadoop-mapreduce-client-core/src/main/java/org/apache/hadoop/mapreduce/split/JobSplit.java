@@ -247,7 +247,7 @@ public class JobSplit {
 
     /**
      * riza: set hostname of worker node that detected as slownode by
-     * PBSE-Slow-Shuffle-1. The next attempt will avoid to read from this host.
+     * UCARE_SE-Slow-Shuffle-1. The next attempt will avoid to read from this host.
      * 
      * @param hostname
      */
