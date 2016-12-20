@@ -108,7 +108,6 @@ abstract public class Task implements Writable, Configurable{
 
   // huanke
   private HdfsDataOutputStream hdfsOutputStream = null;
-  //private boolean sendPipelineInfo;
   private boolean sendPipelineRateInfo;
 
   /**
@@ -786,12 +785,9 @@ abstract public class Task implements Writable, Configurable{
       avoidSingleSource =
           conf.getBoolean(MRJobConfig.UCARE_SE_MAP_AVOID_SINGLE_SOURCE,
               MRJobConfig.DEFAULT_UCARE_SE_MAP_AVOID_SINGLE_SOURCE);
-//      sendPipelineInfo =
-//          conf.getBoolean(MRJobConfig.UCARE_SE_REDUCE_PIPELINE_SEND_REPORT,
-//              MRJobConfig.DEFAULT_UCARE_SE_REDUCE_PIPELINE_SEND_REPORT);
       sendPipelineRateInfo =
-              conf.getBoolean(MRJobConfig.UCARE_SE_REDUCE_PIPELINE_RATE_SEND_REPORT,
-                  MRJobConfig.DEFAULT_UCARE_SE_REDUCE_PIPELINE_RATE_SEND_REPORT);
+          conf.getBoolean(MRJobConfig.UCARE_SE_REDUCE_PIPELINE_RATE_SEND_REPORT,
+              MRJobConfig.DEFAULT_UCARE_SE_REDUCE_PIPELINE_RATE_SEND_REPORT);
       
       final int MAX_RETRIES = 3;
       int remainingRetries = MAX_RETRIES;

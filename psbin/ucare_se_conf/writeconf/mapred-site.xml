@@ -169,13 +169,6 @@
     <value></value>
     <description>UCARE: the scope for reduce tasks</description>
   </property>
-
-  <property>
-    <name>reduce.get.pipenodes.flag</name>
-    <value>false</value>
-    <description>UCARE: the scope for reduce tasks</description>
-  </property>
-
   <!-- @huanke: custom end -->
 
 </configuration>

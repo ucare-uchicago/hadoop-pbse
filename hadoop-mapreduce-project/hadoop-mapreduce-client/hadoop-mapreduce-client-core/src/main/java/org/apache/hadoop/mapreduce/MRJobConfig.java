@@ -922,11 +922,7 @@ public interface MRJobConfig {
   public static final boolean DEFAULT_UCARE_SE_REDUCE_PIPELINE_RATE_SEND_REPORT =
       false;
 
-//  public static final String UCARE_SE_REDUCE_PIPELINE_SEND_REPORT =
-//	      "reduce.get.pipenodes.flag";
-//	  public static final boolean DEFAULT_UCARE_SE_REDUCE_PIPELINE_SEND_REPORT =
-//	      false;
-  
+
   // riza: list of hack and experiment settings
   public static final String EXP_ENABLE_FETCH_RATE_SPECULATION =
       "mapreduce.experiment.enable_fetch_rate_speculation";

@@ -44,7 +44,11 @@
   <property>
     <name>mapreduce.reduce.speculative</name>
     <value>true</value>
-    <description>Enable reduce speculation.</description>
+  </property>
+
+  <property>
+    <name>mapreduce.map.speculative</name>
+    <value>true</value>
   </property>
 
   <property>
@@ -152,12 +156,6 @@
   <property>
     <name>reduce.task.locations.scope</name>
     <value></value>
-    <description>UCARE: the scope for reduce tasks</description>
-  </property>
-
-  <property>
-    <name>reduce.get.pipenodes.flag</name>
-    <value>true</value>
     <description>UCARE: the scope for reduce tasks</description>
   </property>
   <!-- HUAN END -->

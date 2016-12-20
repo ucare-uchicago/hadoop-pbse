@@ -16,7 +16,7 @@ SLOWNODE=100
 SLOWHOST="VOID"
 SLOWIP="10.1.1."+str(SLOWNODE+2)
 
-VERSION="3.1"
+VERSION="4.0"
 
 pp = pprint.PrettyPrinter(indent=2)
 
