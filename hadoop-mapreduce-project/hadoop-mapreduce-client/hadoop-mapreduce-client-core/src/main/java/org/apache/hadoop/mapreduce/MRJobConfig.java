@@ -928,9 +928,59 @@ public interface MRJobConfig {
 //	      false;
   
   // riza: list of hack and experiment settings
-  public static final String UCARE_SE_HACK_MAP_PROGRESS_INTERVAL =
-      "mapreduce.ucare_se.hack.map.progress_interval";
+  public static final String EXP_ENABLE_FETCH_RATE_SPECULATION =
+      "mapreduce.experiment.enable_fetch_rate_speculation";
+  public static final boolean DEFAULT_EXP_ENABLE_FETCH_RATE_SPECULATION =
+      false;
 
-  public static final String UCARE_SE_EXPERIMENT_SLOWNODE_LIST =
+  public static final String EXP_FETCH_RATE_SPEC_SLOW_THRESHOLD =
+      "mapreduce.experiment.fetch_rate_speculation_slow_thresshold";
+  public static final double DEFAULT_EXP_FETCH_RATE_SPEC_SLOW_THRESHOLD =
+      Double.MAX_VALUE;
+
+  public static final String EXP_FETCH_RATE_SPEC_PROGRESS_THRESHOLD =
+      "mapreduce.experiment.fetch_rate_speculation_progress_thresshold";
+  public static final double DEFAULT_EXP_FETCH_RATE_SPEC_PROGRESS_THRESHOLD =
+      Double.MAX_VALUE;
+
+  public static final String EXP_ENABLE_FETCHER_SHUTDOWN =
+      "mapreduce.experiment.enable_fetcher_shutdown";
+  public static final boolean DEFAULT_EXP_ENABLE_FETCHER_SHUTDOWN =
+      false;
+
+  public static final String EXP_SMART_FETCH_RATE_SPECULATION_ENABLE =
+      "mapreduce.experiment.smart_fetch_rate_speculation_enabled";
+  public static final boolean DEFAULT_EXP_SMART_FETCH_RATE_SPECULATION_ENABLE =
+      false;
+
+  public static final String EXP_SMART_FETCH_RATE_SPEC_FACTOR =
+      "mapreduce.experiment.smart_fetch_rate_speculation_factor";
+  public static final double DEFAULT_EXP_SMART_FETCH_RATE_SPEC_FACTOR =
+      3.0;
+
+  public static final String EXP_ENABLE_WRITE_RATE_SPECULATION =
+      "mapreduce.experiment.enable_write_rate_speculation";
+  public static final boolean DEFAULT_EXP_ENABLE_WRITE_RATE_SPECULATION =
+      false;
+
+  public static final String EXP_WRITE_RATE_SPEC_SLOW_THRESHOLD =
+      "mapreduce.experiment.write_rate_speculation_slow_thresshold";
+  public static final double DEFAULT_EXP_WRITE_RATE_SPEC_SLOW_THRESHOLD =
+      0.0;
+
+  public static final String EXP_WRITE_RATE_SPEC_MAX_REPORT_DELAY_SECONDS =
+      "mapreduce.experiment.write_rate_speculation_maximum_report_delay_seconds";
+  public static final double DEFAULT_EXP_WRITE_RATE_SPEC_MAX_REPORT_DELAY_SECONDS =
+      10.0;
+
+  public static final String EXP_ENABLE_SINGLE_REDUCER_SPECULATION =
+      "mapreduce.experiment.enable_single_reducer_speculation";
+  public static final boolean DEFAULT_EXP_ENABLE_SINGLE_REDUCER_SPECULATION =
+      false;
+
+  public static final String EXP_SLOWNODE_LIST =
       "mapreduce.experiment.slownode";
+
+  public static final String HACK_MAP_PROGRESS_INTERVAL =
+      "mapreduce.ucare_se.hack.map.progress_interval";
 }

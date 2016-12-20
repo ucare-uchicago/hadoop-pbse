@@ -86,8 +86,12 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
         context.getReduceShuffleBytes(), context.getFailedShuffleCounter());
     merger = createMergeManager(context);
     // @Cesar: Assign values in order to kill fetchers if possible
-    isFetchRateSpeculationEnabled = jobConf.getBoolean("mapreduce.experiment.enable_fetch_rate_speculation", false);
-    isFetcherShutDownEnabled = jobConf.getBoolean("mapreduce.experiment.enable_fetcher_shutdown", false);
+    isFetchRateSpeculationEnabled =
+        jobConf.getBoolean(MRJobConfig.EXP_ENABLE_FETCH_RATE_SPECULATION,
+            MRJobConfig.DEFAULT_EXP_ENABLE_FETCH_RATE_SPECULATION);
+    isFetcherShutDownEnabled =
+        jobConf.getBoolean(MRJobConfig.EXP_ENABLE_FETCHER_SHUTDOWN,
+            MRJobConfig.DEFAULT_EXP_ENABLE_FETCHER_SHUTDOWN);
   }
 
   protected MergeManager<K, V> createMergeManager(

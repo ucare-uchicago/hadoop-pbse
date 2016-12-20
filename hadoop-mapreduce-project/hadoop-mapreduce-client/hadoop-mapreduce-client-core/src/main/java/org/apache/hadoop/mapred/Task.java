@@ -795,7 +795,7 @@ abstract public class Task implements Writable, Configurable{
       
       final int MAX_RETRIES = 3;
       int remainingRetries = MAX_RETRIES;
-      final int proginterval = conf.getInt(MRJobConfig.UCARE_SE_HACK_MAP_PROGRESS_INTERVAL,
+      final int proginterval = conf.getInt(MRJobConfig.HACK_MAP_PROGRESS_INTERVAL,
               PROGRESS_INTERVAL);
 
       // riza: wait 1 minute times until lastDatanodeID set

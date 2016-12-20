@@ -571,9 +571,13 @@ public abstract class TaskAttemptImpl implements
     //  instance variable.
     stateMachine = stateMachineFactory.make(this);
     // @Cesar: Check if fetch rate speculation is enabled
-    fetchRateSpeculationEnabled = conf.getBoolean("mapreduce.experiment.enable_fetch_rate_speculation", false);
+    fetchRateSpeculationEnabled =
+        conf.getBoolean(MRJobConfig.EXP_ENABLE_FETCH_RATE_SPECULATION,
+            MRJobConfig.DEFAULT_EXP_ENABLE_FETCH_RATE_SPECULATION);
     // @Cesar: Same for write speculation
-    hdfsWriteSpeculationEnabled = conf.getBoolean("mapreduce.experiment.enable_write_rate_speculation", false);
+    hdfsWriteSpeculationEnabled =
+        conf.getBoolean(MRJobConfig.EXP_ENABLE_WRITE_RATE_SPECULATION,
+            MRJobConfig.DEFAULT_EXP_ENABLE_WRITE_RATE_SPECULATION);
   }
 
   private int getMemoryRequired(Configuration conf, TaskType taskType) {
@@ -2205,7 +2209,7 @@ public abstract class TaskAttemptImpl implements
   // riza: check if node is in slow list
   private boolean isNodeSlow(String hostname){
     Collection<String> slownodes = this.conf.getStringCollection(
-        MRJobConfig.UCARE_SE_EXPERIMENT_SLOWNODE_LIST);
+        MRJobConfig.EXP_SLOWNODE_LIST);
     if (!slownodes.isEmpty())
       for (String s: slownodes){
         if (hostname.contains(s)){

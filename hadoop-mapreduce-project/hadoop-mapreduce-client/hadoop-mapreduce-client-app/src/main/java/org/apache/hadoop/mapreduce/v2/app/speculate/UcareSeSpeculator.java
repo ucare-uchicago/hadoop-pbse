@@ -245,33 +245,40 @@ public class UcareSeSpeculator extends AbstractService implements Speculator {
                 MRJobConfig.DEFAULT_SPECULATIVE_MINIMUM_ALLOWED_TASKS);
 
     // @Cesar: read the properties
-    this.fetchRateSpeculationEnabled = conf.getBoolean(
-        "mapreduce.experiment.enable_fetch_rate_speculation", false);
-    this.fetchRateSpeculationSlowNodeThresshold = conf.getDouble(
-        "mapreduce.experiment.fetch_rate_speculation_slow_thresshold",
-        Double.MAX_VALUE);
-    this.fetchRateSpeculationSlowProgressThresshold = conf.getDouble(
-        "mapreduce.experiment.fetch_rate_speculation_progress_thresshold",
-        Double.MAX_VALUE);
-    this.smartFetchRateSpeculationEnabled = conf.getBoolean(
-        "mapreduce.experiment.smart_fetch_rate_speculation_enabled", false);
-    this.smartFetchRateSpeculationFactor = conf.getDouble(
-        "mapreduce.experiment.smart_fetch_rate_speculation_factor", 3.0);
+    this.fetchRateSpeculationEnabled =
+        conf.getBoolean(MRJobConfig.EXP_ENABLE_FETCH_RATE_SPECULATION,
+            MRJobConfig.DEFAULT_EXP_ENABLE_FETCH_RATE_SPECULATION);
+    this.fetchRateSpeculationSlowNodeThresshold =
+        conf.getDouble(MRJobConfig.EXP_FETCH_RATE_SPEC_SLOW_THRESHOLD,
+            MRJobConfig.DEFAULT_EXP_FETCH_RATE_SPEC_SLOW_THRESHOLD);
+    this.fetchRateSpeculationSlowProgressThresshold =
+        conf.getDouble(MRJobConfig.EXP_FETCH_RATE_SPEC_PROGRESS_THRESHOLD,
+            MRJobConfig.DEFAULT_EXP_FETCH_RATE_SPEC_PROGRESS_THRESHOLD);
+    this.smartFetchRateSpeculationEnabled =
+        conf.getBoolean(MRJobConfig.EXP_SMART_FETCH_RATE_SPECULATION_ENABLE,
+            MRJobConfig.DEFAULT_EXP_SMART_FETCH_RATE_SPECULATION_ENABLE);
+    this.smartFetchRateSpeculationFactor =
+        conf.getDouble(MRJobConfig.EXP_SMART_FETCH_RATE_SPEC_FACTOR,
+            MRJobConfig.DEFAULT_EXP_SMART_FETCH_RATE_SPEC_FACTOR);
 
     // @Cesar: Same for write speculation
-    this.hdfsWriteSpeculationEnabled = conf.getBoolean(
-    		"mapreduce.experiment.enable_write_rate_speculation", false);
-    this.hdfsWriteSlowNodeThresshold = conf.getDouble(
-    		"mapreduce.experiment.write_rate_speculation_slow_thresshold", 0.0);
-    this.enableSingleReduceSpeculation = conf.getBoolean(
-    		"mapreduce.experiment.enable_single_reducer_speculation", false);
-    this.hdfsWriteSlowNodeMaximumReportDelay = conf.getDouble(
-    		"mapreduce.experiment.write_rate_speculation_maximum_report_delay_seconds", 10.0);
+    this.hdfsWriteSpeculationEnabled =
+        conf.getBoolean(MRJobConfig.EXP_ENABLE_WRITE_RATE_SPECULATION,
+            MRJobConfig.DEFAULT_EXP_ENABLE_WRITE_RATE_SPECULATION);
+    this.hdfsWriteSlowNodeThresshold =
+        conf.getDouble(MRJobConfig.EXP_WRITE_RATE_SPEC_SLOW_THRESHOLD,
+            MRJobConfig.DEFAULT_EXP_WRITE_RATE_SPEC_SLOW_THRESHOLD);
+    this.enableSingleReduceSpeculation =
+        conf.getBoolean(MRJobConfig.EXP_ENABLE_SINGLE_REDUCER_SPECULATION,
+            MRJobConfig.DEFAULT_EXP_ENABLE_SINGLE_REDUCER_SPECULATION);
+    this.hdfsWriteSlowNodeMaximumReportDelay =
+        conf.getDouble(MRJobConfig.EXP_WRITE_RATE_SPEC_MAX_REPORT_DELAY_SECONDS,
+            MRJobConfig.DEFAULT_EXP_WRITE_RATE_SPEC_MAX_REPORT_DELAY_SECONDS);
     		
     // huanke
     this.slowPipelineHackEnabled = conf.getBoolean(
-        DFSConfigKeys.UCARE_SE_HACK_SLOW_PIPELINE_DATANODE_ENABLE,
-        DFSConfigKeys.UCARE_SE_HACK_SLOW_PIPELINE_DATANODE_ENABLE_DEFAULT);
+        DFSConfigKeys.HACK_SLOW_PIPELINE_DATANODE_ENABLE,
+        DFSConfigKeys.DEFAULT_HACK_SLOW_PIPELINE_DATANODE_ENABLE);
 
     // riza
     this.maxSpeculationDelay =

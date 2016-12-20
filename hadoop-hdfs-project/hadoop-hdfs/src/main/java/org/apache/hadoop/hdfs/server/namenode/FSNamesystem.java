@@ -783,8 +783,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
       //huanke
       this.slowPipelineHackEnable = conf.getBoolean(
-          DFSConfigKeys.UCARE_SE_HACK_SLOW_PIPELINE_DATANODE_ENABLE,
-          DFSConfigKeys.UCARE_SE_HACK_SLOW_PIPELINE_DATANODE_ENABLE_DEFAULT);
+          DFSConfigKeys.HACK_SLOW_PIPELINE_DATANODE_ENABLE,
+          DFSConfigKeys.DEFAULT_HACK_SLOW_PIPELINE_DATANODE_ENABLE);
       
       this.maxFsObjects = conf.getLong(DFS_NAMENODE_MAX_OBJECTS_KEY, 
                                        DFS_NAMENODE_MAX_OBJECTS_DEFAULT);
