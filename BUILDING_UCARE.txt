@@ -1,27 +1,12 @@
 
-BUILDING HADOOP PBSE
+BUILDING HADOOP + UCARE SE
 
-To avoid errors when building modified version of Hadoop PBSE, we need
-the binaries from vanilla versions compilation. Follow this steps to
-compile properly:
-
-- Build base code from vanilla version (binary from vanilla version is
-  required to avoid compilation error from modified version)
+For initial build, go to the root code directory and do:
 
   git fetch origin
-  git checkout release-2.7.1
+  git checkout ucare_se
   mvn clean
-  mvn compile
-
-- Return and build the modified code
-
-  git checkout release-2.7.1-memoryfull
-  mvn compile
-
-- Install modified jars to M2 chache and make dist package
-
-  mvn install
-  mvn package -Pdist -DskipTests
+  mvn install package -Pdist -DskipTests
 
 This full build is required only once. Once we have full build of
 Hadoop PBSE, we can start making changes and do compilation per
@@ -47,3 +32,4 @@ this script to build and send the modified jar.
 
 In order to do per module build, make sure you have install the jars
 from initial full build by calling 'mvn install' in previous steps.
+
