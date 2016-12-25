@@ -258,21 +258,21 @@
 
   <!-- @huanke: custom begin -->
   <property>
-    <name>task.fix.node</name>
+    <name>mapreduce.hack.fix-task-assignment</name>
     <value>false</value>
-    <description>UCARE: should fix the nodes for tasks in JobImpl</description>
+    <description>HACK: enable hack to fix node-to-task assignment in JobImpl</description>
   </property>
 
   <property>
-    <name>map.task.locations.scope</name>
+    <name>mapreduce.hack.map.fixed-location-scope</name>
     <value></value>
-    <description>UCARE: the scope for map tasks</description>
+    <description>HACK: the alowed nodes for map task assignment</description>
   </property>
 
   <property>
-    <name>reduce.task.locations.scope</name>
+    <name>mapreduce.hack.reduce.fixed-location-scope</name>
     <value></value>
-    <description>UCARE: the scope for reduce tasks</description>
+    <description>HACK: the alowed nodes for map task assignment</description>
   </property>
   <!-- @huanke: custom end -->
 

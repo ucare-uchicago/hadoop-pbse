@@ -981,15 +981,15 @@ public interface MRJobConfig {
       "mapreduce.ucare_se.hack.map.progress_interval";
 
   public static final String HACK_FIX_TASK_ASSIGMENT =
-      "task.fix.node";
+      "mapreduce.hack.fix-task-assignment";
   public static final boolean DEFAULT_HACK_FIX_TASK_ASSIGMENT =
       false;
 
-  public static final String HACK_FIX_MAPTASK_ASSIGMENT_NODES =
-      "map.task.locations.scope";
+  public static final String HACK_FIXED_MAPTASK_NODES =
+      "mapreduce.hack.map.fixed-location-scope";
 
-  public static final String HACK_FIX_REDUCETASK_ASSIGMENT_NODES =
-      "reduce.task.locations.scope";
+  public static final String HACK_FIXED_REDUCETASK_NODES =
+      "mapreduce.hack.reduce.fixed-location-scope";
 
   public static final String HACK_FIXED_MAPTASK_NODE =
       "map.task.fix.node";

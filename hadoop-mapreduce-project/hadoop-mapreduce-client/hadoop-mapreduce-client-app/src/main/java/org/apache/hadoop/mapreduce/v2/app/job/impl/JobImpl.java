@@ -724,9 +724,9 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
         MRJobConfig.HACK_FIX_TASK_ASSIGMENT,
         MRJobConfig.DEFAULT_HACK_FIX_TASK_ASSIGMENT);
     this.maplocations = conf.getStringCollection(
-        MRJobConfig.HACK_FIX_MAPTASK_ASSIGMENT_NODES);
+        MRJobConfig.HACK_FIXED_MAPTASK_NODES);
     this.reducelocations = conf.getStringCollection(
-        MRJobConfig.HACK_FIX_REDUCETASK_ASSIGMENT_NODES);
+        MRJobConfig.HACK_FIXED_REDUCETASK_NODES);
   }
 
   protected StateMachine<JobStateInternal, JobEventType, JobEvent> getStateMachine() {
