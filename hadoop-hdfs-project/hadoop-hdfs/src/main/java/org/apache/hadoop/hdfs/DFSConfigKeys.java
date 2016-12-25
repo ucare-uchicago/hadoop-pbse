@@ -814,6 +814,6 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
       false;
 
   public static final String HACK_COMMON_WRITE_PIPELINE_DATANODE =
-      "dfs.ucare_se.hack.slow.pipeline.datanode";
+      "dfs.ucare_se.hack.common-write-pipeline.datanode";
 
 }
