@@ -1535,7 +1535,9 @@ public abstract class TaskAttemptImpl implements
         TaskAttemptEvent event) {
       //huanke---------------------------------------------------
       TaskType type = event.getTaskAttemptID().getTaskId().getTaskType();
-      boolean taskFixnode=taskAttempt.conf.getBoolean("task.fix.node", false);
+      boolean taskFixnode = taskAttempt.conf.getBoolean(
+          MRJobConfig.HACK_FIX_TASK_ASSIGMENT,
+          MRJobConfig.DEFAULT_HACK_FIX_TASK_ASSIGMENT);
       String [] hosts = taskFixnode? (type == TaskType.MAP?
               new String[]{taskAttempt.conf.get("map.task.locations.scope")} :
               new String[]{taskAttempt.conf.get("reduce.task.locations.scope")}) :

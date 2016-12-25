@@ -720,9 +720,13 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
         MRJobConfig.DEFAULT_MAX_FETCH_FAILURES_NOTIFICATIONS);
     
     //huanke
-    this.taskFixnode=conf.getBoolean("task.fix.node", false);
-    this.maplocations=conf.getStringCollection("map.task.locations.scope");
-    this.reducelocations=conf.getStringCollection("reduce.task.locations.scope");
+    this.taskFixnode = conf.getBoolean(
+        MRJobConfig.HACK_FIX_TASK_ASSIGMENT,
+        MRJobConfig.DEFAULT_HACK_FIX_TASK_ASSIGMENT);
+    this.maplocations = conf.getStringCollection(
+        MRJobConfig.HACK_FIX_MAPTASK_ASSIGMENT_NODES);
+    this.reducelocations = conf.getStringCollection(
+        MRJobConfig.HACK_FIX_REDUCETASK_ASSIGMENT_NODES);
   }
 
   protected StateMachine<JobStateInternal, JobEventType, JobEvent> getStateMachine() {
@@ -1539,8 +1543,8 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
     	//huanke
         if(job.taskFixnode){
           List<String> locations =new ArrayList<>(job.maplocations);
-          String onemap=locations.get(new Random().nextInt(locations.size()));
-          job.conf.set("map.task.fix.node", onemap);
+          String onemap = locations.get(new Random().nextInt(locations.size()));
+          job.conf.set(MRJobConfig.HACK_FIXED_MAPTASK_NODE, onemap);
           LOG.info("@huanke location for maptask: "+ onemap);
         }  
         TaskImpl task =
@@ -1566,7 +1570,7 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
           if(job.taskFixnode){
             List<String> locations =new ArrayList<>(job.reducelocations);
             String onereduce=locations.get(new Random().nextInt(locations.size()));
-            job.conf.set("reduce.task.fix.node", onereduce);
+            job.conf.set(MRJobConfig.HACK_FIXED_REDUCETASK_NODE, onereduce);
             LOG.info("@huanke location for reducetask: "+ onereduce);
           }
           //huanke want to add AMtoTask info in new ReduceTaskImpl
