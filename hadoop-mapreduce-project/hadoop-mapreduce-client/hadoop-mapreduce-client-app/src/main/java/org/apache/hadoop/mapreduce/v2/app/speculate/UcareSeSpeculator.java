@@ -277,7 +277,7 @@ public class UcareSeSpeculator extends AbstractService implements Speculator {
     		
     // huanke
     this.slowPipelineHackEnabled = conf.getBoolean(
-        DFSConfigKeys.HACK_SLOW_PIPELINE_DATANODE_ENABLE,
+        DFSConfigKeys.HACK_COMMON_WRITE_PIPELINE_ENABLE,
         DFSConfigKeys.DEFAULT_HACK_SLOW_PIPELINE_DATANODE_ENABLE);
 
     // riza

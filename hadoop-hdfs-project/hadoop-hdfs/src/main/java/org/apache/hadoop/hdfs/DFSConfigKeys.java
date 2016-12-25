@@ -808,12 +808,12 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final boolean DEFAULT_HACK_SORT_DATANODE =
       false;
 
-  public static final String HACK_SLOW_PIPELINE_DATANODE_ENABLE =
+  public static final String HACK_COMMON_WRITE_PIPELINE_ENABLE =
       "dfs.ucare_se.reduce.slow.pipeline.datanode.enable";
   public static final boolean DEFAULT_HACK_SLOW_PIPELINE_DATANODE_ENABLE =
       false;
 
-  public static final String HACK_SLOW_PIPELINE_DATANODE =
+  public static final String HACK_COMMON_WRITE_PIPELINE_DATANODE =
       "dfs.ucare_se.hack.slow.pipeline.datanode";
 
 }

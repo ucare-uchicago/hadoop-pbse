@@ -98,15 +98,21 @@
 
   <!-- @huanke: custom begin -->
   <property>
-    <name>dfs.ucare_se.hack.slow.pipeline.datanode</name>
+    <name>dfs.ucare_se.hack.common-write-pipeline.datanode</name>
     <value></value>
-    <description>HACK: huanke: list of slowed nodes that will be avoided on dfs write pipeline</description>
+    <description>
+      HACK: huanke: hack to force common write pipeline datanode on
+      original task and then avoid it in backup task
+    </description>
   </property>
 
   <property>
-    <name>dfs.ucare_se.hack.slow.pipeline.datanode.enable</name>
+    <name>dfs.ucare_se.hack.common-write-pipeline.enable</name>
     <value>false</value>
-    <description>HACK: huanke: slow pipeline avoidance. dfs.ucare_se.hack.slow.pipeline.datanode must be defined</description>
+    <description>
+      HACK: huanke: switch to activate common-write-pipeline
+      experiment
+    </description>
   </property>
   <!-- @huanke: custom end -->
 
