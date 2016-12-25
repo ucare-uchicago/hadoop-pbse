@@ -147,12 +147,6 @@
 
   <!-- @huanke: custom begin -->
   <property>
-    <name>slow.fix.datanode</name>
-    <value></value>
-    <description>UCARE: </description>
-  </property>
-
-  <property>
     <name>task.fix.node</name>
     <value>false</value>
     <description>UCARE: should fix the nodes for tasks in JobImpl</description>

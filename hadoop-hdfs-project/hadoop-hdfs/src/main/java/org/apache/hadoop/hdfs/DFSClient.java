@@ -338,9 +338,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     // riza: custom conf
     final boolean sortDatanode;
 
-    //huanke
-    final Collection<String> slowDN;
-
     public Conf(Configuration conf) {
       // The hdfsTimeout is currently the same as the ipc timeout 
       hdfsTimeout = Client.getTimeout(conf);
@@ -512,9 +509,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       sortDatanode = conf.getBoolean(
           DFSConfigKeys.HACK_SORT_DATANODE,
           DFSConfigKeys.DEFAULT_HACK_SORT_DATANODE);
-
-      //huanke
-      slowDN = conf.getStringCollection("slow.fix.datanode");
     }
 
     public boolean isUseLegacyBlockReaderLocal() {

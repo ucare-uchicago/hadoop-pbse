@@ -164,7 +164,6 @@ public class DFSOutputStream extends FSOutputSummer
 
   //huanke
   DatanodeInfo[] PipeNodes=new DatanodeInfo[2];
-  private List<String> slowDataNodes=null;
   private List<String> IgnoreInfo=new ArrayList<>();
   private String MessageHK="";
 
@@ -1891,8 +1890,6 @@ public class DFSOutputStream extends FSOutputSummer
     this.blockReplication = stat.getReplication();
     this.fileEncryptionInfo = stat.getFileEncryptionInfo();
     this.progress = progress;
-    //huanke------------------slowDataNodes--------------------------------------------
-    this.slowDataNodes=new ArrayList<>(dfsClient.getConf().slowDN);
     this.cachingStrategy = new AtomicReference<CachingStrategy>(
         dfsClient.getDefaultWriteCachingStrategy());
     if ((progress != null) && DFSClient.LOG.isDebugEnabled()) {
