@@ -1,0 +1,17 @@
+#!/bin/bash
+
+ssh node-1 -n "sudo $PSBIN/slow_machine_param.sh 200"
+ssh node-2 -n "sudo $PSBIN/slow_machine_param.sh 375"
+ssh node-3 -n "sudo $PSBIN/slow_machine_param.sh 680"
+ssh node-4 -n "sudo $PSBIN/slow_machine_param.sh 725"
+ssh node-5 -n "sudo $PSBIN/slow_machine_param.sh 745"
+ssh node-6 -n "sudo $PSBIN/slow_machine_param.sh 750"
+ssh node-7 -n "sudo $PSBIN/slow_machine_param.sh 755"
+ssh node-8 -n "sudo $PSBIN/slow_machine_param.sh 775"
+ssh node-9 -n "sudo $PSBIN/slow_machine_param.sh 780"
+ssh node-10 -n "sudo $PSBIN/slow_machine_param.sh 795"
+ssh node-11 -n "sudo $PSBIN/slow_machine_param.sh 800"
+ssh node-12 -n "sudo $PSBIN/slow_machine_param.sh 810"
+ssh node-13 -n "sudo $PSBIN/slow_machine_param.sh 830"
+ssh node-14 -n "sudo $PSBIN/slow_machine_param.sh 860"
+ssh node-15 -n "sudo $PSBIN/slow_machine_param.sh 920"
