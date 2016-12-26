@@ -1,6 +1,8 @@
 #!/bin/bash
 
+. cluster_topology.sh
+
 stop-dfs.sh
 stop-yarn.sh
 #mr-jobhistory-daemon.sh stop historyserver
-ssh -t node-17 'mr-jobhistory-daemon.sh stop historyserver;'
+ssh -t $YARN_RM 'mr-jobhistory-daemon.sh stop historyserver;'

@@ -1,8 +1,10 @@
 #!/bin/bash
 
+. cluster_topology.sh
+
 echo "Resetting cluster" > /tmp/$USER-clresetyarn.log
 
-for i in `seq 0 20`;
+for i in `seq 0 $MAX_NODE`;
 do
   echo "node-$i" >> /tmp/$USER-clresetyarn.log
   ssh node-$i \

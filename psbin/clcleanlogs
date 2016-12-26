@@ -1,9 +1,10 @@
 #!/bin/bash
 
+. cluster_topology.sh
 
 echo "Cleaning up logs" > /tmp/$USER-clcleanup.log
 
-for i in `seq 0 20`;
+for i in `seq 0 $MAX_NODE`;
 do
   echo "node-$i" >> /tmp/$USER-clcleanup.log
   ssh node-$i \

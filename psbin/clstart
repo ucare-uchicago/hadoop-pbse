@@ -1,6 +1,8 @@
 #!/bin/bash
 
+. cluster_topology.sh
+
 start-dfs.sh
 start-yarn.sh
 #mr-jobhistory-daemon.sh start historyserver
-ssh -t node-17 'mr-jobhistory-daemon.sh start historyserver;'
+ssh -t $YARN_RM 'mr-jobhistory-daemon.sh start historyserver;'

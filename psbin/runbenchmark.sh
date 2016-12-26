@@ -6,12 +6,14 @@ if [[ "$#" -ne 2 ]]
     exit
 fi
 
+. cluster_topology.sh
+
 echo "Limping node-$1:$2"
 
 myhome=`readlink -e ~/`
 
 fastnode $1
-ssh -t node-17 "clstop;"
+ssh -t $YARN_RM "clstop;"
 clcleanlogs
 sleep 5
 
@@ -25,13 +27,13 @@ sed -i "s/pc001/$2/" $HADOOP_CONF_DIR/mapred-site.xml
 # change default heartbeat interval
 # sed -i "s/3000/375/" $HADOOP_CONF_DIR/mapred-site.xml
 
-ssh -t node-17 "clstart;"
+ssh -t $YARN_RM "clstart;"
 sleep 10
 hc
 hdfs dfs -rm -r -f "$myhome/workGenOutputTest*"
 sleep 10
 #slownode $1
-ssh -t node-0 "cd $TESTDIR; ./expStart.sh & echo $! > ~/swim.pid;"
+ssh -t $CLIENT_NODE "cd $TESTDIR; ./expStart.sh & echo $! > ~/swim.pid;"
 
 sleep 5
 cd $TESTDIR/workGenLogs/

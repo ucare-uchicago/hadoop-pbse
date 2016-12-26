@@ -1,0 +1,7 @@
+
+
+MAX_NODE=17
+YARN_RM=node-17
+HDFS_NN=node-16
+CLIENT_NODE=node-0
+
