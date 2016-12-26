@@ -9,7 +9,7 @@ do
   echo "node-$i" >> /tmp/$USER-clsetup.log
   ssh -t node-$i \
    'rm -r /tmp/hadoop-ucare /mnt/extra/dfs-ucare; \
-    mkdir /tmp/hadoop-ucare /mnt/extra/dfs-ucare; \
+    mkdir -p /tmp/hadoop-ucare /mnt/extra/dfs-ucare; \
     sudo chgrp -R ucare /tmp/hadoop-ucare /mnt/extra;
     sudo chmod -R 774 /tmp/hadoop-ucare /mnt/extra;'  >> /tmp/$USER-clsetup.log
 done

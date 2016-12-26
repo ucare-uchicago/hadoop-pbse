@@ -32,7 +32,7 @@ sleep 10
 hc
 hdfs dfs -rm -r -f "$myhome/workGenOutputTest*"
 sleep 10
-#slownode $1
+slownode $1
 ssh -t $CLIENT_NODE "cd $TESTDIR; ./expStart.sh & echo $! > ~/swim.pid;"
 
 sleep 5
