@@ -8,7 +8,7 @@ for i in `seq 0 $MAX_NODE`;
 do
   echo "node-$i" >> /tmp/$USER-clreset.log
   ssh node-$i \
-   'rm -rf /tmp/hadoop-ucare/* ; rm -rf /mnt/extra/dfs-ucare/* ;'  >> /tmp/$USER-clreset.log
+   'sudo rm -rf /tmp/hadoop-ucare/* ; rm -rf /mnt/extra/dfs-ucare/* ;'  >> /tmp/$USER-clreset.log
 done
 
 cat /tmp/$USER-clreset.log
