@@ -18,6 +18,7 @@ clcleanlogs
 sleep 5
 
 cp ucare_se_conf/readconf/* $HADOOP_CONF_DIR/
+sed_replaceconf.sh
 
 # change slow down node
 sed -i "s/pc001/$2/" $HADOOP_CONF_DIR/hdfs-site.xml

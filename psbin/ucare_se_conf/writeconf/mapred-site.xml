@@ -53,13 +53,13 @@
 
   <property>
     <name>mapreduce.jobhistory.address</name>
-    <value>10.1.1.19:10020</value>
+    <value>YARN_RM_IP:10020</value>
     <description>MapReduce JobHistory Server IPC host:port</description>
   </property>
 
   <property>
     <name>mapreduce.jobhistory.webapp.address</name>
-    <value>10.1.1.19:19888</value>
+    <value>YARN_RM_IP:19888</value>
     <description>MapReduce JobHistory Server Web UI host:port</description>
   </property>
 

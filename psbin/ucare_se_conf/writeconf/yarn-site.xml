@@ -13,7 +13,7 @@
 
   <property>
     <name>yarn.resourcemanager.hostname</name>
-    <value>node-17</value>
+    <value>YARN_RM_HOSTNAME</value>
   </property>
 
   <property>

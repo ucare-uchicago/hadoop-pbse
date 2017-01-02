@@ -35,7 +35,7 @@
 
   <property>
     <name>dfs.hosts</name>
-    <value>/proj/ucare/riza/hadoop-etc/hadoop-2.7.1/slaves</value>
+    <value>SLAVES_FILE</value>
   </property>
 
   <property>
@@ -62,13 +62,13 @@
 
   <property>
     <name>dfs.namenode.secondary.http-address</name>
-    <value>10.1.1.18:50090</value>
+    <value>HDFS_NN_IP:50090</value>
     <description>fix secondary namenode http</description>
   </property>
 
   <property>
     <name>dfs.namenode.secondary.https-address</name>
-    <value>10.1.1.18:50091</value>
+    <value>HDFS_NN_IP:50091</value>
     <description>fix secondary namenode https</description>
   </property>
 
