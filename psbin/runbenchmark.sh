@@ -13,7 +13,7 @@ echo "Limping node-$1:$2"
 myhome=`readlink -e ~/`
 
 fastnode $1
-ssh -t $YARN_RM "clstop;"
+clstop
 clcleanlogs
 sleep 5
 
@@ -28,7 +28,7 @@ sed -i "s/pc001/$2/" $HADOOP_CONF_DIR/mapred-site.xml
 # change default heartbeat interval
 # sed -i "s/3000/375/" $HADOOP_CONF_DIR/mapred-site.xml
 
-ssh -t $YARN_RM "clstart;"
+clstart
 sleep 10
 hc
 hdfs dfs -rm -r -f "$myhome/workGenOutputTest*"
