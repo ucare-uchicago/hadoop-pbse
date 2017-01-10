@@ -2,4 +2,5 @@
 
 echo "restore node-$1"
 
-ssh -n node-$1 "sudo $PSBIN/fast_machine.sh"
+#ssh -n node-$1 "sudo $PSBIN/fast_machine.sh"
+limit_clear.sh

@@ -2,4 +2,5 @@
 
 echo "slowing node-$1"
 
-ssh node-$1 -n "sudo $PSBIN/slow_machine.sh"
+#ssh node-$1 -n "sudo $PSBIN/slow_machine.sh"
+limit_node.sh $1
