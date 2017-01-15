@@ -31,7 +31,7 @@
 
   <property>
     <name>mapreduce.map.log.level</name>
-    <value>INFO</value>
+    <value>DEBUG</value>
     <description>The logging level for the map task.</description>
   </property>
 
@@ -78,7 +78,7 @@
   <!-- CUSTOM CONF BEGIN -->
   <property>
     <name>mapreduce.ucare_se.map.datanode.send_report</name>
-    <value>false</value>
+    <value>true</value>
     <description>UCARE: report datanode being read to AM</description>
   </property>
 
@@ -114,7 +114,7 @@
 
   <property>
     <name>mapreduce.experiment.slownode</name>
-    <value></value>
+    <value>pc001</value>
     <description>UCARE: slow node host in emulab experiment</description>
   </property>
   <!-- CUSTOM CONF END -->

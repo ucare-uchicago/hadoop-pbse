@@ -18,14 +18,19 @@
 
   <property>
     <name>yarn.nodemanager.resource.memory-mb</name>
-    <value>16384</value> <!-- write mode -->
+    <value>12288</value> <!-- write mode -->
     <!-- <value>2048</value> experiment mode -->
   </property>
 
   <property>
     <name>yarn.nodemanager.resource.cpu-vcores</name>
-    <value>16</value> <!-- write mode -->
+    <value>12</value> <!-- write mode -->
     <!-- <value>2</value> experiment mode -->
+  </property>
+
+  <property>
+    <name>yarn.nodemanager.log.retain-seconds</name>
+    <value>86400</value>
   </property>
 
   <!-- @Cesar: Added by cesar to control location of app master -->
