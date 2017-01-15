@@ -3,9 +3,9 @@
 # PARAMETERS
 # ===============================================================================================================
 # notice that all rates should include the unit, something like 512kbit or 1mbit
-SLOW_RATE=30mbit
+SLOW_RATE=1mbit
 MAX_TOTAL_RATE=1000mbit
-MAX_SUBCLASS_RATE=970mbit
+MAX_SUBCLASS_RATE=999mbit
 # prelude from remote devices, like eth0, eth1, ...
 REMOTE_DEVICE_PRELUDE="eth"
 # asume only one local device per machine
@@ -44,8 +44,8 @@ slowDevice(){
 	tc qdisc add dev $1 parent 1:2 sfq
 	tc qdisc add dev $1 parent 1:3 sfq
 	# filter by ip
-	tc filter add dev $1 parent 1:0 protocol ip u32 match ip dst $5/0 flowid 1:3
-        tc filter add dev $1 parent 1:0 protocol ip u32 match ip src $5/0 flowid 1:3
+	tc filter add dev $1 parent 1:0 protocol ip u32 match ip dst $5/32 flowid 1:3
+        tc filter add dev $1 parent 1:0 protocol ip u32 match ip src $5/32 flowid 1:3
     # done
 }
 # ===============================================================================================================
