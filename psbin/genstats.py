@@ -17,7 +17,7 @@ SLOWNODE=100
 SLOWHOST="VOID"
 SLOWIP="10.1.1."+str(SLOWNODE+2)
 
-VERSION="4.0"
+VERSION="4.1"
 DATE_FORMAT="%Y-%m-%d %H:%M:%S.%f"
 
 pp = pprint.PrettyPrinter(indent=2)
@@ -159,6 +159,7 @@ def initContainerStats():
     "isSlowDatanode": False,
     "isSlowReducenode": False,
     "isSlowPipeline": False,
+    "tags_UCARE_SE" : [],
 	# to differentiate between reduce phases
 	"shuffleEndTime":'',
 	"sortEndTime":'',
@@ -326,6 +327,8 @@ def getContainerStats(app):
 
       match = re_tags_ucare_se.match(line)
       if match:
+        if match.group(1) not in ct["tags_UCARE_SE"]:
+          ct["tags_UCARE_SE"].append(match.group(1))
         if match.group(1) not in master["tags_UCARE_SE"]:
           master["tags_UCARE_SE"].append(match.group(1))
 
