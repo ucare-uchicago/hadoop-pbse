@@ -16,4 +16,5 @@ class Container:
     # added by Riza
     touchSlowNode = False
     firstHeartbeat = ''
-    statusUpdate = []    
+    statusUpdate = []
+    node = ''

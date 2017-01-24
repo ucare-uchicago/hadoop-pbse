@@ -41,7 +41,14 @@ if __name__ == "__main__":
 #      if job.jobDurationAM > 23:
 #         continue
 
-      containersSortedByStartDate = sorted(job.containers, key=lambda x: datetime.datetime.strptime(x.startDate, "%Y-%m-%d %H:%M:%S.%f"))
+      # riza: sort by node first
+      # containersSortedByStartDate = sorted(job.containers, \
+      #     key=lambda x: (x.node, datetime.datetime.strptime(x.startDate, "%Y-%m-%d %H:%M:%S.%f")))
+
+      # riza: sort by time first
+      containersSortedByStartDate = sorted(job.containers, \
+         key=lambda x: datetime.datetime.strptime(x.startDate, "%Y-%m-%d %H:%M:%S.%f"))
+
       print "Found " + str(len(containersSortedByStartDate)) + " containers for job " + job.jobId
       # first container will be up in the graph
       firstYCoordinate = len(containersSortedByStartDate)
