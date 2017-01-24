@@ -1,6 +1,10 @@
 #!/bin/bash
 
-echo "slowing node-$1"
+. cluster_topology.sh
 
-#ssh node-$1 -n "sudo $PSBIN/slow_machine.sh"
-limit_node.sh $1
+slownode="${HOSTNAME_PREFIX}$1"
+
+echo "slowing $slownode"
+
+#ssh $slownode -n "sudo $PSBIN/slow_machine.sh"
+limit_node.sh $1 $2

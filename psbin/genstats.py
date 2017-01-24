@@ -14,10 +14,10 @@ from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 
 SLOWNODE=100
-SLOWHOST="VOID"
-SLOWIP="10.1.1."+str(SLOWNODE+2)
+SLOWHOST='VOID'
+SLOWIP='10.1.1.254'
 
-VERSION="4.1"
+VERSION="4.2"
 DATE_FORMAT="%Y-%m-%d %H:%M:%S.%f"
 
 pp = pprint.PrettyPrinter(indent=2)
