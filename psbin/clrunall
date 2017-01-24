@@ -1,0 +1,12 @@
+#!/bin/bash
+
+. cluster_topology.sh
+
+echo "Running command $1"
+
+for i in `seq 7 $MAX_NODE`;
+do
+  echo "Running command on node-$i"
+  ssh node-$i "$1"
+done
+
