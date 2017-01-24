@@ -25,6 +25,3 @@ hadoop-tools/hadoop-aws/src/test/resources/contract-test-options.xml
 
 hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/io/serializer/avro/AvroRecord.java
 hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/ipc/protobuf/
-
-psbin/searchlog_script/data.json
-psbin/ucare_se_conf/hadoop-etc/hadoop-2.7.1/
