@@ -137,6 +137,7 @@
 
   <property>
     <name>yarn.app.mapreduce.am.job.speculator.class</name>
+    <!--<value>org.apache.hadoop.mapreduce.v2.app.speculate.CloningSpeculator</value>-->
     <value>org.apache.hadoop.mapreduce.v2.app.speculate.UcareSeSpeculator</value>
     <description>Speculator's estimator class</description>
   </property>

@@ -22,7 +22,10 @@
      <!--<value>189097920000</value> scriptTest-8MB-->
      <!--<value>189100560000</value> scriptTest-16MB-->
      <!--<value>189101550000</value> scriptTest-64MB-->
-     <value>378203100000</value> <!-- Facebook 2010, 6600 partitions-->
+     <!--<value>378203100000</value> Facebook 2010, 6600 partitions-->
+     <!--<value>60168675000</value> Facebook 2010, 1050 partitions-->
+     <value>120337350000</value> <!-- Facebook 2010, 2100 partitions-->
+     <!--<value>573035000</value>-->
    </property>
    <property>
      <name>test.randomwrite.bytes_per_map</name>

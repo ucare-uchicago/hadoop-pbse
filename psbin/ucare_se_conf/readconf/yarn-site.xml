@@ -16,9 +16,14 @@
     <value>YARN_RM_HOSTNAME</value>
   </property>
 
-  <property>
+  <!--<property>
     <name>yarn.resourcemanager.webapp.address</name>
     <value>YARN_RM_HOSTNAME:8088</value>
+  </property>-->
+
+  <property>
+    <name>yarn.resourcemanager.bind-host</name>
+    <value>0.0.0.0</value>
   </property>
 
 <!--  <property>
