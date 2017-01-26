@@ -46,7 +46,7 @@ hc
 hdfs dfs -rm -r -f "$myhome/workGenOutputTest*"
 sleep 10
 slownode $1 $2
-ssh -t $CLIENT_NODE "cd $TESTDIR; ./expStart.sh & echo $! > ~/swim.pid;"
+ssh -f $CLIENT_NODE "cd $TESTDIR; ./expStart.sh &"
 
 sleep 5
 cd $TESTDIR/workGenLogs/
