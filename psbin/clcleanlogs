@@ -6,8 +6,8 @@ echo "Cleaning up logs" > /tmp/$USER-clcleanup.log
 
 for i in `seq 0 $MAX_NODE`;
 do
-  echo "node-$i" >> /tmp/$USER-clcleanup.log
-  ssh node-$i \
+  echo "$HOSTNAME_PREFIX$i" >> /tmp/$USER-clcleanup.log
+  ssh $HOSTNAME_PREFIX$i \
    'rm -rf /tmp/hadoop-ucare/logs* ;'  >> /tmp/$USER-clcleanup.log
 done
 

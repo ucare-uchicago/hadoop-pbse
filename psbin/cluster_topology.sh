@@ -1,15 +1,15 @@
 
 
-MAX_NODE=31
+MAX_NODE=3
 HOSTNAME_PREFIX="node-"
 
-YARN_RM="${HOSTNAME_PREFIX}31"
-YARN_RM_IP=10.1.1.33
-YARN_RM_HOSTNAME="${HOSTNAME_PREFIX}31"
-HDFS_NN="${HOSTNAME_PREFIX}31"
-HDFS_NN_IP=10.1.1.33
-CLIENT_NODE="${HOSTNAME_PREFIX}31"
-SLAVES_FILE=/proj/ucare/git/hadoop-ucare/psbin/ucare_se_conf/hadoop-etc/hadoop-2.7.1/slaves
+YARN_RM="${HOSTNAME_PREFIX}1"
+YARN_RM_IP=10.11.10.61
+YARN_RM_HOSTNAME="${HOSTNAME_PREFIX}1"
+HDFS_NN="${HOSTNAME_PREFIX}1"
+HDFS_NN_IP=10.11.10.61
+CLIENT_NODE="${HOSTNAME_PREFIX}1"
+SLAVES_FILE="$PSBIN/ucare_se_conf/hadoop-etc/hadoop-2.7.1/slaves"
 
 #SLAVES_FILE=/proj/ucare/git/hadoop-ucare/psbin/mini-slaves
 

@@ -4,5 +4,5 @@
 
 for i in `seq 0 $MAX_NODE`;
 do
-  ssh -t node-$i "sudo $PSBIN/fast_machine.sh"
+  ssh -t $HOSTNAME_PREFIX$i "sudo $PSBIN/fast_machine.sh"
 done

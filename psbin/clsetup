@@ -6,8 +6,8 @@ echo "Initial cluster setup" > /tmp/$USER-clsetup.log
 
 for i in `seq 0 $MAX_NODE`;
 do
-  echo "node-$i" >> /tmp/$USER-clsetup.log
-  ssh -t node-$i \
+  echo "$HOSTNAME_PREFIX$i" >> /tmp/$USER-clsetup.log
+  ssh -t $HOSTNAME_PREFIX$i \
    'sudo rm -r /tmp/hadoop-ucare /mnt/extra/dfs-ucare; \
     sudo mkdir -p /tmp/hadoop-ucare /mnt/extra/dfs-ucare; \
     sudo chgrp -R ucare /tmp/hadoop-ucare /mnt/extra;

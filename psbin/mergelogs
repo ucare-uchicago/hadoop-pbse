@@ -11,9 +11,9 @@ rm -rf logs
 
 for i in `seq 1 $MAX_NODE`;
 do
-  echo "node-$i"
-  ssh node-$i 'cd /tmp/hadoop-ucare ; tarit logs ;'
-  scp node-$i:/tmp/hadoop-ucare/logs.tgz /tmp/
+  echo "$HOSTNAME_PREFIX$i"
+  ssh $HOSTNAME_PREFIX$i 'cd /tmp/hadoop-ucare ; tarit logs ;'
+  scp $HOSTNAME_PREFIX$i:/tmp/hadoop-ucare/logs.tgz /tmp/
   untarit logs.tgz
   rm logs.tgz
 done

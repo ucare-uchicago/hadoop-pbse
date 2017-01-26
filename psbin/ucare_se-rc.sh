@@ -9,12 +9,13 @@ export TESTDIR=${SWIMDIR}/workloadSuite/generatedWorkloads/st-FB2010_Proper_30no
 export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
 export HADOOP_CLASSPATH=${JAVA_HOME}lib/tools.jar
 export HADOOP_PREFIX=${PR}/hadoop-2.7.1
-export HADOOP_CONF_DIR=${PR}/hadoop-ucare/psbin/ucare_se_conf/hadoop-etc/hadoop-2.7.1
+export HADOOP_CONF_DIR=${DIR}/ucare_se_conf/hadoop-etc/hadoop-2.7.1
 export HADOOP_HOME=${HADOOP_PREFIX}
 export HADOOP_LOG_DIR=/tmp/hadoop-ucare/logs/hadoop
 export YARN_LOG_DIR=/tmp/hadoop-ucare/logs/yarn
+export HADOOP_MAPRED_LOG_DIR=/tmp/hadoop-ucare/logs/mapred
 
-export PSBIN=${PR}/hadoop-ucare/psbin
+export PSBIN=${DIR}
 export PATH=${PATH}:${HADOOP_PREFIX}/bin:${HADOOP_PREFIX}/sbin:${PSBIN}
 
 alias h="history 25"

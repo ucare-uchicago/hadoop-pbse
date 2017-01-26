@@ -6,8 +6,8 @@ echo "Resetting cluster" > /tmp/$USER-clresetyarn.log
 
 for i in `seq 0 $MAX_NODE`;
 do
-  echo "node-$i" >> /tmp/$USER-clresetyarn.log
-  ssh node-$i \
+  echo "$HOSTNAME_PREFIX$i" >> /tmp/$USER-clresetyarn.log
+  ssh $HOSTNAME_PREFIX$i \
    'rm -rf /mnt/extra/dfs-ucare/nm-local-dir ;'  >> /tmp/$USER-clresetyarn.log
 done
 
