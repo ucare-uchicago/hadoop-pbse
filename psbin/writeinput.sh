@@ -12,4 +12,4 @@ ssh -t $HDFS_NN "dfsformat;"
 
 clstart
 sleep 10
-ssh -t $CLIENT_NODE "$PSBIN/prep_run.sh > /tmp/writeinput.log &"
+ssh -f $CLIENT_NODE "$PSBIN/prep_run.sh > /tmp/writeinput.log &"
