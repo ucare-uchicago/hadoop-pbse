@@ -1,4 +1,4 @@
-B0;95;0c#!/bin/bash
+#!/bin/bash
 
 if [[ "$#" -ne 2 ]]
   then
