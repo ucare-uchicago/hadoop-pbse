@@ -84,6 +84,11 @@ def printAllRunData(runs):
          for a in AM(apps) if ("time_start" in a) and ("time_stop" in a)]
   printData(runs,dat,"am")
 
+def printMapTaskCount(runs):
+  # Original map task count
+  dat = lambda apps: \
+	[a["ct_CompletedMaps"] for a in AM(apps)]
+  printData(runs,dat,"mapcount")
 
 def printDiff(d1,d2,filename,comp):
   diff = []
@@ -124,6 +129,7 @@ def printDiffData(json1,json2,prefix):
   d1 = {k:v for k,v in dat(json1["apps"])}
   d2 = {k:v for k,v in dat(json2["apps"])}
   comp = lambda x,y: 100.0 * (x-y) / x
+  # comp = lambda x,y: x-y
   printPercentileDiff(d1,d2,"reduct-"+prefix+".dat",comp)
 
   comp = lambda x,y: x/y
@@ -159,7 +165,12 @@ def main():
     prefix = sys.argv[4]
     json1 = loadJson(run1)  
     json2 = loadJson(run2)
-    printDiffData(json1,json2,prefix)  
+    printDiffData(json1,json2,prefix)
+  elif opt == "-c":
+    runs = {}
+    run1 = sys.argv[2]
+    runs[run1.replace(".json","")] = loadJson(run1)
+    printMapTaskCount(runs)
 
 
 if __name__ == '__main__':
