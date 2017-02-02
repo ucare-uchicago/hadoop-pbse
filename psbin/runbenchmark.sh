@@ -18,7 +18,7 @@ fi
 
 . cluster_topology.sh
 
-myhome=`readlink -e ~/`
+myhome="/user/$USER"
 slownode="${HOSTNAME_PREFIX}$1"
 
 echo "Limping $slownode :: $2 :: $3"
@@ -43,10 +43,10 @@ sed -i "s|<value>pc...</value>|<value>$3</value>|" $HADOOP_CONF_DIR/mapred-site.
 clstart
 sleep 10
 hc
-hdfs dfs -rm -r -f "$myhome/workGenOutputTest*"
 sleep 10
+hdfs dfs -rm -r -f "$myhome/workGenOutputTest*"
 slownode $1 $2
-ssh -f $CLIENT_NODE "cd $TESTDIR; ./expStart.sh &"
+ssh -t $CLIENT_NODE "cd $TESTDIR; ./expStart.sh > /tmp/expLog.log & "
 
 sleep 5
 cd $TESTDIR/workGenLogs/
