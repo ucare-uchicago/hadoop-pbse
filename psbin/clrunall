@@ -4,7 +4,7 @@
 
 echo "Running command $1"
 
-for i in `seq 7 $MAX_NODE`;
+for i in `seq 0 $MAX_NODE`;
 do
   echo "Running command on $HOSTNAME_PREFIX$i"
   ssh $HOSTNAME_PREFIX$i "$1"
