@@ -75,6 +75,27 @@
     <description>default: -Xmx200m</description>
   </property>
 
+  <!-- HEDGED READ BEGIN -->
+  <!--<property>
+    <name>dfs.client.hedged.read.threadpool.size</name>
+    <value>0</value>
+    <description>
+      Support 'hedged' reads in DFSClient. To enable this feature, set the parameter
+      to a positive number. The threadpool size is how many threads to dedicate
+      to the running of these 'hedged', concurrent reads in your client.
+    </description>
+  </property>
+
+  <property>
+    <name>dfs.client.hedged.read.threshold.millis</name>
+    <value>500</value>
+    <description>
+      Configure 'hedged' reads in DFSClient. This is the number of milliseconds
+      to wait before starting up a 'hedged' read.
+    </description>
+  </property>-->
+  <!-- HEDGED READ END -->
+
   <!-- CUSTOM CONF BEGIN -->
   <property>
     <name>mapreduce.ucare_se.map.datanode.send_report</name>
