@@ -23,8 +23,8 @@
      <!--<value>189100560000</value> scriptTest-16MB-->
      <!--<value>189101550000</value> scriptTest-64MB-->
      <!--<value>378203100000</value> Facebook 2010, 6600 partitions-->
-     <!--<value>60168675000</value> Facebook 2010, 1050 partitions-->
-     <value>120337350000</value> <!-- Facebook 2010, 2100 partitions-->
+     <value>60168675000</value> <!-- Facebook 2010, 1050 partitions-->
+     <!--<value>120337350000</value> Facebook 2010, 2100 partitions-->
      <!--<value>3667424000</value> 64 partitions -->
    </property>
 </configuration>
