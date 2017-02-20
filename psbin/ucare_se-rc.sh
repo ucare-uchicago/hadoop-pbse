@@ -16,7 +16,7 @@ export YARN_LOG_DIR=/tmp/hadoop-ucare/logs/yarn
 export HADOOP_MAPRED_LOG_DIR=/tmp/hadoop-ucare/logs/mapred
 
 export PSBIN=${DIR}
-export PATH=${PATH}:${HADOOP_PREFIX}/bin:${HADOOP_PREFIX}/sbin:${PSBIN}
+export PATH=${HADOOP_PREFIX}/bin:${HADOOP_PREFIX}/sbin:${PSBIN}:${PATH}
 
 alias h="history 25"
 alias la="ls -a"
