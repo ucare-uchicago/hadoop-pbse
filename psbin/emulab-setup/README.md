@@ -15,7 +15,7 @@ walkthrough, we will use node-0 as client node also.
 
 Couple of directories that we will use are:
 
-* /proj/ucare/auto-hadoop/ - This will be our project directory where
+* `/proj/ucare/auto-hadoop/` - This will be our project directory where
   we put hadoop binaries and UCARE_SE scripts. This directory will be
   accessible later through $PR environment variables. Please make
   yourself a different project dir, like /proj/ucare/your-name. Please
@@ -24,12 +24,12 @@ Couple of directories that we will use are:
   node. We prefer putting hadoop and ucare_se scripts here in NFS so
   that we have single common place that accessible by all nodes.
 
-* /mnt/extra/dfs-ucare/ - This is the directory where we store the HDFS
+* `/mnt/extra/dfs-ucare/` - This is the directory where we store the HDFS
   data blocks. In this walkthrough, we will request 20GB additional
   blockstore for each node to be mounted in path /mnt/extra through
   emulab NS file.
 
-* /tmp/hadoop-ucare/ - This is the directory where we put all hadoop
+* `/tmp/hadoop-ucare/` - This is the directory where we put all hadoop
   logs.
 
 Please make sure you use bash as your shell choice in your emulab profile.
@@ -85,6 +85,8 @@ $ns run
 This ns file will allocate node-0, node-1, node-2, and node-3, each
 with ip from 10.1.1.2 - 10.1.1.5 respectively.
 
+*IMPORTANT*: always use this naming convention (node-$i) and always
+ start $i from 0, or the scripts below will break.
 
 
 # Login to Emulab
@@ -99,3 +101,101 @@ ssh node-0.auto-hadoop.ucare.emulab.net
 
 # Automatically Install Hadoop
 
+Go to your project directory, download and run the setup script
+
+```
+cd /proj/ucare/auto-hadoop
+wget https://raw.githubusercontent.com/ucare-uchicago/hadoop/ucare_se/psbin/emulab-setup/setup-hadoop.sh
+chmod 774 setup-hadoop
+./setup-hadoop
+```
+
+This script will download hadoop-2.7.1, hadoop-ucare psbin directory,
+and SWIM benchmark (you don't need SWIM for now, but let it be).
+
+```
+riza@node-0:/proj/ucare/auto-hadoop$ ls -1
+hadoop-2.7.1
+hadoop-ucare
+setup-nfs.sh
+SWIM
+```
+
+Source `hadoop-ucare/psbin/ucare_se-rc.sh` from inside .bashrc and
+.bash_profile
+
+```
+echo "source /proj/ucare/auto-hadoop/hadoop-ucare/psbin/ucare_se-rc.sh" >> .bashrc
+echo "/proj/ucare/auto-hadoop/hadoop-ucare/psbin/ucare_se-rc.sh" >> .bash_profile
+```
+
+Now you should have every environment variables point to correct destination. Test it by running
+
+```
+printenv | egrep "(HADOOP)|(YARN)|(PSBIN)|(PR)"
+```
+
+You should get output similar like:
+
+```
+HADOOP_LOG_DIR=/tmp/hadoop-ucare/logs/hadoop
+HADOOP_HOME=/proj/ucare/auto-hadoop/hadoop-ucare/psbin/../../hadoop-2.7.1
+HADOOP_PREFIX=/proj/ucare/auto-hadoop/hadoop-ucare/psbin/../../hadoop-2.7.1
+PSBIN=/proj/ucare/auto-hadoop/hadoop-ucare/psbin
+PR=/proj/ucare/auto-hadoop/hadoop-ucare/psbin/../..
+HADOOP_CLASSPATH=/usr/lib/jvm/java-7-openjdk-amd64lib/tools.jar
+HADOOP_CONF_DIR=/proj/ucare/auto-hadoop/hadoop-ucare/psbin/ucare_se_conf/hadoop-etc/hadoop-2.7.1
+YARN_LOG_DIR=/tmp/hadoop-ucare/logs/yarn
+HADOOP_MAPRED_LOG_DIR=/tmp/hadoop-ucare/logs/mapred
+```
+
+# Configure Hadoop
+
+Next step we need to do is configure the hadoop installation. The
+$PSBIN directory contains customizable config template and useful
+scripts to control hadoop nodes. To utilize the $PSBIN scripts, first
+we need edit the values in the $PSBIN/cluster_topology.sh
+
+We will dedicate node-0 (having ip 10.1.1.2) to host NameNode,
+ResourceManager, and also as client node. So edit
+$PSBIN/cluster_topology.sh like this:
+
+```
+MAX_NODE=3
+HOSTNAME_PREFIX="node-"
+
+YARN_RM="${HOSTNAME_PREFIX}0"
+YARN_RM_IP=10.1.1.2
+YARN_RM_HOSTNAME="${HOSTNAME_PREFIX}0"
+HDFS_NN="${HOSTNAME_PREFIX}0"
+HDFS_NN_IP=10.1.1.2
+CLIENT_NODE="${HOSTNAME_PREFIX}0"
+SLAVES_FILE="$PSBIN/ucare_se_conf/hadoop-etc/hadoop-2.7.1/slaves"
+```
+
+Edit SLAVES_FILE to list our worker nodes
+```
+node-1
+node-2
+node-3
+```
+
+Next, from $PSBIN directory, format HDFS NameNode by running
+`clformat`, followed by `clstart` to start up your hadoop cluster.
+
+Thats it! You have your Hadoop cluster up and running!
+
+# Swap In/Out
+
+Note that the installation part is one time setup only. If you ever
+swap out your experiment, and swap in with different ns file (like
+using more nodes), just do the configuration part again.
+
+If you want to restart everything from scratch, swap out your
+experiment, rm -rf your project dir (in this example,
+`/proj/ucare/auto-hadoop`), and redo the installation and
+configuration part again.
+
+*WARNING!!* Never touch other directories under `/proj/ucare`. That
+ directories belong to other group members and research project. You
+ have been warned!
