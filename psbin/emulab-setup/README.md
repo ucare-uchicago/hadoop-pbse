@@ -89,6 +89,7 @@ with ip from 10.1.1.2 - 10.1.1.5 respectively.
  start $i from 0, or the scripts below will break.
 
 
+
 # Login to Emulab
 
 Make sure you have paswordless ssh set up, and the login to node-0 of
@@ -126,10 +127,11 @@ Source `hadoop-ucare/psbin/ucare_se-rc.sh` from inside .bashrc and
 
 ```
 echo "source /proj/ucare/auto-hadoop/hadoop-ucare/psbin/ucare_se-rc.sh" >> .bashrc
-echo "/proj/ucare/auto-hadoop/hadoop-ucare/psbin/ucare_se-rc.sh" >> .bash_profile
+echo "source /proj/ucare/auto-hadoop/hadoop-ucare/psbin/ucare_se-rc.sh" >> .bash_profile
 ```
 
-Now you should have every environment variables point to correct destination. Test it by running
+Log out from node-0, and then log in again. Now you should have every
+environment variables point to correct destination. Test it by running
 
 ```
 printenv | egrep "(HADOOP)|(YARN)|(PSBIN)|(PR)"
@@ -148,6 +150,11 @@ HADOOP_CONF_DIR=/proj/ucare/auto-hadoop/hadoop-ucare/psbin/ucare_se_conf/hadoop-
 YARN_LOG_DIR=/tmp/hadoop-ucare/logs/yarn
 HADOOP_MAPRED_LOG_DIR=/tmp/hadoop-ucare/logs/mapred
 ```
+
+Try ssh to other node and test it too from that node. You should see
+exactly the same output.
+
+
 
 # Configure Hadoop
 
