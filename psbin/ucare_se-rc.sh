@@ -7,7 +7,7 @@ export SWIMDIR=${PR}/SWIM
 export TESTDIR=${SWIMDIR}/workloadSuite/generatedWorkloads/st-FB2010_Proper_30node
 
 export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
-export HADOOP_CLASSPATH=${JAVA_HOME}lib/tools.jar
+export HADOOP_CLASSPATH=${JAVA_HOME}/lib/tools.jar
 export HADOOP_PREFIX=${PR}/hadoop-2.7.1
 export HADOOP_CONF_DIR=${DIR}/ucare_se_conf/hadoop-etc/hadoop-2.7.1
 export HADOOP_HOME=${HADOOP_PREFIX}
